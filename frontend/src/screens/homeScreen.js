@@ -21,7 +21,7 @@ export default function HomeScreen({ navigation }) {
               <Text style={styles.appTitle}>GoviMithuru</Text>
               <Text style={styles.aiAssistant}>AI Assistant</Text>
             </View>
-            <Pressable style={styles.profileIcon}>
+           <Pressable style={styles.profileIcon} onPress={() => navigation.navigate('Profile')}>
               <MaterialCommunityIcons name="account-circle" size={32} color="#374151" />
             </Pressable>
           </View>
@@ -55,7 +55,7 @@ export default function HomeScreen({ navigation }) {
           
         <Pressable
           style={[styles.card, { backgroundColor: '#ecfdf5' }]}
-          onPress={() => navTo('Weed')}
+          onPress={() => navTo('Pest')}
         >
           <MaterialCommunityIcons name="bug-outline" size={26} color="#16a34a" />
           <View style={styles.cardText}>

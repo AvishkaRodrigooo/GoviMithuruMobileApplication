@@ -1,16 +1,20 @@
 import * as React from 'react';
-import { View, Text } from 'react-native';
+import { View,ActivityIndicator, Text } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useState, useEffect } from 'react';
 
 // Screens
 import SignInScreen from './src/screens/signinScreen';
 import SignUpScreen from './src/screens/signupScreen';
 import HomeScreen from './src/screens/homeScreen';
-import WeedDetectionScreen from './src/screens/WeedDetectionScreen';
+import ProfileScreen from './src/screens/profileScreen';
+
+
 import StageIdentificationScreen from './src/screens/weedsDetection/StageIdentificationScreen';
 import weesDashboardScreen from './src/screens/weedsDetection/weedsdashboard';
 import WeedIdentifyScreen from './src/screens/weedsDetection/weedIdentifyScreen';
+import WeedsClassficationScreen from './src/screens/weedsDetection/weedsClassificationScreen';
 
 // Post Harvest Features
 import StorageDashboardScreen from './src/screens/PostHarvest/StorageDashboardScreen'; 
@@ -27,13 +31,48 @@ function PricingForecastScreen() {
   );
 }
 
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "./src/firebase/firebaseConfig";
+
 const Stack = createNativeStackNavigator();
 
 export default function App() {
+ const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    console.log('App: Setting up auth listener...');
+    
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      console.log('Auth state changed:', currentUser ? 'User logged in' : 'No user');
+      console.log('Current User:', currentUser?.email);
+      
+      setUser(currentUser);
+      setLoading(false);
+    });
+
+    // Cleanup subscription
+    return unsubscribe;
+  }, []);
+
+  console.log('App render - User:', user?.email, 'Loading:', loading);
+
+  if (loading) {
+    console.log('Showing loading indicator...');
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color="#16a34a" />
+        <Text style={{ marginTop: 10, color: '#16a34a' }}>Loading GoviMithuru...</Text>
+      </View>
+    );
+  }
+
+
+
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="SignIn"
+        //initialRouteName="SignIn"
         screenOptions={{
           headerStyle: { backgroundColor: '#16a34a' },
           headerTintColor: '#fff',
@@ -41,9 +80,12 @@ export default function App() {
           headerTitleAlign: 'center',
         }}
       >
-        <Stack.Screen name="SignIn" component={SignInScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="SignUp" component={SignUpScreen} options={{ title: 'Create Account' }} />
+        {user ? (
+          // User is signed in - show main app screens
+          <>
+       
         <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'GoviMithuru' }} />
+        <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
 
         {/* Post Harvest Analysis Flow */}
         <Stack.Screen name="Stage" component={StorageDashboardScreen} options={{ title: 'Storage Analysis' }} />
@@ -51,12 +93,33 @@ export default function App() {
         <Stack.Screen name="ConnectSensors" component={SensorConnectionScreen} options={{ title: 'Connect Sensors' }} />
         <Stack.Screen name="MarketTracking" component={MarketTrackingScreen} options={{ title: 'Market Tracking' }} />
 
-        {/* Other AI Tools */}
-        <Stack.Screen name="Weed" component={WeedDetectionScreen} options={{ title: 'Pest Detection' }} />
-        <Stack.Screen name="WeedStage" component={StageIdentificationScreen} options={{ title: 'Growth Stage' }} />
-        <Stack.Screen name="detector" component={WeedIdentifyScreen} options={{ title: 'Identify Weeds' }} />
+        {/* weeds detection */}
+         
+        <Stack.Screen name="Stages" component={StageIdentificationScreen} options={{ title: 'Stage Identification' }} />
+        <Stack.Screen name="detector" component={WeedIdentifyScreen} options={{ title: 'Weeds detection' }} />
+        <Stack.Screen name="dete" component={WeedsClassficationScreen} options={{ title: 'Weeds detection' }} />
         <Stack.Screen name="weedsDashboard" component={weesDashboardScreen} options={{ title: 'Weeds Dashboard' }} />
+
+
+         <Stack.Screen name="Pest" component={PricingForecastScreen} options={{ title: 'Pest Forecast' }} />
         <Stack.Screen name="Pricing" component={PricingForecastScreen} options={{ title: 'Price Forecast' }} />
+ </>
+        ) : (
+          // User is NOT signed in - show auth screens
+          <>
+            <Stack.Screen
+              name="SignIn"
+              component={SignInScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="SignUp"
+              component={SignUpScreen}
+              options={{ title: 'Create Account' }}
+            />
+          </>
+        )}
+        
       </Stack.Navigator>
     </NavigationContainer>
   );
