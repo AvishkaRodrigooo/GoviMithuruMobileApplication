@@ -173,7 +173,7 @@ const [accuracy, setAccuracy] = useState(0);
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1e3b27' },
+  container: { flex: 1, backgroundColor: '#438f4dff' },
   header: {
     padding: 24,
     paddingTop: 60,

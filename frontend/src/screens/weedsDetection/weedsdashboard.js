@@ -30,7 +30,7 @@ export default function WeedsDashboardScreen({ navigation }) {
             <Text style={styles.headerTitle}>🌾 Paddy Cultivation</Text>
             <Text style={styles.headerSubtitle}>Smart farming at your fingertips</Text>
           </View>
-          <Pressable style={styles.profileButton}>
+          <Pressable style={styles.profileIcon} onPress={() => navigation.navigate('Profile')}>
             <MaterialIcons name="account-circle" size={40} color="white" />
           </Pressable>
         </View>
@@ -100,13 +100,11 @@ export default function WeedsDashboardScreen({ navigation }) {
         </View>
         <View style={styles.featureContent}>
           <View style={styles.featureTitleRow}>
-            <Text style={styles.featureTitle}>Weed Detection</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>AI</Text>
-            </View>
+            <Text style={styles.featureTitle}>AI-Based Weeds Localization</Text>
+           
           </View>
           <Text style={styles.featureDesc}>
-            🎯 Instantly identify weeds with AI camera
+            🎯 Detect and highlight weed-infected areas directly on the image.
           </Text>
           <View style={styles.featureFooter}>
             <MaterialIcons name="schedule" size={14} color="#9ca3af" />
@@ -118,21 +116,19 @@ export default function WeedsDashboardScreen({ navigation }) {
 
       <Pressable 
         style={[styles.featureCard, styles.purpleFeature]}
-        onPress={() => navigation.navigate('Weed')}
+        onPress={() => navigation.navigate('dete')}
         android_ripple={{ color: '#c4b5fd' }}
       >
         <View style={styles.featureIconContainer}>
-          <MaterialCommunityIcons name="clipboard-list" size={32} color="#7c3aed" />
+          <MaterialCommunityIcons name="sprout" size={32} color="#1c7034ff" />
         </View>
         <View style={styles.featureContent}>
           <View style={styles.featureTitleRow}>
-            <Text style={styles.featureTitle}>Weed Classification</Text>
-            <View style={[styles.badge, styles.proBadge]}>
-              <Text style={styles.badgeText}>PRO</Text>
-            </View>
+            <Text style={styles.featureTitle}>Weeds Identification & Treatment Recommendation</Text>
+           
           </View>
           <Text style={styles.featureDesc}>
-            📊 Advanced classification with treatment plans
+            📊Upload a crop/plant image to identify weeds type and get treatment recommendations with reasons.
           </Text>
           <View style={styles.featureFooter}>
             <MaterialIcons name="science" size={14} color="#9ca3af" />
@@ -142,11 +138,13 @@ export default function WeedsDashboardScreen({ navigation }) {
         <MaterialIcons name="arrow-forward-ios" size={20} color="#6b7280" />
       </Pressable>
 
-      <Pressable 
+   {/*   <Pressable 
         style={[styles.featureCard, styles.blueFeature]}
         onPress={() => navigation.navigate('Stage')}
         android_ripple={{ color: '#93c5fd' }}
       >
+      <MaterialCommunityIcons name="clipboard-list" size={32} color="#7c3aed" />
+      <MaterialIcons name="science" size={14} color="#9ca3af" />
         <View style={styles.featureIconContainer}>
           <MaterialCommunityIcons name="sprout" size={32} color="#2563eb" />
         </View>
@@ -167,61 +165,49 @@ export default function WeedsDashboardScreen({ navigation }) {
         </View>
         <MaterialIcons name="arrow-forward-ios" size={20} color="#6b7280" />
       </Pressable>
+*/}
+     
+     {/* How It Works Section */}
+<View style={styles.howItWorksSection}>
+  <Text style={styles.howTitle}>🛠️ How It Works</Text>
 
-      {/* Enhanced History Card */}
-      <View style={styles.historySection}>
-        <View style={styles.historySectionHeader}>
-          <Text style={styles.historyTitle}>📋 Recent Activity</Text>
-          <Pressable>
-            <Text style={styles.viewAllText}>View All</Text>
-          </Pressable>
-        </View>
+  <View style={styles.stepCard}>
+    <View style={styles.stepNumber}>
+      <Text style={styles.stepNumberText}>1</Text>
+    </View>
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>ඡායාරූපයක් ගන්න</Text>
+      <Text style={styles.stepDesc}>
+        වල් පැල ඇති ස්ථානයේ පින්තූරයක් කැමරාවෙන් ගන්න
+      </Text>
+    </View>
+  </View>
 
-        <View style={styles.historyCard}>
-          <View style={styles.historyItem}>
-            <View style={[styles.historyIcon, styles.successIcon]}>
-              <MaterialIcons name="check-circle" size={24} color="#22c55e" />
-            </View>
-            <View style={styles.historyTextContainer}>
-              <Text style={styles.historyMainText}>Weed detected in Field A</Text>
-              <Text style={styles.historySubText}>🌿 Barnyard Grass • 92% confidence</Text>
-              <Text style={styles.historyTime}>2 hours ago</Text>
-            </View>
-            <View style={styles.historyBadge}>
-              <MaterialIcons name="priority-high" size={16} color="#f59e0b" />
-            </View>
-          </View>
+  <View style={styles.stepCard}>
+    <View style={styles.stepNumber}>
+      <Text style={styles.stepNumberText}>2</Text>
+    </View>
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>විශ්ලේෂණය කරන්න</Text>
+      <Text style={styles.stepDesc}>
+        AI පද්ධතිය වල් පැල හඳුනාගනී
+      </Text>
+    </View>
+  </View>
 
-          <View style={styles.divider} />
+  <View style={styles.stepCard}>
+    <View style={styles.stepNumber}>
+      <Text style={styles.stepNumberText}>3</Text>
+    </View>
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>ප්‍රතිඵල ලබාගන්න</Text>
+      <Text style={styles.stepDesc}>
+        නිවැරදි වල් පැල වර්ගය සහ විසඳුම් ලබාගන්න
+      </Text>
+    </View>
+  </View>
+</View>
 
-          <View style={styles.historyItem}>
-            <View style={[styles.historyIcon, styles.infoIcon]}>
-              <MaterialIcons name="trending-up" size={24} color="#3b82f6" />
-            </View>
-            <View style={styles.historyTextContainer}>
-              <Text style={styles.historyMainText}>Growth stage updated</Text>
-              <Text style={styles.historySubText}>🌾 Tillering stage confirmed</Text>
-              <Text style={styles.historyTime}>Yesterday at 3:45 PM</Text>
-            </View>
-            <View style={[styles.historyBadge, styles.infoBadge]}>
-              <MaterialIcons name="info" size={16} color="#3b82f6" />
-            </View>
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.historyItem}>
-            <View style={[styles.historyIcon, styles.successIcon]}>
-              <MaterialIcons name="check-circle" size={24} color="#22c55e" />
-            </View>
-            <View style={styles.historyTextContainer}>
-              <Text style={styles.historyMainText}>Field irrigation completed</Text>
-              <Text style={styles.historySubText}>💧 All zones watered successfully</Text>
-              <Text style={styles.historyTime}>2 days ago</Text>
-            </View>
-          </View>
-        </View>
-      </View>
 
       {/* Bottom Spacing */}
       <View style={{ height: 30 }} />
@@ -252,6 +238,63 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
   },
+  howItWorksSection: {
+  marginTop: 20,
+  paddingHorizontal: 20,
+},
+
+howTitle: {
+  fontSize: 18,
+  fontWeight: 'bold',
+  color: '#166534',
+  marginBottom: 12,
+},
+
+stepCard: {
+  flexDirection: 'row',
+  backgroundColor: '#fff',
+  borderRadius: 14,
+  padding: 14,
+  marginBottom: 12,
+  shadowColor: '#000',
+  shadowOpacity: 0.05,
+  shadowRadius: 6,
+  shadowOffset: { width: 0, height: 2 },
+  elevation: 3,
+},
+
+stepNumber: {
+  width: 34,
+  height: 34,
+  borderRadius: 17,
+  backgroundColor: '#16a34a',
+  alignItems: 'center',
+  justifyContent: 'center',
+  marginRight: 12,
+},
+
+stepNumberText: {
+  color: '#fff',
+  fontWeight: 'bold',
+},
+
+stepContent: {
+  flex: 1,
+},
+
+stepTitle: {
+  fontSize: 15,
+  fontWeight: '700',
+  color: '#166534',
+  marginBottom: 4,
+},
+
+stepDesc: {
+  fontSize: 13,
+  color: '#6b7280',
+  lineHeight: 18,
+},
+
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
