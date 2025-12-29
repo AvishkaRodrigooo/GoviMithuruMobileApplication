@@ -21,6 +21,7 @@ import StorageDashboardScreen from './src/screens/PostHarvest/StorageDashboardSc
 import RegisterHarvestScreen from './src/screens/PostHarvest/RegisterHarvestScreen'; 
 import SensorConnectionScreen from './src/screens/PostHarvest/SensorConnectionScreen';
 import MarketTrackingScreen from './src/screens/PostHarvest/MarketTrackingScreen';
+import InventoryListScreen from './src/screens/PostHarvest/InventoryListScreen';
 // Pricing Placeholder
 function PricingForecastScreen() {
   return (
@@ -92,6 +93,11 @@ export default function App() {
         <Stack.Screen name="RegisterHarvest" component={RegisterHarvestScreen} options={{ title: 'Register Harvest' }} />
         <Stack.Screen name="ConnectSensors" component={SensorConnectionScreen} options={{ title: 'Connect Sensors' }} />
         <Stack.Screen name="MarketTracking" component={MarketTrackingScreen} options={{ title: 'Market Tracking' }} />
+        <Stack.Screen 
+  name="InventoryList" 
+  component={InventoryListScreen} 
+  options={{ title: 'Stock Inventory' }} 
+/>
 
         {/* weeds detection */}
          
