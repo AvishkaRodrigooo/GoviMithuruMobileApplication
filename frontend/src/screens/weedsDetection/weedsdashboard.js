@@ -138,34 +138,34 @@ export default function WeedsDashboardScreen({ navigation }) {
         <MaterialIcons name="arrow-forward-ios" size={20} color="#6b7280" />
       </Pressable>
 
-   {/*   <Pressable 
+      
+     <Pressable 
         style={[styles.featureCard, styles.blueFeature]}
-        onPress={() => navigation.navigate('Stage')}
+        onPress={() => navigation.navigate('herbicides')}
         android_ripple={{ color: '#93c5fd' }}
       >
-      <MaterialCommunityIcons name="clipboard-list" size={32} color="#7c3aed" />
-      <MaterialIcons name="science" size={14} color="#9ca3af" />
+ 
         <View style={styles.featureIconContainer}>
-          <MaterialCommunityIcons name="sprout" size={32} color="#2563eb" />
-        </View>
+    <MaterialCommunityIcons name="spray" size={32} color="#10b981" />{/* Spray icon */}
+  </View>
         <View style={styles.featureContent}>
           <View style={styles.featureTitleRow}>
-            <Text style={styles.featureTitle}>Growth Stage Tracking</Text>
+            <Text style={styles.featureTitle}>Herbicides Recommendation</Text>
             <View style={[styles.badge, styles.newBadge]}>
               <Text style={styles.badgeText}>NEW</Text>
             </View>
           </View>
           <Text style={styles.featureDesc}>
-            🌱 Monitor crop stages with precision AI
+            🌱 Get smart herbicide advice to protect your crops
           </Text>
           <View style={styles.featureFooter}>
             <MaterialIcons name="timeline" size={14} color="#9ca3af" />
-            <Text style={styles.featureTime}>Real-time tracking</Text>
+            <Text style={styles.featureTime}>Optimized spraying schedules</Text>
           </View>
         </View>
         <MaterialIcons name="arrow-forward-ios" size={20} color="#6b7280" />
       </Pressable>
-*/}
+
      
      {/* How It Works Section */}
 <View style={styles.howItWorksSection}>

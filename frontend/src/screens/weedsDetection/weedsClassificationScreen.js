@@ -1,41 +1,65 @@
-import { View, Text, Image, Pressable, StyleSheet, Alert, ScrollView } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
-import { useState } from 'react';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  View,
+  Text,
+  Image,
+  Pressable,
+  StyleSheet,
+  Alert,
+  ScrollView,
+} from "react-native";
+import * as ImagePicker from "expo-image-picker";
+import { useState } from "react";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function WeedsClassificationScreen() {
   const [image, setImage] = useState(null);
 
-  // 📷 Camera
+  // 📷 Open Camera
   const openCamera = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission required', 'Camera access is needed');
+      Alert.alert("Permission Required", "Camera access is needed");
       return;
     }
 
-    const result = await ImagePicker.launchCameraAsync({ quality: 1 });
-    if (!result.canceled) setImage(result.assets[0].uri);
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 1,
+      allowsEditing: true,
+    });
+
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
   };
 
-  // 🖼 Gallery
+  // 🖼 Open Gallery
   const openGallery = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permission =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      Alert.alert('Permission required', 'Gallery access is needed');
+      Alert.alert("Permission Required", "Gallery access is needed");
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({ quality: 1 });
-    if (!result.canceled) setImage(result.assets[0].uri);
+    const result = await ImagePicker.launchImageLibraryAsync({
+      quality: 1,
+      allowsEditing: true,
+    });
+
+    if (!result.canceled) {
+      setImage(result.assets[0].uri);
+    }
   };
 
   return (
     <ScrollView style={styles.container}>
-      {/* Header */}
-      <Text style={styles.header}>Weed Scan</Text>
+      {/* 🌱 Header */}
+      <Text style={styles.header}>🌱 Weeds Scanner</Text>
+      <Text style={styles.subHeader}>
+        Take or upload a photo to identify weeds
+      </Text>
 
-      {/* Scan Card */}
+      {/* 📸 Scan Card */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Scan Weeds</Text>
 
@@ -43,16 +67,15 @@ export default function WeedsClassificationScreen() {
           {image ? (
             <Image source={{ uri: image }} style={styles.image} />
           ) : (
-           <Pressable onPress={openCamera}>
-             <View style={styles.placeholder}>
-    <Text style={styles.placeholderIcon}>📷</Text>
-     <Text style={styles.placeholderText}>
-                    Upload an image to detect weeds
-                  </Text>
-                  </View>
-    </Pressable>
+            <Pressable onPress={openCamera}>
+              <View style={styles.placeholder}>
+                <Ionicons name="camera" size={50} color="#166534" />
+                <Text style={styles.placeholderText}>Tap to Scan Weeds</Text>
+              </View>
+            </Pressable>
           )}
 
+          {/* Icons */}
           <View style={styles.iconRow}>
             <Pressable onPress={openCamera}>
               <Ionicons name="camera-outline" size={22} />
@@ -64,47 +87,53 @@ export default function WeedsClassificationScreen() {
         </View>
 
         <Pressable style={styles.scanBtn}>
-          <Text style={styles.scanText}>Scan for Weeds</Text>
+          <Text style={styles.scanText}>Identify Weeds</Text>
         </Pressable>
       </View>
 
-      {/* Detection Results */}
+      {/* 🌾 Detection Results */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Detection Results</Text>
+        <Text style={styles.cardTitle}>Detection Result</Text>
 
         <View style={styles.resultHeader}>
           <View style={styles.thumb} />
           <View>
             <Text style={styles.weedName}>Common Ragweed</Text>
-            <Text style={styles.confidence}>Detected with 92% confidence</Text>
+            <Text style={styles.confidence}>Accuracy: 92%</Text>
           </View>
         </View>
 
+        {/* Growth Stage */}
         <View style={styles.stageRow}>
           <Text style={styles.stage}>Stage 1</Text>
           <Text style={styles.stage}>Stage 2</Text>
-          <Text style={[styles.stage, styles.activeStage]}>Stage 3</Text>
+          <Text style={[styles.stage, styles.activeStage]}>
+            Stage 3
+          </Text>
           <Text style={styles.stage}>Stage 4</Text>
         </View>
 
+        {/* Recommendation */}
         <View style={styles.recommendBox}>
-         
-        
           <Text style={styles.recommendText}>
-            Recommendation : Apply selective herbicide in early treatment and solutions
+            ✅ Recommended Action:
           </Text>
-            <Text style={styles.recommendText}>Sciencefic name :</Text>
-          <Text style={styles.recommendText}>Weeds category Broadleaf,grass,sedge:</Text>
-          <Text style={styles.recommendText}>Reason for growth :</Text>
-           <Text style={styles.recommendText}>Weed Severity :Hign medium Low</Text>
+          <Text style={styles.recommendText}>
+            Apply selective herbicide during early growth stage.
+          </Text>
+          <Text style={styles.recommendText}>
+            Scientific Name: Ambrosia artemisiifolia
+          </Text>
+          <Text style={styles.recommendText}>
+            Weed Type: Broadleaf
+          </Text>
+          <Text style={styles.recommendText}>
+            Severity Level: High
+          </Text>
         </View>
       </View>
 
-
-
-
-
-      {/* Recent Scans */}
+      {/* 🕒 Recent Scans */}
       <View style={styles.card}>
         <View style={styles.recentHeader}>
           <Text style={styles.cardTitle}>Recent Scans</Text>
@@ -115,7 +144,7 @@ export default function WeedsClassificationScreen() {
           <View style={styles.thumbSmall} />
           <View style={{ flex: 1 }}>
             <Text style={styles.weedName}>Wild Oat</Text>
-            <Text style={styles.confidence}>Today, 10:30 AM</Text>
+            <Text style={styles.confidence}>Today - 10:30 AM</Text>
           </View>
           <Text style={styles.riskHigh}>High Risk</Text>
         </View>
@@ -127,141 +156,174 @@ export default function WeedsClassificationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#438f4dff',
+    backgroundColor: "#f0fdf4",
     padding: 16,
   },
+
   header: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 12,
-     color: '#ffffffff',
+    fontSize: 26,
+    fontWeight: "bold",
+    color: "#14532d",
   },
+
+  subHeader: {
+    fontSize: 14,
+    color: "#166534",
+    marginBottom: 14,
+  },
+
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    backgroundColor: "#ffffff",
+    borderRadius: 14,
     padding: 16,
-    marginBottom: 16,
-    elevation: 3,
+    marginBottom: 18,
+    elevation: 4,
   },
+
   cardTitle: {
-    fontWeight: '600',
-    marginBottom: 10,
+    fontSize: 18,
+    fontWeight: "600",
+    color: "#14532d",
+    marginBottom: 12,
   },
-  
-  placeholderIcon: {
-    fontSize: 45,
-    marginBottom: 16,
-    opacity: 0.5,
-  },
-  placeholderText: {
-    color: '#191212ff',
-    fontSize: 15,
-    opacity: 0.75,
-  },
+
   imageBox: {
-    height: 180,
-    borderRadius: 10,
-    backgroundColor: '#bae0c6ff',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
+    height: 200,
+    borderRadius: 12,
+    backgroundColor: "#dcfce7",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
   },
-   placeholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+
+  placeholder: {
+    justifyContent: "center",
+    alignItems: "center",
   },
-  image: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 10,
-  },
-  iconRow: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    flexDirection: 'row',
-    gap: 12,
-  },
-  scanBtn: {
-    marginTop: 14,
-    backgroundColor: '#16a34a',
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  scanText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  resultHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  thumb: {
-    width: 50,
-    height: 50,
-    borderRadius: 8,
-    backgroundColor: '#e5e7eb',
-  },
-  weedName: {
-    fontWeight: '600',
-  },
-  confidence: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  stageRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 10,
-  },
-  stage: {
-    backgroundColor: '#dcfce7',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 6,
-    fontSize: 12,
-  },
-  activeStage: {
-    backgroundColor: '#16a34a',
-    color: '#fff',
-  },
-  recommendBox: {
-    backgroundColor: '#fefce8',
-    borderLeftWidth: 4,
-    borderLeftColor: '#eab308',
-    padding: 10,
-    borderRadius: 6,
-  },
-  recommendText: {
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  recentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  recentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+
+  placeholderText: {
     marginTop: 10,
-    gap: 10,
+    fontSize: 16,
+    color: "#166534",
+    fontWeight: "500",
   },
-  thumbSmall: {
-    width: 40,
-    height: 40,
+
+  image: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 12,
+  },
+
+  iconRow: {
+    position: "absolute",
+    bottom: 10,
+    right: 10,
+    flexDirection: "row",
+    gap: 16,
+    backgroundColor: "#ffffffcc",
+    padding: 8,
+    borderRadius: 20,
+  },
+
+  scanBtn: {
+    marginTop: 18,
+    backgroundColor: "#15803d",
+    paddingVertical: 14,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+
+  scanText: {
+    color: "#fff",
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+
+  resultHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+  },
+
+  thumb: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    backgroundColor: "#bbf7d0",
+  },
+
+  weedName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#14532d",
+  },
+
+  confidence: {
+    fontSize: 13,
+    color: "#166534",
+  },
+
+  stageRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginVertical: 14,
+  },
+
+  stage: {
+    backgroundColor: "#dcfce7",
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     borderRadius: 8,
-    backgroundColor: '#e5e7eb',
-  },
-  riskHigh: {
-    backgroundColor: '#fee2e2',
-    color: '#b91c1c',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
     fontSize: 12,
+    color: "#166534",
+  },
+
+  activeStage: {
+    backgroundColor: "#15803d",
+    color: "#fff",
+  },
+
+  recommendBox: {
+    backgroundColor: "#fef9c3",
+    borderLeftWidth: 5,
+    borderLeftColor: "#ca8a04",
+    padding: 12,
+    borderRadius: 8,
+  },
+
+  recommendText: {
+    fontSize: 14,
+    marginBottom: 6,
+    color: "#713f12",
+  },
+
+  recentHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+
+  recentItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 12,
+    gap: 12,
+  },
+
+  thumbSmall: {
+    width: 45,
+    height: 45,
+    borderRadius: 10,
+    backgroundColor: "#bbf7d0",
+  },
+
+  riskHigh: {
+    backgroundColor: "#fee2e2",
+    color: "#b91c1c",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    fontSize: 12,
+    fontWeight: "600",
   },
 });

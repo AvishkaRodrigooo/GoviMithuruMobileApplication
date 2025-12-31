@@ -1,6 +1,8 @@
 import firebase from 'firebase/compat/app';
 import 'firebase/compat/auth';
 import 'firebase/compat/firestore';
+import 'firebase/compat/storage';
+
 
 const firebaseConfig = {
   apiKey: "AIzaSyDTVeqoAeQWj-_rn2bn6I3Pxz6VGescDW4",
@@ -12,9 +14,16 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
+let firebaseApp;
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
+}else {
+  firebaseApp = firebase.app();
 }
 //avilakmal21@gmail.com-govimithuru
+
 export const auth = firebase.auth();
 export const db = firebase.firestore();
+export const storage = firebase.storage();
+
+export default firebase; 

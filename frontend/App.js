@@ -10,11 +10,14 @@ import SignUpScreen from './src/screens/signupScreen';
 import HomeScreen from './src/screens/homeScreen';
 import ProfileScreen from './src/screens/profileScreen';
 
+import adminDashboardScreen from './src/screens/adminDashboard/adminDashboardScreen';
+import HerbicideRecommendationAdminScreen from './src/screens/adminDashboard/HerbicideRecommendationAdminScreen';
 
 import StageIdentificationScreen from './src/screens/weedsDetection/StageIdentificationScreen';
 import weesDashboardScreen from './src/screens/weedsDetection/weedsdashboard';
 import WeedIdentifyScreen from './src/screens/weedsDetection/weedIdentifyScreen';
 import WeedsClassficationScreen from './src/screens/weedsDetection/weedsClassificationScreen';
+import HerbicideRecommendation from './src/screens/weedsDetection/herbicidesRecomendationScreen';
 
 // Post Harvest Features
 import StorageDashboardScreen from './src/screens/PostHarvest/StorageDashboardScreen'; 
@@ -34,6 +37,7 @@ function PricingForecastScreen() {
 
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./src/firebase/firebaseConfig";
+import { StackScreen } from 'react-native-screens';
 
 const Stack = createNativeStackNavigator();
 
@@ -87,6 +91,8 @@ export default function App() {
        
         <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'GoviMithuru' }} />
         <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
+         <Stack.Screen name="AdminDashboard" component={adminDashboardScreen} options={{ title: "Admin Dashboard"}}/>
+        <Stack.Screen name="HerbicideRecommendation" component={HerbicideRecommendationAdminScreen} options={{ title: 'Herbicide Recommendation' }}/>
 
         {/* Post Harvest Analysis Flow */}
         <Stack.Screen name="Stage" component={StorageDashboardScreen} options={{ title: 'Storage Analysis' }} />
@@ -105,7 +111,7 @@ export default function App() {
         <Stack.Screen name="detector" component={WeedIdentifyScreen} options={{ title: 'Weeds detection' }} />
         <Stack.Screen name="dete" component={WeedsClassficationScreen} options={{ title: 'Weeds detection' }} />
         <Stack.Screen name="weedsDashboard" component={weesDashboardScreen} options={{ title: 'Weeds Dashboard' }} />
-
+        <Stack.Screen name="herbicides" component={HerbicideRecommendation} options={{ title:'HerbicideRecommendation'}}/>
 
          <Stack.Screen name="Pest" component={PricingForecastScreen} options={{ title: 'Pest Forecast' }} />
         <Stack.Screen name="Pricing" component={PricingForecastScreen} options={{ title: 'Price Forecast' }} />
@@ -123,6 +129,9 @@ export default function App() {
               component={SignUpScreen}
               options={{ title: 'Create Account' }}
             />
+           
+
+           
           </>
         )}
         
