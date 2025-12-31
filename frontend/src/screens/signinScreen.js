@@ -1,4 +1,3 @@
-// src/screens/signinScreen.js
 import React, { useState } from 'react';
 import { 
   View, 
@@ -7,13 +6,11 @@ import {
   TouchableOpacity, 
   Alert,
   StyleSheet,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView
 } from 'react-native';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth } from '../firebase/firebaseConfig';
+import { auth, db } from '../firebase/firebaseConfig';
 
 const SignInScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -21,14 +18,8 @@ const SignInScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
 
   const handleSignIn = async () => {
-    // Email validation
     if (!email.trim()) {
       Alert.alert('Error', 'Please enter your email');
-      return;
-    }
-
-    if (!email.includes('@')) {
-      Alert.alert('Error', 'Please enter a valid email address');
       return;
     }
 
@@ -38,22 +29,43 @@ const SignInScreen = ({ navigation }) => {
     }
 
     setLoading(true);
+
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
-      // Login successful - navigation will happen automatically via onAuthStateChanged
-    } catch (error) {
-      let errorMessage = 'Login Failed';
-      
-      if (error.code === 'auth/invalid-credential') {
-        errorMessage = 'Invalid email or password';
-      } else if (error.code === 'auth/user-not-found') {
-        errorMessage = 'No account found with this email';
-      } else if (error.code === 'auth/wrong-password') {
-        errorMessage = 'Incorrect password';
-      } else if (error.code === 'auth/too-many-requests') {
-        errorMessage = 'Too many attempts. Please try again later';
+      // 🔐 Firebase login
+      const userCredential = await auth.signInWithEmailAndPassword(email.trim(), password);
+      const user = userCredential.user;
+
+      // 🔍 Firestore role check
+      const userSnap = await db.collection('users').doc(user.uid).get();
+
+      if (!userSnap.exists) {
+        Alert.alert('Error', 'User data not found');
+        await auth.signOut(); // Sign out if no user data
+        return;
+      }
+
+      const userData = userSnap.data();
+      const role = userData.role;
+
+      // 🧭 Navigate based on role
+      if (role === 'admin') {
+        navigation.replace('AdminDashboard');
       } else {
-        errorMessage = error.message;
+        navigation.replace('Home');
+      }
+
+    } catch (error) {
+      console.error('Login error:', error);
+      
+      let errorMessage = 'Login failed. Please try again.';
+      if (error.code === 'auth/user-not-found') {
+        errorMessage = 'User not found. Please check your email.';
+      } else if (error.code === 'auth/wrong-password') {
+        errorMessage = 'Incorrect password. Please try again.';
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = 'Invalid email address.';
+      } else if (error.code === 'auth/network-request-failed') {
+        errorMessage = 'Network error. Please check your internet connection.';
       }
       
       Alert.alert('Login Failed', errorMessage);
@@ -213,14 +225,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
-    shadowColor: '#16a34a',
-    shadowOffset: {
-      width: 0,
-      height: 3,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 5,
   },
   disabledButton: {
     backgroundColor: '#86efac',
