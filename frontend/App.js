@@ -11,6 +11,8 @@ import StageIdentificationScreen from './src/screens/weedsDetection/StageIdentif
 import weesDashboardScreen from './src/screens/weedsDetection/weedsdashboard';
 import WeedIdentifyScreen from './src/screens/weedsDetection/weedIdentifyScreen';
 
+import InputPlanner from './src/screens/crop_esstablishment_planner/inputPlanner';
+
 const Stack = createNativeStackNavigator();
 
 
@@ -65,6 +67,12 @@ export default function App() {
           name="weedsDashboard"
           component={weesDashboardScreen}
           options={{ title: 'Weeds Dashboard' }}
+        />
+
+        <Stack.Screen
+          name="inputPlanner"
+          component={InputPlanner}
+          options={{ title: 'input Planner' }}
         />
 
       </Stack.Navigator>
