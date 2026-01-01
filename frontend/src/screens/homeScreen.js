@@ -170,6 +170,27 @@ export default function HomeScreen({ navigation }) {
           </Pressable>
         </View>
 
+
+        {/*Crop Establishment Features */}
+        <Text style={styles.sectionTitle}>Crop Establishment 🌱</Text>
+        <View style={styles.featuresGrid}>
+          <Pressable style={[styles.featureCard, styles.featureLarge]} onPress={() => navTo('InputPlanner', 'planning')}>
+            <View style={[styles.featureIcon, { backgroundColor: '#fef7cd' }]}>
+              <MaterialCommunityIcons name="calculator" size={40} color="#d97706" />
+            </View>
+            <Text style={styles.featureTitle}>Input Planner</Text>
+            <Text style={styles.featureDesc}>Calculate seeds & fertilizer</Text>
+          </Pressable>
+          <Pressable style={[styles.featureCard, styles.featureLarge]} onPress={() => navigation?.navigate('CropRecommender')}>
+            <View style={[styles.featureIcon, { backgroundColor: '#e0f2fe' }]}>
+              <MaterialCommunityIcons name="seed" size={40} color="#0369a1" />
+            </View>
+            <Text style={styles.featureTitle}>Crop Recommender</Text>
+            <Text style={styles.featureDesc}>Best varieties for your soil</Text>
+          </Pressable>
+        </View>
+        
+
         {/* --- LIVE NEWS SECTION --- */}
         <View style={styles.newsHeaderRow}>
           <Text style={styles.sectionTitle}>Live Agri Updates 📡</Text>

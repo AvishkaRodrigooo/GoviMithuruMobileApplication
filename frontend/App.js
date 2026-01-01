@@ -19,6 +19,8 @@ import WeedIdentifyScreen from './src/screens/weedsDetection/weedIdentifyScreen'
 import WeedsClassficationScreen from './src/screens/weedsDetection/weedsClassificationScreen';
 import HerbicideRecommendation from './src/screens/weedsDetection/herbicidesRecomendationScreen';
 
+import InputPlannerScreen  from './src/screens/cropEstablishment/InputPlannerScreen ';
+
 // Post Harvest Features
 import StorageDashboardScreen from './src/screens/PostHarvest/StorageDashboardScreen'; 
 import RegisterHarvestScreen from './src/screens/PostHarvest/RegisterHarvestScreen'; 
@@ -115,7 +117,13 @@ export default function App() {
 
          <Stack.Screen name="Pest" component={PricingForecastScreen} options={{ title: 'Pest Forecast' }} />
         <Stack.Screen name="Pricing" component={PricingForecastScreen} options={{ title: 'Price Forecast' }} />
+
+
+        {/* crop establishment planner */}
+
+        <Stack.Screen name="InputPlanner" component={InputPlannerScreen} options={{ title: 'Input Planner' }} />
  </>
+
         ) : (
           // User is NOT signed in - show auth screens
           <>
