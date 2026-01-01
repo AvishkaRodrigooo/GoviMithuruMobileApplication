@@ -19,7 +19,8 @@ import WeedIdentifyScreen from './src/screens/weedsDetection/weedIdentifyScreen'
 import WeedsClassficationScreen from './src/screens/weedsDetection/weedsClassificationScreen';
 import HerbicideRecommendation from './src/screens/weedsDetection/herbicidesRecomendationScreen';
 
-import InputPlannerScreen  from './src/screens/cropEstablishment/InputPlannerScreen ';
+import InputPlannerScreen from './src/screens/cropEstablishment/InputPlannerScreen ';
+import CropRecommenderScreen from './src/screens/cropEstablishment/CropRecommenderScreen ';
 
 // Post Harvest Features
 import StorageDashboardScreen from './src/screens/PostHarvest/StorageDashboardScreen'; 
@@ -41,7 +42,7 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./src/firebase/firebaseConfig";
 import { StackScreen } from 'react-native-screens';
 
-import InputPlanner from './src/screens/crop_esstablishment_planner/inputPlanner';
+
 
 const Stack = createNativeStackNavigator();
 
@@ -124,6 +125,7 @@ export default function App() {
         {/* crop establishment planner */}
 
         <Stack.Screen name="InputPlanner" component={InputPlannerScreen} options={{ title: 'Input Planner' }} />
+        <Stack.Screen name="CropRecommender" component={CropRecommenderScreen} options={{ title: 'Crop Recommender' }} />
  </>
 
 
