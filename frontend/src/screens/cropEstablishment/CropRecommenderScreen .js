@@ -29,7 +29,7 @@ const CropRecommenderScreen = ({ navigation }) => {
     season: 'Yala',
   });
 
-  // Sri Lankan districts for dropdown
+  // Sri Lankan districts for dropdown.
   const districts = [
     'Ampara', 'Anuradhapura', 'Badulla', 'Batticaloa', 'Colombo',
     'Galle', 'Gampaha', 'Hambantota', 'Jaffna', 'Kalutara',
