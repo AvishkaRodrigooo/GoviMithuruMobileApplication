@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { encode as btoa } from 'base-64';
 import {
   View,
   Text,
@@ -11,19 +10,21 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function WeedIdentifyScreen() {
   const [image, setImage] = useState(null);
   const [resultImage, setResultImage] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showResults, setShowResults] = useState(false);
-const [boxCount, setBoxCount] = useState(0);
-const [accuracy, setAccuracy] = useState(0);
+  const [boxCount, setBoxCount] = useState(0);
+  const [accuracy, setAccuracy] = useState(0);
+
   // 📷 Camera
   const openCamera = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permission required');
+      Alert.alert('Permission Required', 'Camera access is needed');
       return;
     }
 
@@ -39,7 +40,7 @@ const [accuracy, setAccuracy] = useState(0);
   const openGallery = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permission required');
+      Alert.alert('Permission Required', 'Gallery access is needed');
       return;
     }
 
@@ -51,55 +52,49 @@ const [accuracy, setAccuracy] = useState(0);
     }
   };
 
-  // 🔥 SEND IMAGE TO YOLO BACKEND
- const sendToBackend = async (uri) => {
-  setIsAnalyzing(true);
-  setShowResults(false);
+  // 🔥 Send to YOLO backend
+  const sendToBackend = async (uri) => {
+    setIsAnalyzing(true);
+    setShowResults(false);
 
-  const formData = new FormData();
-  formData.append('image', {
-    uri: uri,
-    name: 'weed.jpg',
-    type: 'image/jpeg',
-  });
-
-  try {
-    const response = await fetch('http://192.168.8.156:5000/predict', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-      body: formData,
+    const formData = new FormData();
+    formData.append('image', {
+      uri,
+      name: 'weed.jpg',
+      type: 'image/jpeg',
     });
 
-    // මෙතන JSON එකට parse කරන්න
-    const json = await response.json();
+    try {
+      const response = await fetch('http://192.168.8.156:5000/predict', {
+        method: 'POST',
+        headers: { 'Content-Type': 'multipart/form-data' },
+        body: formData,
+      });
 
-    // json.image = base64 encoded image
-    const imageUrl = `data:image/jpeg;base64,${json.image}`;
-
-    // set detection data to state
-    setBoxCount(json.box_count);
-    setAccuracy(json.accuracy);
-    setResultImage(imageUrl);
-    setShowResults(true);
-  } catch (error) {
-    Alert.alert('Error', 'Backend connection failed');
-    console.log(error);
-  } finally {
-    setIsAnalyzing(false);
-  }
-};
+      const json = await response.json();
+      setResultImage(`data:image/jpeg;base64,${json.image}`);
+      setBoxCount(json.box_count);
+      setAccuracy(json.accuracy);
+      setShowResults(true);
+    } catch (err) {
+      Alert.alert('Error', 'Cannot connect to server');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   return (
     <ScrollView style={styles.container}>
+      {/* 🌱 Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Weed Detection</Text>
-        <Text style={styles.subtitle}>YOLO-based Weed Identification</Text>
+        <Text style={styles.title}>🌱 Weed Scanner</Text>
+        <Text style={styles.subtitle}>
+          Take a photo to identify weeds in your field
+        </Text>
       </View>
 
+      {/* 📸 Scan Card */}
       <View style={styles.card}>
-        {/* Image Area */}
         <View style={styles.imageBox}>
           {image ? (
             <>
@@ -107,64 +102,66 @@ const [accuracy, setAccuracy] = useState(0);
                 source={{ uri: resultImage || image }}
                 style={styles.image}
               />
+
               {isAnalyzing && (
                 <View style={styles.overlay}>
                   <ActivityIndicator size="large" color="#fff" />
-                  <Text style={styles.loadingText}>Analyzing...</Text>
+                  <Text style={styles.loadingText}>Scanning weeds...</Text>
                 </View>
               )}
             </>
           ) : (
-           <View style={styles.placeholder}>
-              <Text style={styles.placeholderIcon}>📷</Text>
+            <Pressable onPress={openCamera} style={styles.placeholder}>
+              <Ionicons name="camera" size={60} color="#166534" />
               <Text style={styles.placeholderText}>
-                Upload an image to detect weeds
+                Tap to Scan Weed
               </Text>
-            </View>
-
+            </Pressable>
           )}
         </View>
 
         {/* Buttons */}
         <View style={styles.btnRow}>
           <Pressable style={styles.camBtn} onPress={openCamera}>
-            <Text style={styles.btnText}>📷 Camera</Text>
+            <Ionicons name="camera" size={20} color="#fff" />
+            <Text style={styles.btnText}> Camera</Text>
           </Pressable>
+
           <Pressable style={styles.galBtn} onPress={openGallery}>
-            <Text style={styles.btnText}>🖼 Gallery</Text>
+            <Ionicons name="image" size={20} color="#fff" />
+            <Text style={styles.btnText}> Gallery</Text>
           </Pressable>
         </View>
 
-        {/* Result */}
+        {/* 🌾 Results */}
         {showResults && (
           <View style={styles.resultBox}>
-            <Text style={styles.resultTitle}>Detection Completed ✔</Text>
-            <Text style={styles.resultDesc}>
-              Detected weeds are highlighted using bounding boxes.
+            <Text style={styles.resultTitle}>
+              ✅ Weed Detection Complete
             </Text>
- <View style={styles.summaryHeader}>
-                <Text style={styles.warningIcon}>⚠️</Text>
-                <Text style={styles.summaryTitle}>Detection Summary</Text>
+
+            {/* Summary */}
+            <View style={styles.summaryCards}>
+              <View style={styles.summaryCard}>
+                <Text style={[styles.summaryNumber, { color: '#16a34a' }]}>
+                  {accuracy}%
+                </Text>
+                <Text style={styles.summaryLabel}>Accuracy</Text>
               </View>
 
- <View style={styles.summaryCards}>
-               <View style={styles.summaryCard}>
-  <Text style={[styles.summaryNumber, { color: "#ef4444" }]}>
-    {accuracy}%
-  </Text>
-  <Text style={styles.summaryLabel}>Accuracy</Text>
-</View>
-
-<View style={styles.summaryCard}>
-  <Text style={[styles.summaryNumber, { color: "#f59e0b" }]}>
-    {boxCount}
-  </Text>
-  <Text style={styles.summaryLabel}>Types Detected</Text>
-</View>
+              <View style={styles.summaryCard}>
+                <Text style={[styles.summaryNumber, { color: '#dc2626' }]}>
+                  {boxCount}
+                </Text>
+                <Text style={styles.summaryLabel}>Weeds Found</Text>
               </View>
+            </View>
 
-
-
+            <View style={styles.tipBox}>
+              <Text style={styles.tipText}>
+                🌾 Tip: Early weed control helps protect your crop yield.
+              </Text>
+            </View>
           </View>
         )}
       </View>
@@ -173,110 +170,135 @@ const [accuracy, setAccuracy] = useState(0);
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#1e3b27' },
+  container: { flex: 1, backgroundColor: '#f0fdf4' },
+
   header: {
+    backgroundColor: '#14532d',
     padding: 24,
     paddingTop: 60,
-    backgroundColor: '#14532d',
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
-  title: { fontSize: 28, fontWeight: 'bold', color: '#fff' },
-  subtitle: { fontSize: 14, color: '#dcfce7' },
+
+  title: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+
+  subtitle: {
+    color: '#dcfce7',
+    marginTop: 6,
+    fontSize: 14,
+  },
+
   card: {
     backgroundColor: '#fff',
     margin: 16,
     padding: 20,
-    borderRadius: 24,
+    borderRadius: 20,
+    elevation: 4,
   },
+
   imageBox: {
-    height: 300,
-    backgroundColor: '#059669',
+    height: 280,
+    backgroundColor: '#dcfce7',
     borderRadius: 16,
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   image: { width: '100%', height: '100%' },
-  placeholder: { color: '#fff', fontSize: 16 },
-  overlay: {
-    position: 'absolute',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    top: 0, left: 0, right: 0, bottom: 0,
+
+  placeholder: {
     justifyContent: 'center',
     alignItems: 'center',
   },
-   placeholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholderIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-    opacity: 0.5,
-  },
+
   placeholderText: {
-    color: '#fff',
+    marginTop: 12,
     fontSize: 16,
-    opacity: 0.75,
+    color: '#166534',
+    fontWeight: '600',
+  },
+
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   loadingText: { color: '#fff', marginTop: 10 },
-  btnRow: { flexDirection: 'row', gap: 12, marginTop: 20 },
+
+  btnRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 18,
+  },
+
   camBtn: {
     flex: 1,
-    backgroundColor: '#dc2626',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    backgroundColor: '#15803d',
     padding: 14,
     borderRadius: 12,
-    alignItems: 'center',
   },
+
   galBtn: {
     flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'center',
     backgroundColor: '#2563eb',
     padding: 14,
     borderRadius: 12,
-    alignItems: 'center',
   },
-   summarySection: {
-    marginBottom: 24,
-  },
-  summaryHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+
+  btnText: { color: '#fff', fontWeight: 'bold' },
+
+  resultBox: { marginTop: 24 },
+
+  resultTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#14532d',
     marginBottom: 16,
   },
-  warningIcon: {
-    fontSize: 28,
-    marginRight: 8,
-  },
-  summaryTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#1f2937',
-  },
+
   summaryCards: {
     flexDirection: 'row',
     gap: 12,
   },
+
   summaryCard: {
     flex: 1,
     backgroundColor: '#f9fafb',
     padding: 20,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: 'center',
   },
+
   summaryNumber: {
-    fontSize: 36,
+    fontSize: 34,
     fontWeight: 'bold',
-    marginBottom: 4,
   },
+
   summaryLabel: {
     fontSize: 13,
     color: '#6b7280',
   },
-  btnText: { color: '#fff', fontWeight: 'bold' },
-  resultBox: { marginTop: 20 },
-  resultTitle: { fontSize: 18, fontWeight: 'bold', color: '#166534' },
-  resultDesc: { color: '#374151', marginTop: 6 },
+
+  tipBox: {
+    backgroundColor: '#fef9c3',
+    marginTop: 16,
+    padding: 12,
+    borderRadius: 10,
+  },
+
+  tipText: {
+    color: '#713f12',
+    fontSize: 14,
+  },
 });
