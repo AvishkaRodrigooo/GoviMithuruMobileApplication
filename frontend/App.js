@@ -19,7 +19,8 @@ import WeedIdentifyScreen from './src/screens/weedsDetection/weedIdentifyScreen'
 import WeedsClassficationScreen from './src/screens/weedsDetection/weedsClassificationScreen';
 import HerbicideRecommendation from './src/screens/weedsDetection/herbicidesRecomendationScreen';
 
-import InputPlannerScreen  from './src/screens/cropEstablishment/InputPlannerScreen ';
+import InputPlannerScreen from './src/screens/cropEstablishment/InputPlannerScreen ';
+import CropRecommenderScreen from './src/screens/cropEstablishment/CropRecommenderScreen ';
 
 // Post Harvest Features
 import StorageDashboardScreen from './src/screens/PostHarvest/StorageDashboardScreen'; 
@@ -40,6 +41,8 @@ function PricingForecastScreen() {
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./src/firebase/firebaseConfig";
 import { StackScreen } from 'react-native-screens';
+
+
 
 const Stack = createNativeStackNavigator();
 
@@ -90,7 +93,7 @@ export default function App() {
         {user ? (
           // User is signed in - show main app screens
           <>
-       
+
         <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'GoviMithuru' }} />
         <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
          <Stack.Screen name="AdminDashboard" component={adminDashboardScreen} options={{ title: "Admin Dashboard"}}/>
@@ -122,7 +125,12 @@ export default function App() {
         {/* crop establishment planner */}
 
         <Stack.Screen name="InputPlanner" component={InputPlannerScreen} options={{ title: 'Input Planner' }} />
+        <Stack.Screen name="CropRecommender" component={CropRecommenderScreen} options={{ title: 'Crop Recommender' }} />
  </>
+
+
+     
+
 
         ) : (
           // User is NOT signed in - show auth screens
@@ -143,6 +151,7 @@ export default function App() {
           </>
         )}
         
+
       </Stack.Navigator>
     </NavigationContainer>
   );
