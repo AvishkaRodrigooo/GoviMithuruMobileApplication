@@ -20,7 +20,7 @@ export default function WeedIdentifyScreen() {
   const [boxCount, setBoxCount] = useState(0);
   const [accuracy, setAccuracy] = useState(0);
 
-  // 📷 Camera
+  //  Camera
   const openCamera = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
@@ -36,7 +36,7 @@ export default function WeedIdentifyScreen() {
     }
   };
 
-  // 🖼 Gallery
+  //  Gallery
   const openGallery = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
@@ -52,7 +52,7 @@ export default function WeedIdentifyScreen() {
     }
   };
 
-  // 🔥 Send to YOLO backend
+  // Send to YOLO backend
   const sendToBackend = async (uri) => {
     setIsAnalyzing(true);
     setShowResults(false);
