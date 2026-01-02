@@ -13,11 +13,16 @@ import ProfileScreen from './src/screens/profileScreen';
 import adminDashboardScreen from './src/screens/adminDashboard/adminDashboardScreen';
 import HerbicideRecommendationAdminScreen from './src/screens/adminDashboard/HerbicideRecommendationAdminScreen';
 
+//weeds controller
 import StageIdentificationScreen from './src/screens/weedsDetection/StageIdentificationScreen';
 import weesDashboardScreen from './src/screens/weedsDetection/weedsdashboard';
 import WeedIdentifyScreen from './src/screens/weedsDetection/weedIdentifyScreen';
 import WeedsClassficationScreen from './src/screens/weedsDetection/weedsClassificationScreen';
 import HerbicideRecommendation from './src/screens/weedsDetection/herbicidesRecomendationScreen';
+import prePlantHerbicidesScreen from './src/screens/weedsDetection/herbicides/prePlantHerbicidesScreen';
+import oneShotHerbicidesScreen from './src/screens/weedsDetection/herbicides/oneshotHerbicidesScreen';
+import grassKillersScreen from './src/screens/weedsDetection/herbicides/grassKillersScreen';
+import broadLeavesKillersScreen from './src/screens/weedsDetection/herbicides/broadleavesKillersScreen';
 
 import InputPlannerScreen from './src/screens/cropEstablishment/InputPlannerScreen ';
 import CropRecommenderScreen from './src/screens/cropEstablishment/CropRecommenderScreen ';
@@ -96,28 +101,29 @@ export default function App() {
 
         <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'GoviMithuru' }} />
         <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
-         <Stack.Screen name="AdminDashboard" component={adminDashboardScreen} options={{ title: "Admin Dashboard"}}/>
+        <Stack.Screen name="AdminDashboard" component={adminDashboardScreen} options={{ title: "Admin Dashboard"}}/>
         <Stack.Screen name="HerbicideRecommendation" component={HerbicideRecommendationAdminScreen} options={{ title: 'Herbicide Recommendation' }}/>
+        
 
         {/* Post Harvest Analysis Flow */}
         <Stack.Screen name="Stage" component={StorageDashboardScreen} options={{ title: 'Storage Analysis' }} />
         <Stack.Screen name="RegisterHarvest" component={RegisterHarvestScreen} options={{ title: 'Register Harvest' }} />
         <Stack.Screen name="ConnectSensors" component={SensorConnectionScreen} options={{ title: 'Connect Sensors' }} />
         <Stack.Screen name="MarketTracking" component={MarketTrackingScreen} options={{ title: 'Market Tracking' }} />
-        <Stack.Screen 
-  name="InventoryList" 
-  component={InventoryListScreen} 
-  options={{ title: 'Stock Inventory' }} 
-/>
+        <Stack.Screen name="InventoryList" component={InventoryListScreen} options={{ title: 'Stock Inventory' }} />
 
-        {/* weeds detection */}
-         
+        {/* weeds detection */} 
         <Stack.Screen name="Stages" component={StageIdentificationScreen} options={{ title: 'Stage Identification' }} />
         <Stack.Screen name="detector" component={WeedIdentifyScreen} options={{ title: 'Weeds detection' }} />
         <Stack.Screen name="dete" component={WeedsClassficationScreen} options={{ title: 'Weeds detection' }} />
         <Stack.Screen name="weedsDashboard" component={weesDashboardScreen} options={{ title: 'Weeds Dashboard' }} />
         <Stack.Screen name="herbicides" component={HerbicideRecommendation} options={{ title:'HerbicideRecommendation'}}/>
-
+        <Stack.Screen name="PrePlantHerbicides" component={prePlantHerbicidesScreen} options={{title: 'Pre plant Herbicides'}}/>
+        <Stack.Screen name="OneShotHerbicides" component={oneShotHerbicidesScreen} options={{title: 'OneShot Herbicides'}}/>
+        <Stack.Screen name="grassKillersHerbicides" component={grassKillersScreen} options={{title: 'Grass Killers Herbicides'}}/>
+        <Stack.Screen name="BroadLeavesHerbicides" component={broadLeavesKillersScreen} options={{title: 'Sedges & Broad Leaves Killers'}}/>
+        
+        
          <Stack.Screen name="Pest" component={PricingForecastScreen} options={{ title: 'Pest Forecast' }} />
         <Stack.Screen name="Pricing" component={PricingForecastScreen} options={{ title: 'Price Forecast' }} />
 

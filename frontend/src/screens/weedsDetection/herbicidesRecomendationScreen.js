@@ -140,11 +140,27 @@ const HerbicideScreen = ({ navigation }) => {
         </View>
 
         {herbicideTypes.map((type) => (
-          <Pressable 
-            key={type.id}
-            style={[styles.herbicideCard, { borderLeftWidth: 5, borderLeftColor: type.borderColor }]}
-            android_ripple={{ color: '#f0fdf4' }}
-          >
+         <Pressable
+    key={type.id}
+    style={[
+      styles.herbicideCard,
+      { borderLeftWidth: 5, borderLeftColor: type.borderColor },
+    ]}
+    android_ripple={{ color: '#f0fdf4' }}
+    onPress={() => {
+      if (type.id === 1) {
+        navigation.navigate('PrePlantHerbicides');
+      }else if(type.id == 2){
+        navigation.navigate('OneShotHerbicides');
+      }
+      else if(type.id == 3){
+        navigation.navigate('grassKillersHerbicides');
+      }
+      else if(type.id == 4){
+        navigation.navigate('BroadLeavesHerbicides');
+      }
+    }}
+  >
             <View style={[styles.iconContainer, { backgroundColor: type.color + '20' }]}>
               <MaterialCommunityIcons name={type.icon} size={28} color={type.color} />
             </View>
