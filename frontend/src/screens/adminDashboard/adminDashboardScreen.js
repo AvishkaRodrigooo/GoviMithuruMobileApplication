@@ -9,6 +9,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { MaterialCommunityIcons } from '@expo/vector-icons'; 
 import { db ,auth} from '../../firebase/firebaseConfig';
 
 export default function AdminDashboardScreen({ navigation }) {
@@ -163,6 +164,15 @@ export default function AdminDashboardScreen({ navigation }) {
           <Ionicons name="leaf-outline" size={16} color="#fff" />
           <Text style={styles.buttonText}> Add Herbicide Recommendation</Text>
         </TouchableOpacity>
+
+        {/*Market Prices Button */}
+      <TouchableOpacity
+        style={[styles.greenButton, { backgroundColor: '#7c3aed' }]}
+        onPress={() => navigation.navigate('AdminPriceManagement')}
+      >
+        <MaterialCommunityIcons name="currency-usd" size={16} color="#fff" />
+        <Text style={styles.buttonText}> Manage Market Prices</Text>
+      </TouchableOpacity>
 
         <FlatList
           data={herbicides}

@@ -24,8 +24,11 @@ import oneShotHerbicidesScreen from './src/screens/weedsDetection/herbicides/one
 import grassKillersScreen from './src/screens/weedsDetection/herbicides/grassKillersScreen';
 import broadLeavesKillersScreen from './src/screens/weedsDetection/herbicides/broadleavesKillersScreen';
 
+// Crop Establishment
 import InputPlannerScreen from './src/screens/cropEstablishment/InputPlannerScreen ';
 import CropRecommenderScreen from './src/screens/cropEstablishment/CropRecommenderScreen ';
+import AdminPriceManagementScreen from './src/screens/adminDashboard/AdminPriceManagementScreen';
+
 
 // Post Harvest Features
 import StorageDashboardScreen from './src/screens/PostHarvest/StorageDashboardScreen'; 
@@ -132,6 +135,8 @@ export default function App() {
 
         <Stack.Screen name="InputPlanner" component={InputPlannerScreen} options={{ title: 'Input Planner' }} />
         <Stack.Screen name="CropRecommender" component={CropRecommenderScreen} options={{ title: 'Crop Recommender' }} />
+        <Stack.Screen name="AdminPriceManagement" component={AdminPriceManagementScreen} 
+/>
  </>
 
 
