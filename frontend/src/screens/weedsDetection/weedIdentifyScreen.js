@@ -20,14 +20,13 @@ export default function WeedIdentifyScreen() {
   const [boxCount, setBoxCount] = useState(0);
   const [accuracy, setAccuracy] = useState(0);
 
-  //  Camera
+  // Open Camera
   const openCamera = async () => {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
       Alert.alert('Permission Required', 'Camera access is needed');
       return;
     }
-
     const res = await ImagePicker.launchCameraAsync({ quality: 1 });
     if (!res.canceled) {
       const uri = res.assets[0].uri;
@@ -36,14 +35,13 @@ export default function WeedIdentifyScreen() {
     }
   };
 
-  //  Gallery
+  // Open Gallery
   const openGallery = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
       Alert.alert('Permission Required', 'Gallery access is needed');
       return;
     }
-
     const res = await ImagePicker.launchImageLibraryAsync({ quality: 1 });
     if (!res.canceled) {
       const uri = res.assets[0].uri;
@@ -52,48 +50,63 @@ export default function WeedIdentifyScreen() {
     }
   };
 
-  // Send to YOLO backend
+  // Send image to backend
   const sendToBackend = async (uri) => {
-    setIsAnalyzing(true);
-    setShowResults(false);
+  setIsAnalyzing(true);
+  setShowResults(false);
 
-    const formData = new FormData();
-    formData.append('image', {
-      uri,
-      name: 'weed.jpg',
-      type: 'image/jpeg',
+  const formData = new FormData();
+  formData.append('image', {
+    uri,
+    name: 'weed.jpg',
+    type: 'image/jpeg',
+  });
+
+  try {
+    // Use your PC's IP address here
+    const SERVER_URL = 'http://192.168.8.156:5000'; // Change this!
+    
+    console.log('Sending to:', `${SERVER_URL}/predict`);
+    
+    const response = await fetch(`${SERVER_URL}/predict`, {
+      method: 'POST',
+      body: formData,
     });
 
-    try {
-      const response = await fetch('http://192.168.8.156:5000/predict', {
-        method: 'POST',
-        headers: { 'Content-Type': 'multipart/form-data' },
-        body: formData,
-      });
-
-      const json = await response.json();
-      setResultImage(`data:image/jpeg;base64,${json.image}`);
-      setBoxCount(json.box_count);
-      setAccuracy(json.accuracy);
-      setShowResults(true);
-    } catch (err) {
-      Alert.alert('Error', 'Cannot connect to server');
-    } finally {
-      setIsAnalyzing(false);
+    console.log('Response status:', response.status);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Server error: ${response.status} - ${errorText}`);
     }
-  };
+
+    const json = await response.json();
+    console.log('Response received:', json);
+    
+    setResultImage(`data:image/jpeg;base64,${json.image}`);
+    setBoxCount(json.box_count);
+    setAccuracy(json.accuracy);
+    setShowResults(true);
+    
+  } catch (err) {
+    console.error('Error details:', err);
+    Alert.alert(
+      'Connection Error',
+      `Cannot connect to server.\nError: ${err.message}\n\nMake sure:\n1. Backend is running\n2. Correct IP address\n3. Same WiFi network`,
+      [{ text: 'OK' }]
+    );
+  } finally {
+    setIsAnalyzing(false);
+  }
+};
 
   return (
     <ScrollView style={styles.container}>
-      {/* 🌱 Header */}
       <View style={styles.header}>
         <Text style={styles.title}>🌱 Weed Scanner</Text>
-        <Text style={styles.subtitle}>
-          Take a photo to identify weeds in your field
-        </Text>
+        <Text style={styles.subtitle}>Take a photo to identify weeds in your field</Text>
       </View>
 
-      {/* 📸 Scan Card */}
       <View style={styles.card}>
         <View style={styles.imageBox}>
           {image ? (
@@ -102,7 +115,6 @@ export default function WeedIdentifyScreen() {
                 source={{ uri: resultImage || image }}
                 style={styles.image}
               />
-
               {isAnalyzing && (
                 <View style={styles.overlay}>
                   <ActivityIndicator size="large" color="#fff" />
@@ -113,14 +125,11 @@ export default function WeedIdentifyScreen() {
           ) : (
             <Pressable onPress={openCamera} style={styles.placeholder}>
               <Ionicons name="camera" size={60} color="#166534" />
-              <Text style={styles.placeholderText}>
-                Tap to Scan Weed
-              </Text>
+              <Text style={styles.placeholderText}>Tap to Scan Weed</Text>
             </Pressable>
           )}
         </View>
 
-        {/* Buttons */}
         <View style={styles.btnRow}>
           <Pressable style={styles.camBtn} onPress={openCamera}>
             <Ionicons name="camera" size={20} color="#fff" />
@@ -133,34 +142,24 @@ export default function WeedIdentifyScreen() {
           </Pressable>
         </View>
 
-        {/* 🌾 Results */}
         {showResults && (
           <View style={styles.resultBox}>
-            <Text style={styles.resultTitle}>
-              ✅ Weed Detection Complete
-            </Text>
+            <Text style={styles.resultTitle}>✅ Weed Detection Complete</Text>
 
-            {/* Summary */}
             <View style={styles.summaryCards}>
               <View style={styles.summaryCard}>
-                <Text style={[styles.summaryNumber, { color: '#16a34a' }]}>
-                  {accuracy}%
-                </Text>
+                <Text style={[styles.summaryNumber, { color: '#16a34a' }]}>{accuracy}%</Text>
                 <Text style={styles.summaryLabel}>Accuracy</Text>
               </View>
 
               <View style={styles.summaryCard}>
-                <Text style={[styles.summaryNumber, { color: '#dc2626' }]}>
-                  {boxCount}
-                </Text>
+                <Text style={[styles.summaryNumber, { color: '#dc2626' }]}>{boxCount}</Text>
                 <Text style={styles.summaryLabel}>Weeds Found</Text>
               </View>
             </View>
 
             <View style={styles.tipBox}>
-              <Text style={styles.tipText}>
-                🌾 Tip: Early weed control helps protect your crop yield.
-              </Text>
+              <Text style={styles.tipText}>🌾 Tip: Early weed control helps protect your crop yield.</Text>
             </View>
           </View>
         )}
