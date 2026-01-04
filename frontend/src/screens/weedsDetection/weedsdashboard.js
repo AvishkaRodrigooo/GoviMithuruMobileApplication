@@ -23,12 +23,15 @@ export default function WeedsDashboardScreen({ navigation }) {
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Beautiful Header with Gradient Effect */}
+      {/* Professional Header */}
       <View style={styles.headerContainer}>
         <View style={styles.header}>
-          <View>
-            <Text style={styles.headerTitle}>🌾 Paddy Cultivation</Text>
-            <Text style={styles.headerSubtitle}>Smart farming at your fingertips</Text>
+          <View style={styles.headerContent}>
+            <View style={styles.headerIconRow}>
+              <MaterialCommunityIcons name="sprout" size={32} color="white" />
+              <Text style={styles.headerTitle}>Weeds Management</Text>
+            </View>
+            <Text style={styles.headerSubtitle}>Intelligent weed detection and treatment</Text>
           </View>
           <Pressable style={styles.profileIcon} onPress={() => navigation.navigate('Profile')}>
             <MaterialIcons name="account-circle" size={40} color="white" />
@@ -50,7 +53,7 @@ export default function WeedsDashboardScreen({ navigation }) {
           <View style={styles.infoContent}>
             <Text style={styles.infoLabel}>Active Fields</Text>
             <Text style={styles.infoValue}>3</Text>
-            <Text style={styles.infoSubtext}>All healthy ✓</Text>
+            <Text style={styles.infoSubtext}>All healthy</Text>
           </View>
         </View>
 
@@ -61,7 +64,7 @@ export default function WeedsDashboardScreen({ navigation }) {
           <View style={styles.infoContent}>
             <Text style={styles.infoLabel}>Growth Stage</Text>
             <Text style={[styles.infoValue, styles.stageValue]}>Tillering</Text>
-            <Text style={styles.infoSubtext}>Day 45 • On track</Text>
+            <Text style={styles.infoSubtext}>Day 45 - On track</Text>
           </View>
         </View>
       </Animated.View>
@@ -84,30 +87,29 @@ export default function WeedsDashboardScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Features Section with Enhanced Cards */}
+      {/* Features Section */}
       <View style={styles.sectionHeader}>
+        <MaterialCommunityIcons name="lightning-bolt" size={24} color="#5a7c59" />
         <Text style={styles.sectionTitle}>AI-Powered Features</Text>
-        <MaterialIcons name="stars" size={20} color="#fbbf24" />
       </View>
 
       <Pressable 
-        style={[styles.featureCard, styles.redFeature]}
+        style={[styles.featureCard, styles.card1Border]}
         onPress={() => navigation.navigate('detector')}
-        android_ripple={{ color: '#fca5a5' }}
+        android_ripple={{ color: '#f0fdf4' }}
       >
         <View style={styles.featureIconContainer}>
-          <MaterialIcons name="camera-alt" size={32} color="#dc2626" />
+          <MaterialCommunityIcons name="map-search" size={32} color="#5a7c59" />
         </View>
         <View style={styles.featureContent}>
           <View style={styles.featureTitleRow}>
-            <Text style={styles.featureTitle}>AI-Based Weeds Localization</Text>
-           
+            <Text style={styles.featureTitle}>Weeds Localization</Text>
           </View>
           <Text style={styles.featureDesc}>
-            🎯 Detect and highlight weed-infected areas directly on the image.
+            Detect and highlight weed-infected areas directly on the image for targeted treatment.
           </Text>
           <View style={styles.featureFooter}>
-            <MaterialIcons name="schedule" size={14} color="#9ca3af" />
+            <MaterialCommunityIcons name="lightning-bolt" size={14} color="#9ca3af" />
             <Text style={styles.featureTime}>Instant results</Text>
           </View>
         </View>
@@ -115,23 +117,22 @@ export default function WeedsDashboardScreen({ navigation }) {
       </Pressable>
 
       <Pressable 
-        style={[styles.featureCard, styles.purpleFeature]}
+        style={[styles.featureCard, styles.card2Border]}
         onPress={() => navigation.navigate('dete')}
-        android_ripple={{ color: '#c4b5fd' }}
+        android_ripple={{ color: '#f0fdf4' }}
       >
         <View style={styles.featureIconContainer}>
-          <MaterialCommunityIcons name="sprout" size={32} color="#1c7034ff" />
+          <MaterialCommunityIcons name="leaf-circle" size={32} color="#5a7c59" />
         </View>
         <View style={styles.featureContent}>
           <View style={styles.featureTitleRow}>
-            <Text style={styles.featureTitle}>Weeds Identification & Treatment Recommendation</Text>
-           
+            <Text style={styles.featureTitle}>Identification & Treatment</Text>
           </View>
           <Text style={styles.featureDesc}>
-            📊Upload a crop/plant image to identify weeds type and get treatment recommendations with reasons.
+            Upload images to identify weed types and receive expert treatment recommendations with detailed reasoning.
           </Text>
           <View style={styles.featureFooter}>
-            <MaterialIcons name="science" size={14} color="#9ca3af" />
+            <MaterialCommunityIcons name="brain" size={14} color="#9ca3af" />
             <Text style={styles.featureTime}>Expert recommendations</Text>
           </View>
         </View>
@@ -139,27 +140,26 @@ export default function WeedsDashboardScreen({ navigation }) {
       </Pressable>
 
       
-     <Pressable 
-        style={[styles.featureCard, styles.blueFeature]}
+      <Pressable 
+        style={[styles.featureCard, styles.card3Border]}
         onPress={() => navigation.navigate('herbicides')}
-        android_ripple={{ color: '#93c5fd' }}
+        android_ripple={{ color: '#f0fdf4' }}
       >
- 
         <View style={styles.featureIconContainer}>
-    <MaterialCommunityIcons name="spray" size={32} color="#10b981" />{/* Spray icon */}
-  </View>
+          <MaterialCommunityIcons name="spray-bottle" size={32} color="#5a7c59" />
+        </View>
         <View style={styles.featureContent}>
           <View style={styles.featureTitleRow}>
-            <Text style={styles.featureTitle}>Herbicides Recommendation</Text>
+            <Text style={styles.featureTitle}>Herbicide Recommendations</Text>
             <View style={[styles.badge, styles.newBadge]}>
               <Text style={styles.badgeText}>NEW</Text>
             </View>
           </View>
           <Text style={styles.featureDesc}>
-            🌱 Get smart herbicide advice to protect your crops
+            Get smart herbicide advice tailored to your crop and weed types for optimal protection.
           </Text>
           <View style={styles.featureFooter}>
-            <MaterialIcons name="timeline" size={14} color="#9ca3af" />
+            <MaterialCommunityIcons name="calendar-check" size={14} color="#9ca3af" />
             <Text style={styles.featureTime}>Optimized spraying schedules</Text>
           </View>
         </View>
@@ -167,46 +167,49 @@ export default function WeedsDashboardScreen({ navigation }) {
       </Pressable>
 
      
-     {/* How It Works Section */}
-<View style={styles.howItWorksSection}>
-  <Text style={styles.howTitle}>🛠️ How It Works</Text>
+      {/* How It Works Section */}
+      <View style={styles.howItWorksSection}>
+        <View style={styles.howHeaderRow}>
+          <MaterialCommunityIcons name="cog" size={24} color="#5a7c59" />
+          <Text style={styles.howTitle}>How It Works</Text>
+        </View>
 
-  <View style={styles.stepCard}>
-    <View style={styles.stepNumber}>
-      <Text style={styles.stepNumberText}>1</Text>
-    </View>
-    <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>ඡායාරූපයක් ගන්න</Text>
-      <Text style={styles.stepDesc}>
-        වල් පැල ඇති ස්ථානයේ පින්තූරයක් කැමරාවෙන් ගන්න
-      </Text>
-    </View>
-  </View>
+        <View style={styles.stepCard}>
+          <View style={styles.stepNumber}>
+            <Text style={styles.stepNumberText}>1</Text>
+          </View>
+          <View style={styles.stepContent}>
+            <Text style={styles.stepTitle}>Capture Image</Text>
+            <Text style={styles.stepDesc}>
+              Take a photo of the weed-affected area using your camera
+            </Text>
+          </View>
+        </View>
 
-  <View style={styles.stepCard}>
-    <View style={styles.stepNumber}>
-      <Text style={styles.stepNumberText}>2</Text>
-    </View>
-    <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>විශ්ලේෂණය කරන්න</Text>
-      <Text style={styles.stepDesc}>
-        AI පද්ධතිය වල් පැල හඳුනාගනී
-      </Text>
-    </View>
-  </View>
+        <View style={styles.stepCard}>
+          <View style={styles.stepNumber}>
+            <Text style={styles.stepNumberText}>2</Text>
+          </View>
+          <View style={styles.stepContent}>
+            <Text style={styles.stepTitle}>Analyze</Text>
+            <Text style={styles.stepDesc}>
+              AI system identifies weed types and analyzes crop health
+            </Text>
+          </View>
+        </View>
 
-  <View style={styles.stepCard}>
-    <View style={styles.stepNumber}>
-      <Text style={styles.stepNumberText}>3</Text>
-    </View>
-    <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>ප්‍රතිඵල ලබාගන්න</Text>
-      <Text style={styles.stepDesc}>
-        නිවැරදි වල් පැල වර්ගය සහ විසඳුම් ලබාගන්න
-      </Text>
-    </View>
-  </View>
-</View>
+        <View style={styles.stepCard}>
+          <View style={styles.stepNumber}>
+            <Text style={styles.stepNumberText}>3</Text>
+          </View>
+          <View style={styles.stepContent}>
+            <Text style={styles.stepTitle}>Get Results</Text>
+            <Text style={styles.stepDesc}>
+              Receive treatment recommendations tailored to your crops
+            </Text>
+          </View>
+        </View>
+      </View>
 
 
       {/* Bottom Spacing */}
@@ -218,10 +221,10 @@ export default function WeedsDashboardScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#f8f7f4',
   },
   headerContainer: {
-    backgroundColor: '#16a34a',
+    backgroundColor: '#2d5016',
     paddingBottom: 30,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
@@ -238,72 +241,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
   },
-  howItWorksSection: {
-  marginTop: 20,
-  paddingHorizontal: 20,
-},
-
-howTitle: {
-  fontSize: 18,
-  fontWeight: 'bold',
-  color: '#166534',
-  marginBottom: 12,
-},
-
-stepCard: {
-  flexDirection: 'row',
-  backgroundColor: '#fff',
-  borderRadius: 14,
-  padding: 14,
-  marginBottom: 12,
-  shadowColor: '#000',
-  shadowOpacity: 0.05,
-  shadowRadius: 6,
-  shadowOffset: { width: 0, height: 2 },
-  elevation: 3,
-},
-
-stepNumber: {
-  width: 34,
-  height: 34,
-  borderRadius: 17,
-  backgroundColor: '#16a34a',
-  alignItems: 'center',
-  justifyContent: 'center',
-  marginRight: 12,
-},
-
-stepNumberText: {
-  color: '#fff',
-  fontWeight: 'bold',
-},
-
-stepContent: {
-  flex: 1,
-},
-
-stepTitle: {
-  fontSize: 15,
-  fontWeight: '700',
-  color: '#166534',
-  marginBottom: 4,
-},
-
-stepDesc: {
-  fontSize: 13,
-  color: '#6b7280',
-  lineHeight: 18,
-},
-
+  headerContent: {
+    flex: 1,
+  },
+  headerIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 10,
+  },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '700',
     color: '#fff',
-    marginBottom: 4,
   },
   headerSubtitle: {
-    color: '#dcfce7',
-    fontSize: 14,
+    color: '#d1d5db',
+    fontSize: 13,
+    marginTop: 6,
   },
   profileButton: {
     shadowColor: '#000',
@@ -332,11 +287,11 @@ stepDesc: {
   },
   greenGradient: {
     borderLeftWidth: 4,
-    borderLeftColor: '#22c55e',
+    borderLeftColor: '#5a7c59',
   },
   blueGradient: {
     borderLeftWidth: 4,
-    borderLeftColor: '#3b82f6',
+    borderLeftColor: '#5a7c59',
   },
   iconContainer: {
     width: 50,
@@ -361,7 +316,7 @@ stepDesc: {
     color: '#111827',
   },
   stageValue: {
-    color: '#3b82f6',
+    color: '#5a7c59',
   },
   infoSubtext: {
     fontSize: 11,
@@ -391,7 +346,7 @@ stepDesc: {
   statText: {
     fontSize: 13,
     color: '#374151',
-    fontWeight: '600',
+    fontWeight: '700',
   },
   statDivider: {
     width: 1,
@@ -403,12 +358,12 @@ stepDesc: {
     alignItems: 'center',
     paddingHorizontal: 20,
     marginBottom: 15,
-    gap: 8,
+    gap: 10,
   },
   sectionTitle: {
     fontSize: 19,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: '700',
+    color: '#2d5016',
   },
   featureCard: {
     flexDirection: 'row',
@@ -423,20 +378,20 @@ stepDesc: {
     shadowOffset: { width: 0, height: 3 },
     elevation: 4,
   },
-  redFeature: {
+  card1Border: {
     backgroundColor: '#fff',
     borderLeftWidth: 5,
-    borderLeftColor: '#dc2626',
+    borderLeftColor: '#5a7c59',
   },
-  purpleFeature: {
+  card2Border: {
     backgroundColor: '#fff',
     borderLeftWidth: 5,
-    borderLeftColor: '#7c3aed',
+    borderLeftColor: '#5a7c59',
   },
-  blueFeature: {
+  card3Border: {
     backgroundColor: '#fff',
     borderLeftWidth: 5,
-    borderLeftColor: '#2563eb',
+    borderLeftColor: '#5a7c59',
   },
   featureIconContainer: {
     width: 60,
@@ -462,7 +417,7 @@ stepDesc: {
     color: '#111827',
   },
   badge: {
-    backgroundColor: '#fbbf24',
+    backgroundColor: '#5a7c59',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
@@ -471,11 +426,11 @@ stepDesc: {
     backgroundColor: '#7c3aed',
   },
   newBadge: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#5a7c59',
   },
   badgeText: {
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#fff',
   },
   featureDesc: {
@@ -576,5 +531,60 @@ stepDesc: {
     height: 1,
     backgroundColor: '#f3f4f6',
     marginVertical: 8,
+  },
+  howItWorksSection: {
+    marginTop: 20,
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  howHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 8,
+  },
+  howTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#2d5016',
+  },
+  stepCard: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  stepNumber: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#5a7c59',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  stepNumberText: {
+    color: '#fff',
+    fontWeight: '700',
+  },
+  stepContent: {
+    flex: 1,
+  },
+  stepTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#2d5016',
+    marginBottom: 4,
+  },
+  stepDesc: {
+    fontSize: 13,
+    color: '#6b7280',
+    lineHeight: 18,
   },
 });

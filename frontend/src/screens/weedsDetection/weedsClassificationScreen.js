@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
@@ -13,6 +14,9 @@ import { Ionicons } from "@expo/vector-icons";
 
 export default function WeedsClassificationScreen() {
   const [image, setImage] = useState(null);
+  const [predictedWeed, setPredictedWeed] = useState(null);
+  const [confidence, setConfidence] = useState(null);
+  const [loading, setLoading] = useState(false);
 
   // 📷 Open Camera
   const openCamera = async () => {
@@ -29,13 +33,14 @@ export default function WeedsClassificationScreen() {
 
     if (!result.canceled) {
       setImage(result.assets[0].uri);
+      setPredictedWeed(null);
+      setConfidence(null);
     }
   };
 
   // 🖼 Open Gallery
   const openGallery = async () => {
-    const permission =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert("Permission Required", "Gallery access is needed");
       return;
@@ -48,18 +53,59 @@ export default function WeedsClassificationScreen() {
 
     if (!result.canceled) {
       setImage(result.assets[0].uri);
+      setPredictedWeed(null);
+      setConfidence(null);
+    }
+  };
+
+  // 🔍 Send image to backend for prediction
+  const identifyWeeds = async () => {
+    if (!image) {
+      Alert.alert("No image", "Please select or take a photo first");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("image", {
+        uri: image,
+        name: "photo.jpg",
+        type: "image/jpeg",
+      });
+
+      // <-- Change this to your PC IP accessible by your device/emulator! -->
+      const response = await fetch("http://192.168.8.156:5000/weed_predict", {
+        method: "POST",
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setPredictedWeed(data.predicted_weed);
+        setConfidence(data.confidence);
+      } else {
+        Alert.alert("Prediction error", data.error || "Something went wrong");
+      }
+    } catch (error) {
+      Alert.alert("Network error", error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <ScrollView style={styles.container}>
-      {/* 🌱 Header */}
       <Text style={styles.header}>🌱 Weeds Scanner</Text>
       <Text style={styles.subHeader}>
         Take or upload a photo to identify weeds
       </Text>
 
-      {/* 📸 Scan Card */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Scan Weeds</Text>
 
@@ -75,7 +121,6 @@ export default function WeedsClassificationScreen() {
             </Pressable>
           )}
 
-          {/* Icons */}
           <View style={styles.iconRow}>
             <Pressable onPress={openCamera}>
               <Ionicons name="camera-outline" size={22} />
@@ -86,68 +131,37 @@ export default function WeedsClassificationScreen() {
           </View>
         </View>
 
-        <Pressable style={styles.scanBtn}>
-          <Text style={styles.scanText}>Identify Weeds</Text>
+        <Pressable
+          style={[styles.scanBtn, loading && { backgroundColor: "#4caf50aa" }]}
+          onPress={identifyWeeds}
+          disabled={loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.scanText}>Identify Weeds</Text>
+          )}
         </Pressable>
       </View>
 
-      {/* 🌾 Detection Results */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Detection Result</Text>
 
-        <View style={styles.resultHeader}>
-          <View style={styles.thumb} />
-          <View>
-            <Text style={styles.weedName}>Common Ragweed</Text>
-            <Text style={styles.confidence}>Accuracy: 92%</Text>
+        {predictedWeed ? (
+          <View style={styles.resultHeader}>
+            <View style={styles.thumb} />
+            <View>
+              <Text style={styles.weedName}>{predictedWeed}</Text>
+              <Text style={styles.confidence}>
+                Accuracy: {parseFloat(confidence).toFixed(2)}%
+              </Text>
+            </View>
           </View>
-        </View>
-
-        {/* Growth Stage */}
-        <View style={styles.stageRow}>
-          <Text style={styles.stage}>Stage 1</Text>
-          <Text style={styles.stage}>Stage 2</Text>
-          <Text style={[styles.stage, styles.activeStage]}>
-            Stage 3
+        ) : (
+          <Text style={{ color: "#166534", fontStyle: "italic" }}>
+            No detection result yet.
           </Text>
-          <Text style={styles.stage}>Stage 4</Text>
-        </View>
-
-        {/* Recommendation */}
-        <View style={styles.recommendBox}>
-          <Text style={styles.recommendText}>
-            ✅ Recommended Action:
-          </Text>
-          <Text style={styles.recommendText}>
-            Apply selective herbicide during early growth stage.
-          </Text>
-          <Text style={styles.recommendText}>
-            Scientific Name: Ambrosia artemisiifolia
-          </Text>
-          <Text style={styles.recommendText}>
-            Weed Type: Broadleaf
-          </Text>
-          <Text style={styles.recommendText}>
-            Severity Level: High
-          </Text>
-        </View>
-      </View>
-
-      {/* 🕒 Recent Scans */}
-      <View style={styles.card}>
-        <View style={styles.recentHeader}>
-          <Text style={styles.cardTitle}>Recent Scans</Text>
-          <Ionicons name="refresh" size={18} />
-        </View>
-
-        <View style={styles.recentItem}>
-          <View style={styles.thumbSmall} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.weedName}>Wild Oat</Text>
-            <Text style={styles.confidence}>Today - 10:30 AM</Text>
-          </View>
-          <Text style={styles.riskHigh}>High Risk</Text>
-        </View>
+        )}
       </View>
     </ScrollView>
   );
@@ -261,69 +275,5 @@ const styles = StyleSheet.create({
   confidence: {
     fontSize: 13,
     color: "#166534",
-  },
-
-  stageRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginVertical: 14,
-  },
-
-  stage: {
-    backgroundColor: "#dcfce7",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    fontSize: 12,
-    color: "#166534",
-  },
-
-  activeStage: {
-    backgroundColor: "#15803d",
-    color: "#fff",
-  },
-
-  recommendBox: {
-    backgroundColor: "#fef9c3",
-    borderLeftWidth: 5,
-    borderLeftColor: "#ca8a04",
-    padding: 12,
-    borderRadius: 8,
-  },
-
-  recommendText: {
-    fontSize: 14,
-    marginBottom: 6,
-    color: "#713f12",
-  },
-
-  recentHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  recentItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 12,
-    gap: 12,
-  },
-
-  thumbSmall: {
-    width: 45,
-    height: 45,
-    borderRadius: 10,
-    backgroundColor: "#bbf7d0",
-  },
-
-  riskHigh: {
-    backgroundColor: "#fee2e2",
-    color: "#b91c1c",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    fontSize: 12,
-    fontWeight: "600",
   },
 });
