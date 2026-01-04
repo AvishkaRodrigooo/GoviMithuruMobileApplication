@@ -27,6 +27,7 @@ import broadLeavesKillersScreen from './src/screens/weedsDetection/herbicides/br
 // Crop Establishment
 import InputPlannerScreen from './src/screens/cropEstablishment/InputPlannerScreen ';
 import CropRecommenderScreen from './src/screens/cropEstablishment/CropRecommenderScreen ';
+import CropRecommendationResults from './src/screens/cropEstablishment/CropRecommendationResultsScreen';
 import AdminPriceManagementScreen from './src/screens/adminDashboard/AdminPriceManagementScreen';
 
 
@@ -49,6 +50,7 @@ function PricingForecastScreen() {
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./src/firebase/firebaseConfig";
 import { StackScreen } from 'react-native-screens';
+import CropRecommendationResultsScreen from './src/screens/cropEstablishment/CropRecommendationResultsScreen';
 
 
 
@@ -135,6 +137,7 @@ export default function App() {
 
         <Stack.Screen name="InputPlanner" component={InputPlannerScreen} options={{ title: 'Input Planner' }} />
         <Stack.Screen name="CropRecommender" component={CropRecommenderScreen} options={{ title: 'Crop Recommender' }} />
+        <Stack.Screen name="CropRecommendationResults" component={CropRecommendationResultsScreen} options={{ title: 'Crop Recommendation Results' }} />
         <Stack.Screen name="AdminPriceManagement" component={AdminPriceManagementScreen} 
 />
  </>

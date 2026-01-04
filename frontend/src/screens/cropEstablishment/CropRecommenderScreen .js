@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import * as Location from 'expo-location';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import axios from 'axios';
 
 const CropRecommenderScreen = ({ navigation }) => {
   // State variables
@@ -52,49 +53,325 @@ const CropRecommenderScreen = ({ navigation }) => {
 
   const seasons = ['Yala', 'Maha'];
 
-  // 1. GET GPS LOCATION
+  // Sri Lankan provinces to districts mapping (for better location parsing)
+  const provinceToDistricts = {
+    'Western Province': ['Colombo', 'Gampaha', 'Kalutara'],
+    'Central Province': ['Kandy', 'Matale', 'Nuwara Eliya'],
+    'Southern Province': ['Galle', 'Matara', 'Hambantota'],
+    'Northern Province': ['Jaffna', 'Kilinochchi', 'Mannar', 'Mullaitivu', 'Vavuniya'],
+    'Eastern Province': ['Ampara', 'Batticaloa', 'Trincomalee'],
+    'North Western Province': ['Kurunegala', 'Puttalam'],
+    'North Central Province': ['Anuradhapura', 'Polonnaruwa'],
+    'Uva Province': ['Badulla', 'Moneragala'],
+    'Sabaragamuwa Province': ['Kegalle', 'Ratnapura']
+  };
+
   const getCurrentLocation = async () => {
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
+    
+    // Request permissions
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Please enable location services');
+      setLocationMethod('manual');
+      return;
+    }
+
+    // Get current location with better accuracy
+    let location = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.BestForNavigation,
+      timeout: 15000
+    });
+    
+    setUserLocation(location);
+
+    // Try multiple geocoding methods for better accuracy
+    const { latitude, longitude } = location.coords;
+
+    console.log('Getting location for:', latitude, longitude);
+    
+    // Try multiple methods to get village-level data
       
-      // Request permissions
-      let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Please enable location services');
-        setLocationMethod('manual');
-        return;
-      }
-
-      // Get current location
-      let location = await Location.getCurrentPositionAsync({});
-      setUserLocation(location);
-
-      // Reverse geocode to get address
-      let address = await Location.reverseGeocodeAsync({
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-      });
-
-      if (address.length > 0) {
-        // Try to extract district from address
-        const district = address[0].region || address[0].subregion || '';
-        setFormData(prev => ({
-          ...prev,
-          district: district || 'Colombo', // Default fallback
-        }));
-        
-        Alert.alert(
-          'Location Detected',
-          `Detected location: ${district || 'Unknown District'}`,
-          [{ text: 'OK' }]
+      // METHOD 1: Try with Google Maps Geocoding (most accurate for Sri Lanka)
+      // Note: You'll need to enable Geocoding API and get an API key
+      try {
+        // Uncomment and add your Google Maps API key
+        /*
+        const GOOGLE_API_KEY = 'YOUR_GOOGLE_API_KEY_HERE';
+        const googleResponse = await axios.get(
+          `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_API_KEY}&language=en&region=lk`
         );
+        
+        if (googleResponse.data && googleResponse.data.results && googleResponse.data.results.length > 0) {
+          const addressComponents = googleResponse.data.results[0].address_components;
+          let district = '';
+          let village = '';
+          let gnDivision = '';
+          
+          // Parse address components
+          addressComponents.forEach(component => {
+            if (component.types.includes('administrative_area_level_2')) {
+              district = component.long_name;
+            }
+            if (component.types.includes('locality') || component.types.includes('sublocality')) {
+              village = component.long_name;
+            }
+            if (component.types.includes('administrative_area_level_3')) {
+              gnDivision = component.long_name;
+            }
+          });
+          
+          // Validate district
+          const foundDistrict = districts.find(d => 
+            d.toLowerCase() === district.toLowerCase() ||
+            district.toLowerCase().includes(d.toLowerCase())
+          );
+          
+          if (foundDistrict || district) {
+            setFormData(prev => ({
+              ...prev,
+              district: foundDistrict || district,
+              village: village || '',
+              gnDivision: gnDivision || '',
+            }));
+            
+            Alert.alert(
+              'Location Detected',
+              `District: ${foundDistrict || district}\nVillage: ${village || 'Not detected'}`,
+              [{ text: 'OK' }]
+            );
+            return;
+          }
+        }
+        */
+      } catch (googleError) {
+        console.log('Google Maps geocoding not configured:', googleError);
       }
+    
+    // METHOD 2: Try with LocationIQ (better for Sri Lanka villages)
+      try {
+        // Sign up at locationiq.com for free API key (2500 requests/day free)
+        const LOCATIONIQ_API_KEY = 'pk.xxx'; // Replace with your key
+        
+        const locationIqResponse = await axios.get(
+          `https://us1.locationiq.com/v1/reverse.php?key=${LOCATIONIQ_API_KEY}&lat=${latitude}&lon=${longitude}&format=json&accept-language=en&addressdetails=1&zoom=16`
+        );
+        
+        if (locationIqResponse.data && locationIqResponse.data.address) {
+          const address = locationIqResponse.data.address;
+          
+          // Extract location details - LocationIQ has good Sri Lanka coverage
+          let district = address.county || address.state_district || '';
+          let village = address.village || address.town || address.city || '';
+          let gnDivision = address.suburb || address.neighbourhood || '';
+          
+          console.log('LocationIQ data:', address);
+          
+          // Clean up district names
+          if (district.includes(' District')) {
+            district = district.replace(' District', '');
+          }
+          
+          // Match with our districts list
+          const foundDistrict = districts.find(d => 
+            d.toLowerCase() === district.toLowerCase() ||
+            district.toLowerCase().includes(d.toLowerCase()) ||
+            d.toLowerCase().includes(district.toLowerCase())
+          );
+          
+          if (foundDistrict || district) {
+            setFormData(prev => ({
+              ...prev,
+              district: foundDistrict || district,
+              village: village || '',
+              gnDivision: gnDivision || '',
+            }));
+            
+            const message = village ? 
+              `Location detected!\nDistrict: ${foundDistrict || district}\nVillage: ${village}` :
+              `District detected: ${foundDistrict || district}\n(Village not detected - please enter manually)`;
+              
+            Alert.alert('Location Detected', message, [{ text: 'OK' }]);
+            return;
+          }
+        }
+      } catch (locationIqError) {
+        console.log('LocationIQ failed:', locationIqError.message);
+      }
+
+      // METHOD 3: Fallback to Expo's geocoding with enhanced parsing
+      try {
+        let expoAddresses = await Location.reverseGeocodeAsync({
+          latitude: latitude,
+          longitude: longitude,
+        });
+
+        if (expoAddresses.length > 0) {
+          const address = expoAddresses[0];
+          console.log('Expo address:', address);
+          
+          let district = address.region || address.subregion || '';
+          let village = address.city || address.street || address.name || '';
+          
+          // Enhanced parsing for Sri Lanka
+          // Sometimes Expo returns province names, we need to map them
+          if (district.includes('Province')) {
+            // Try to get district from province
+            const provinceDistricts = provinceToDistricts[district] || [];
+            if (provinceDistricts.length > 0) {
+              // Use the first district in the province as default
+              district = provinceDistricts[0];
+            }
+          }
+          
+          // Clean up district names
+          if (district.includes(' District')) {
+            district = district.replace(' District', '');
+          }
+          
+          // Match with our districts list
+          const foundDistrict = districts.find(d => 
+            d.toLowerCase() === district.toLowerCase() ||
+            district.toLowerCase().includes(d.toLowerCase()) ||
+            d.toLowerCase().includes(district.toLowerCase())
+          );
+          
+          setFormData(prev => ({
+            ...prev,
+            district: foundDistrict || district || '',
+            village: village || '',
+          }));
+          
+          const message = village ? 
+            `Location detected!\nDistrict: ${foundDistrict || district || 'Unknown'}\nArea: ${village}` :
+            `District detected: ${foundDistrict || district || 'Unknown'}`;
+            
+          Alert.alert('Location Detected', message, [{ text: 'OK' }]);
+          return;
+        }
+      } catch (expoError) {
+        console.log('Expo geocoding failed:', expoError);
+      }
+
+      // METHOD 4: Try with OpenCage Data (free tier available)
+      try {
+        const OPENCAGE_API_KEY = 'xxxx'; // Sign up at opencagedata.com
+        const opencageResponse = await axios.get(
+          `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=${OPENCAGE_API_KEY}&language=en&countrycode=lk&no_annotations=1`
+        );
+        
+        if (opencageResponse.data && opencageResponse.data.results && opencageResponse.data.results.length > 0) {
+          const components = opencageResponse.data.results[0].components;
+          
+          let district = components.county || components.state_district || '';
+          let village = components.village || components.town || components.city || '';
+          let gnDivision = components.suburb || components.neighbourhood || '';
+          
+          // Match with our districts list
+          const foundDistrict = districts.find(d => 
+            d.toLowerCase() === district.toLowerCase() ||
+            district.toLowerCase().includes(d.toLowerCase())
+          );
+          
+          if (foundDistrict || district) {
+            setFormData(prev => ({
+              ...prev,
+              district: foundDistrict || district,
+              village: village || '',
+              gnDivision: gnDivision || '',
+            }));
+            
+            Alert.alert(
+              'Location Detected',
+              `District: ${foundDistrict || district || 'Unknown'}\nArea: ${village || 'Not specified'}`,
+              [{ text: 'OK' }]
+            );
+            return;
+          }
+        }
+      } catch (opencageError) {
+        console.log('OpenCage failed:', opencageError.message);
+      }
+
+      // If all methods fail
+      Alert.alert(
+        'Location Partially Detected',
+        'We detected your location but could not identify the exact village. Please select your district and enter village manually.',
+        [
+          { 
+            text: 'Enter Manually', 
+            onPress: () => setLocationMethod('manual') 
+          },
+          { 
+            text: 'Try Again', 
+            onPress: () => getCurrentLocation() 
+          }
+        ]
+      );
+
     } catch (error) {
       console.error('Location error:', error);
-      Alert.alert('Error', 'Could not get location. Please enter manually.');
-      setLocationMethod('manual');
+      
+      Alert.alert(
+        'Location Detection Failed',
+        'Could not detect your location. Please enter details manually.',
+        [{ text: 'Enter Manually', onPress: () => setLocationMethod('manual') }]
+      );
     } finally {
       setLoading(false);
+    }
+  };
+
+ // Function to search for villages (for manual input)
+  const searchVillages = async (searchText) => {
+    if (searchText.length < 2) return [];
+    
+    try {
+      // Use OpenStreetMap Nominatim with proper headers
+      const response = await axios.get(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchText)}+Sri+Lanka&format=json&addressdetails=1&countrycodes=lk&limit=8`,
+        {
+          headers: {
+            'User-Agent': 'PaddyFarmersApp/1.0',
+          }
+        }
+      );
+      
+      return response.data.map(item => ({
+        name: item.display_name.split(',')[0],
+        fullAddress: item.display_name,
+        district: item.address.county || item.address.state_district || '',
+        lat: item.lat,
+        lon: item.lon
+      }));
+    } catch (error) {
+      console.error('Village search error:', error);
+      return [];
+    }
+  };
+
+  // Handle village selection from search
+  const handleVillageSelect = async (searchText) => {
+    if (searchText.length < 3) return;
+    
+    const results = await searchVillages(searchText);
+    if (results.length > 0) {
+      // Show a selection dialog
+      Alert.alert(
+        'Select Village',
+        'Choose your village from the search results:',
+        results.slice(0, 5).map((village, index) => ({
+          text: `${village.name} (${village.district || 'Unknown district'})`,
+          onPress: () => {
+            setFormData(prev => ({
+              ...prev,
+              village: village.name,
+              district: village.district || prev.district,
+            }));
+          }
+        })).concat([{ text: 'Cancel', style: 'cancel' }])
+      );
     }
   };
 
@@ -104,6 +381,21 @@ const CropRecommenderScreen = ({ navigation }) => {
       ...prev,
       [field]: value,
     }));
+    
+    // Auto-search villages when typing village name
+    if (field === 'village' && value.length >= 3) {
+      // Debounce the search
+      clearTimeout(formData.searchTimeout);
+      const timeoutId = setTimeout(() => {
+        handleVillageSelect(value);
+      }, 1000);
+      
+      setFormData(prev => ({
+        ...prev,
+        searchTimeout: timeoutId,
+        [field]: value,
+      }));
+    }
   };
 
   // 3. VALIDATE FORM
@@ -128,44 +420,310 @@ const CropRecommenderScreen = ({ navigation }) => {
   };
 
   // 4. GET RECOMMENDATION (AI/Backend Integration)
-  const getRecommendation = async () => {
-    if (!validateForm()) return;
+const getRecommendation = async () => {
+  console.log('Form Data:', formData);
 
-    setLoading(true);
-    
-    try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // In real app, call your AI backend here
-      const recommendation = {
-        primary: {
-          variety: 'BG 358',
-          confidence: 95,
-          yield: '5.2-5.8 t/ha',
-          reason: 'Best suited for clay loam soils with good irrigation',
-        },
-        alternatives: [
-          { variety: 'BG 360', confidence: 88 },
-          { variety: 'AT 362', confidence: 82 },
-        ],
-        plantingWindow: 'Oct 15 - Nov 5, 2024',
-        estimatedProfit: 'LKR 185,000/acre',
-        fertilizerPlan: 'Urea: 75kg, TSP: 50kg, MOP: 40kg per acre',
-      };
+  if (!validateForm()) return;
 
-      // Navigate to results screen
-      navigation.navigate('CropRecommendationResults', {
-        formData,
-        recommendation,
-      });
-      
-    } catch (error) {
-      Alert.alert('Error', 'Failed to get recommendation. Please try again.');
-    } finally {
+  setLoading(true);
+  
+  try {
+
+    if (!formData || !formData.soilType || !formData.waterAvailability || !formData.fieldSize) {
+      Alert.alert('Error', 'Please fill in all required fields');
       setLoading(false);
+      return;
     }
+
+    // Generate recommendation based on form data
+    const recommendationData = generateRecommendation(formData);
+    
+    console.log('Generated Recommendation:', recommendationData);
+
+    // Navigate to results screen with both form data and recommendation
+    navigation.navigate('CropRecommendationResults', {
+      formData: formData,
+      recommendation: recommendationData,
+    });
+    
+  } catch (error) {
+    console.error('Recommendation error:', error);
+    Alert.alert('Error', 'Failed to generate recommendation. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
+
+// Add this function to generate recommendations based on form data:
+const generateRecommendation = (formData) => {
+  
+  const { soilType, waterAvailability, fieldSize, season, district } = formData;
+  
+  // Convert field size to hectares for calculations
+  const fieldSizeInHectares = formData.unit === 'Acres' 
+    ? parseFloat(fieldSize) * 0.404686 
+    : parseFloat(fieldSize);
+  
+  // Base recommendations for Sri Lanka
+  let recommendations = {
+    primary: null,
+    alternatives: [],
+    plantingWindow: '',
+    estimatedProfit: '',
+    fertilizerPlan: '',
+    riskLevel: 'Medium',
+    waterRequirement: '',
+    duration: '',
+    specialAdvice: '',
   };
+
+  // Season-based planting windows
+  const plantingWindows = {
+    'Yala': 'April 15 - May 30',
+    'Maha': 'October 15 - November 30'
+  };
+
+  // Paddy varieties database for Sri Lanka
+  const paddyVarieties = [
+    {
+      name: 'BG 358',
+      soilPreference: ['Clay Loam', 'Alluvial Soil', 'Black Soil'],
+      waterNeed: 'High',
+      season: 'Both',
+      duration: '3.5-4 months',
+      yield: '5.0-6.0 t/ha',
+      price: 'LKR 80-90/kg',
+      resistance: ['Blast', 'Brown Spot'],
+      riskLevel: 'Low',
+      description: 'High yielding variety suitable for good irrigation'
+    },
+    {
+      name: 'BG 360',
+      soilPreference: ['Red Soil', 'Clay Loam', 'Laterite Soil'],
+      waterNeed: 'Medium',
+      season: 'Maha',
+      duration: '4-4.5 months',
+      yield: '4.5-5.5 t/ha',
+      price: 'LKR 75-85/kg',
+      resistance: ['Drought', 'Blast'],
+      riskLevel: 'Medium',
+      description: 'Drought tolerant, good for moderate irrigation'
+    },
+    {
+      name: 'AT 362',
+      soilPreference: ['Sandy Soil', 'Red Soil', 'Laterite Soil'],
+      waterNeed: 'Low',
+      season: 'Both',
+      duration: '3-3.5 months',
+      yield: '4.0-5.0 t/ha',
+      price: 'LKR 70-80/kg',
+      resistance: ['Drought', 'Salinity'],
+      riskLevel: 'Medium',
+      description: 'Short duration, suitable for rain-fed areas'
+    },
+    {
+      name: 'Bg 300',
+      soilPreference: ['Clay Loam', 'Alluvial Soil'],
+      waterNeed: 'High',
+      season: 'Yala',
+      duration: '4 months',
+      yield: '5.5-6.5 t/ha',
+      price: 'LKR 85-95/kg',
+      resistance: ['Blast'],
+      riskLevel: 'Low',
+      description: 'Traditional high yielder, needs good management'
+    },
+    {
+      name: 'Ld 365',
+      soilPreference: ['Sandy Soil', 'Red Soil'],
+      waterNeed: 'Low',
+      season: 'Maha',
+      duration: '3.5-4 months',
+      yield: '3.5-4.5 t/ha',
+      price: 'LKR 65-75/kg',
+      resistance: ['Drought', 'Pests'],
+      riskLevel: 'High',
+      description: 'Suitable for water-limited conditions'
+    },
+    {
+      name: 'Bg 94-1',
+      soilPreference: ['Alluvial Soil', 'Clay Loam'],
+      waterNeed: 'Medium',
+      season: 'Both',
+      duration: '4.5 months',
+      yield: '4.5-5.5 t/ha',
+      price: 'LKR 70-80/kg',
+      resistance: ['Diseases'],
+      riskLevel: 'Low',
+      description: 'Good for both seasons, stable yield'
+    }
+  ];
+
+  // Score varieties based on farmer's conditions
+  const scoredVarieties = paddyVarieties.map(variety => {
+    let score = 0;
+    
+    // Soil match (30 points)
+    if (variety.soilPreference.includes(soilType)) {
+      score += 30;
+    }
+    
+    // Water availability match (25 points)
+    const waterLevels = {
+      'Excellent (Irrigation + Rainfall)': 'High',
+      'Good (Reliable Irrigation)': 'High',
+      'Moderate (Seasonal Irrigation)': 'Medium',
+      'Poor (Rain-fed Only)': 'Low'
+    };
+    
+    if (variety.waterNeed === waterLevels[waterAvailability]) {
+      score += 25;
+    } else if (
+      (waterLevels[waterAvailability] === 'High' && variety.waterNeed === 'Medium') ||
+      (waterLevels[waterAvailability] === 'Medium' && variety.waterNeed === 'Low') ||
+      (waterLevels[waterAvailability] === 'Low' && variety.waterNeed === 'Medium')
+    ) {
+      score += 15;
+    }
+    
+    // Season match (20 points)
+    if (variety.season === 'Both' || variety.season === season) {
+      score += 20;
+    }
+    
+    // Risk level (15 points) - Lower risk gets higher score
+    if (variety.riskLevel === 'Low') score += 15;
+    else if (variety.riskLevel === 'Medium') score += 10;
+    else score += 5;
+    
+    // Yield consideration (10 points) - Higher yield gets higher score
+    const avgYield = parseFloat(variety.yield.split('-')[0]);
+    if (avgYield > 5.0) score += 10;
+    else if (avgYield > 4.0) score += 7;
+    else score += 5;
+    
+    return { ...variety, score };
+  });
+
+  // Sort by score and get top recommendations
+  scoredVarieties.sort((a, b) => b.score - a.score);
+  
+  // Select primary recommendation (top score)
+  const primary = scoredVarieties[0];
+  
+  // Select alternatives (next 2-3)
+  const alternatives = scoredVarieties.slice(1, 4);
+  
+  // Calculate profit based on field size
+  const avgYield = parseFloat(primary.yield.split('-')[0]);
+  const avgPrice = parseFloat(primary.price.split('-')[0].replace('LKR ', ''));
+  const totalYield = avgYield * fieldSizeInHectares;
+  const totalRevenue = totalYield * avgPrice * 1000; // Convert to kg
+  
+  // Estimated costs (per hectare)
+  const costsPerHectare = {
+    seeds: 8000,
+    fertilizer: 25000,
+    pesticides: 8000,
+    labor: 30000,
+    other: 10000
+  };
+  
+  const totalCost = Object.values(costsPerHectare).reduce((a, b) => a + b) * fieldSizeInHectares;
+  const estimatedProfit = totalRevenue - totalCost;
+  
+  // Determine planting window
+  const plantingWindow = plantingWindows[season] || 'Check with local agriculture department';
+  
+  // Generate fertilizer plan based on soil type
+  const fertilizerPlans = {
+    'Red Soil': 'Urea: 100kg/ha, TSP: 75kg/ha, MOP: 50kg/ha',
+    'Clay Loam': 'Urea: 80kg/ha, TSP: 60kg/ha, MOP: 40kg/ha',
+    'Sandy Soil': 'Urea: 60kg/ha, TSP: 50kg/ha, MOP: 30kg/ha + Organic manure',
+    'Alluvial Soil': 'Urea: 90kg/ha, TSP: 70kg/ha, MOP: 45kg/ha',
+    'Laterite Soil': 'Urea: 70kg/ha, TSP: 55kg/ha, MOP: 35kg/ha + Lime',
+    'Peaty Soil': 'Urea: 50kg/ha, TSP: 40kg/ha, MOP: 25kg/ha',
+    'Saline Soil': 'Urea: 60kg/ha, TSP: 50kg/ha, MOP: 30kg/ha + Gypsum',
+    'Black Soil': 'Urea: 85kg/ha, TSP: 65kg/ha, MOP: 42kg/ha'
+  };
+  
+  const fertilizerPlan = fertilizerPlans[soilType] || 'Urea: 75kg/ha, TSP: 55kg/ha, MOP: 35kg/ha';
+  
+  // Adjust for field size
+  const adjustedFertilizerPlan = fertilizerPlan.replace(/[\d.]+kg\/ha/g, match => {
+    const kg = parseFloat(match);
+    const adjusted = (kg * fieldSizeInHectares).toFixed(1);
+    return `${adjusted}kg`;
+  });
+  
+  // Determine water requirement
+  const waterRequirements = {
+    'High': '2500-3000 mm per season',
+    'Medium': '1800-2500 mm per season',
+    'Low': '1200-1800 mm per season'
+  };
+  
+  const waterRequirement = waterRequirements[primary.waterNeed];
+  
+  // Special advice based on conditions
+  let specialAdvice = [];
+  
+  if (waterAvailability === 'Poor (Rain-fed Only)') {
+    specialAdvice.push('• Consider water harvesting techniques');
+    specialAdvice.push('• Use mulch to conserve soil moisture');
+  }
+  
+  if (soilType === 'Sandy Soil') {
+    specialAdvice.push('• Add organic matter to improve water retention');
+  }
+  
+  if (season === 'Yala') {
+    specialAdvice.push('• Early planting recommended to avoid drought');
+  }
+  
+  if (fieldSizeInHectares > 2) {
+    specialAdvice.push('• Consider mechanization for cost efficiency');
+  }
+  
+  return {
+    primary: {
+      variety: primary.name,
+      confidence: Math.min(primary.score, 100),
+      yield: primary.yield,
+      duration: primary.duration,
+      price: primary.price,
+      resistance: primary.resistance.join(', '),
+      riskLevel: primary.riskLevel,
+      description: primary.description,
+      waterNeed: primary.waterNeed,
+    },
+    alternatives: alternatives.map(alt => ({
+      variety: alt.name,
+      confidence: Math.min(alt.score, 95),
+      yield: alt.yield,
+      riskLevel: alt.riskLevel,
+    })),
+    plantingWindow,
+    estimatedProfit: `LKR ${estimatedProfit.toLocaleString('en-LK')}`,
+    costBreakdown: {
+      seeds: costsPerHectare.seeds * fieldSizeInHectares,
+      fertilizer: costsPerHectare.fertilizer * fieldSizeInHectares,
+      pesticides: costsPerHectare.pesticides * fieldSizeInHectares,
+      labor: costsPerHectare.labor * fieldSizeInHectares,
+      other: costsPerHectare.other * fieldSizeInHectares,
+      total: totalCost
+    },
+    fertilizerPlan: adjustedFertilizerPlan,
+    waterRequirement,
+    specialAdvice: specialAdvice.length > 0 ? specialAdvice.join('\n') : 'No special advice needed',
+    fieldSize: {
+      value: fieldSize,
+      unit: formData.unit,
+      hectares: fieldSizeInHectares.toFixed(2)
+    },
+    calculatedYield: `${totalYield.toFixed(1)} tons`,
+  };
+};
 
   // 5. UPLOAD SOIL REPORT
   const uploadSoilReport = () => {
@@ -249,56 +807,40 @@ const CropRecommenderScreen = ({ navigation }) => {
               <MaterialCommunityIcons name="check-circle" size={16} color="#16a34a" />
               <Text style={styles.gpsInfoText}>
                 Location detected: {formData.district || 'Detecting...'}
+                {formData.village ? `, ${formData.village}` : ''}
               </Text>
             </View>
           )}
 
-          {locationMethod === 'manual' && (
-            <View style={styles.manualInputs}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>District</Text>
-                <View style={styles.dropdownContainer}>
-                  {districts.map((district, index) => (
-                    <TouchableOpacity
-                      key={index}
-                      style={[
-                        styles.dropdownItem,
-                        formData.district === district && styles.dropdownItemSelected,
-                      ]}
-                      onPress={() => handleInputChange('district', district)}
-                    >
-                      <Text style={[
-                        styles.dropdownText,
-                        formData.district === district && styles.dropdownTextSelected,
-                      ]}>
-                        {district}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>GN Division (Optional)</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="e.g., Gampaha Division"
-                  value={formData.gnDivision}
-                  onChangeText={(text) => handleInputChange('gnDivision', text)}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Village (Optional)</Text>
-                <TextInput
-                  style={styles.textInput}
-                  placeholder="e.g., Mirigama"
-                  value={formData.village}
-                  onChangeText={(text) => handleInputChange('village', text)}
-                />
-              </View>
+          {/* In your manual inputs section, update the village input: */}
+        {locationMethod === 'manual' && (
+          <View style={styles.manualInputs}>
+            {/* District selection remains the same... */}
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Village</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="Type village name (min 3 letters)"
+                value={formData.village}
+                onChangeText={(text) => handleInputChange('village', text)}
+              />
+              <Text style={styles.helperText}>
+                Start typing to search for your village
+              </Text>
             </View>
-          )}
+            
+            <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>GN Division (Optional)</Text>
+              <TextInput
+                style={styles.textInput}
+                placeholder="e.g., Gampaha Division"
+                value={formData.gnDivision}
+                onChangeText={(text) => handleInputChange('gnDivision', text)}
+              />
+            </View>
+          </View>
+        )}
         </View>
 
         {/* Field Characteristics */}
@@ -603,6 +1145,23 @@ const styles = StyleSheet.create({
   },
   tipsTitle: { fontSize: 16, fontWeight: '600', color: '#92400e', marginBottom: 8 },
   tip: { fontSize: 13, color: '#92400e', marginBottom: 4, paddingLeft: 8 },
+
+  villageSearchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  searchButton: {
+    position: 'absolute',
+    right: 10,
+    padding: 10,
+  },
+
+  helperText: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 4,
+    fontStyle: 'italic',
+  },
 });
 
 export default CropRecommenderScreen;
