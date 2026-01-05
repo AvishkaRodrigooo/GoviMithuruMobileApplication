@@ -14,6 +14,8 @@ import * as Location from 'expo-location';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
 
+const API_BASE_URL = 'http://10.116.116.131:5000';
+
 const CropRecommenderScreen = ({ navigation }) => {
   // State variables
   const [loading, setLoading] = useState(false);
@@ -28,6 +30,8 @@ const CropRecommenderScreen = ({ navigation }) => {
     fieldSize: '',
     unit: 'Acres',
     season: 'Yala',
+    predictedSoil: null,
+    searchTimeout: null,
   });
 
   // Sri Lankan districts for dropdown.
@@ -310,6 +314,16 @@ const CropRecommenderScreen = ({ navigation }) => {
         ]
       );
 
+
+
+    //updating formData, add soil prediction:
+    if (formData.district && formData.village) {
+      // Wait a moment for state to update, then predict soil
+      setTimeout(async () => {
+        await predictSoilTypeFromLocation(formData.district, formData.village);
+      }, 500);
+    }
+
     } catch (error) {
       console.error('Location error:', error);
       
@@ -322,6 +336,9 @@ const CropRecommenderScreen = ({ navigation }) => {
       setLoading(false);
     }
   };
+
+
+
 
  // Function to search for villages (for manual input)
   const searchVillages = async (searchText) => {
@@ -725,6 +742,103 @@ const generateRecommendation = (formData) => {
   };
 };
 
+
+
+const predictSoilTypeFromLocation = async (district, city) => {
+  try {
+    console.log('🌱 Predicting soil type for:', district, city);
+    
+    const response = await axios.post(`${API_BASE_URL}/predict/soil-type`, {
+      district: district,
+      city: city
+    }, {
+      timeout: 10000 // 10 second timeout
+    });
+    
+    if (response.data.success) {
+      const prediction = response.data.prediction;
+      
+      // If we have a suggested city (similar match)
+      if (prediction.suggested_city) {
+        Alert.alert(
+          'City Suggestion',
+          `Did you mean "${prediction.suggested_city}" instead of "${city}"?`,
+          [
+            {
+              text: 'No, keep mine',
+              style: 'cancel'
+            },
+            {
+              text: 'Yes, use suggested',
+              onPress: async () => {
+                // Update form with suggested city
+                setFormData(prev => ({
+                  ...prev,
+                  city: prediction.suggested_city
+                }));
+                
+                // Try prediction again with suggested city
+                const newResult = await predictSoilTypeFromLocation(district, prediction.suggested_city);
+                return newResult;
+              }
+            }
+          ]
+        );
+        return null;
+      }
+      
+      // If we have a direct prediction
+      if (prediction.soil_type) {
+        console.log('✅ Predicted soil type:', prediction.soil_type, 
+                    'Confidence:', prediction.confidence.toFixed(1) + '%');
+        
+        // Find matching soil type in our list
+        const matchedSoil = soilTypes.find(soil => 
+          soil.toLowerCase().includes(prediction.soil_type.toLowerCase()) ||
+          prediction.soil_type.toLowerCase().includes(soil.toLowerCase())
+        );
+        
+        const finalSoilType = matchedSoil || prediction.soil_type;
+        
+        // Update form data
+        setFormData(prev => ({
+          ...prev,
+          soilType: finalSoilType,
+          predictedSoil: {
+            type: prediction.soil_type,
+            confidence: prediction.confidence,
+            original: finalSoilType !== prediction.soil_type
+          }
+        }));
+        
+        // Show prediction result
+        Alert.alert(
+          '🌱 Soil Type Detected',
+          `Based on your location:\n\n` +
+          `• **District:** ${district}\n` +
+          `• **City:** ${city}\n` +
+          `• **Predicted Soil:** ${prediction.soil_type}\n` +
+          `• **Confidence:** ${prediction.confidence.toFixed(1)}%\n\n` +
+          `The soil type has been auto-selected. You can change it if needed.`,
+          [{ text: 'OK' }]
+        );
+        
+        return prediction;
+      }
+    } else {
+      console.warn('Soil prediction failed:', response.data.error);
+      Alert.alert(
+        'Soil Detection Unavailable',
+        response.data.error || 'Could not detect soil type. Please select manually.'
+      );
+    }
+  } catch (error) {
+    console.error('Soil prediction error:', error);
+    // Don't show error alert - just log it
+    return null;
+  }
+};
+
   // 5. UPLOAD SOIL REPORT
   const uploadSoilReport = () => {
     Alert.alert(
@@ -847,32 +961,102 @@ const generateRecommendation = (formData) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🌱 Field Characteristics</Text>
           
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Soil Type</Text>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              style={styles.scrollSelector}
-            >
-              {soilTypes.map((soil, index) => (
-                <TouchableOpacity
-                  key={index}
-                  style={[
-                    styles.selectorButton,
-                    formData.soilType === soil && styles.selectorButtonActive,
-                  ]}
-                  onPress={() => handleInputChange('soilType', soil)}
-                >
-                  <Text style={[
-                    styles.selectorText,
-                    formData.soilType === soil && styles.selectorTextActive,
-                  ]}>
-                    {soil}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+          {/* Soil Type Section - Updated */}
+<View style={styles.inputGroup}>
+  <View style={styles.soilHeader}>
+    <Text style={styles.inputLabel}>Soil Type</Text>
+    
+    {/* Auto-detect button */}
+    {formData.district && formData.village && !formData.soilType && (
+      <TouchableOpacity
+        style={styles.autoDetectButton}
+        onPress={async () => {
+          await predictSoilTypeFromLocation(formData.district, formData.village);
+        }}
+      >
+        <MaterialCommunityIcons name="auto-fix" size={16} color="#16a34a" />
+        <Text style={styles.autoDetectText}>Auto-detect</Text>
+      </TouchableOpacity>
+    )}
+    
+    {/* Prediction confidence indicator */}
+    {formData.predictedSoil && formData.predictedSoil.confidence > 70 && (
+      <View style={styles.confidenceBadge}>
+        <MaterialCommunityIcons name="check-circle" size={14} color="#16a34a" />
+        <Text style={styles.confidenceText}>
+          {formData.predictedSoil.confidence.toFixed(0)}% confidence
+        </Text>
+      </View>
+    )}
+  </View>
+  
+  {/* Prediction info if available */}
+  {formData.predictedSoil && (
+    <View style={styles.predictionInfo}>
+      <Text style={styles.predictionText}>
+        🌱 AI Predicted: <Text style={styles.predictionHighlight}>
+          {formData.predictedSoil.type}
+        </Text>
+        {formData.predictedSoil.original && 
+          ` (mapped to: ${formData.soilType})`}
+      </Text>
+      <TouchableOpacity
+        onPress={() => {
+          setFormData(prev => ({
+            ...prev,
+            predictedSoil: null,
+            soilType: ''
+          }));
+        }}
+      >
+        <MaterialCommunityIcons name="close-circle" size={16} color="#dc2626" />
+      </TouchableOpacity>
+    </View>
+  )}
+  
+  <ScrollView 
+    horizontal 
+    showsHorizontalScrollIndicator={false}
+    style={styles.scrollSelector}
+  >
+    {soilTypes.map((soil, index) => (
+      <TouchableOpacity
+        key={index}
+        style={[
+          styles.selectorButton,
+          formData.soilType === soil && styles.selectorButtonActive,
+          // Highlight if this is the predicted soil type
+          formData.predictedSoil && 
+          formData.predictedSoil.type.toLowerCase().includes(soil.toLowerCase()) && 
+          styles.selectorButtonPredicted
+        ]}
+        onPress={() => handleInputChange('soilType', soil)}
+      >
+        <Text style={[
+          styles.selectorText,
+          formData.soilType === soil && styles.selectorTextActive,
+        ]}>
+          {soil}
+          {formData.predictedSoil && 
+           formData.predictedSoil.type.toLowerCase().includes(soil.toLowerCase()) && 
+           " ✓"}
+        </Text>
+      </TouchableOpacity>
+    ))}
+  </ScrollView>
+  
+  {/* Suggested alternatives if predicted soil not in list */}
+  {formData.predictedSoil && 
+   !soilTypes.some(s => s.toLowerCase().includes(formData.predictedSoil.type.toLowerCase())) && (
+    <View style={styles.suggestionBox}>
+      <Text style={styles.suggestionTitle}>Predicted soil not in list:</Text>
+      <Text style={styles.suggestionText}>{formData.predictedSoil.type}</Text>
+      <Text style={styles.suggestionHelp}>
+        Please select the closest matching soil type above.
+      </Text>
+    </View>
+  )}
+</View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Water Availability</Text>
@@ -1161,6 +1345,113 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     marginTop: 4,
     fontStyle: 'italic',
+  },
+
+
+  soilHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  
+  autoDetectButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f9f0',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#16a34a',
+  },
+  
+  autoDetectText: {
+    fontSize: 12,
+    color: '#16a34a',
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  
+  confidenceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e8f5e8',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  
+  confidenceText: {
+    fontSize: 11,
+    color: '#065f46',
+    marginLeft: 4,
+  },
+  
+  predictionInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f0f9f0',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: '#16a34a',
+  },
+  
+  predictionText: {
+    fontSize: 13,
+    color: '#065f46',
+    flex: 1,
+  },
+  
+  predictionHighlight: {
+    fontWeight: '600',
+    color: '#059669',
+  },
+  
+  selectorButtonPredicted: {
+    borderWidth: 2,
+    borderColor: '#16a34a',
+  },
+  
+  suggestionBox: {
+    backgroundColor: '#fef3c7',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  
+  suggestionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#92400e',
+    marginBottom: 4,
+  },
+  
+  suggestionText: {
+    fontSize: 13,
+    color: '#92400e',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  
+  suggestionHelp: {
+    fontSize: 11,
+    color: '#92400e',
+    fontStyle: 'italic',
+  },
+  
+  // Update existing selector styles
+  selectorButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    marginHorizontal: 4,
+    borderRadius: 20,
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
 });
 

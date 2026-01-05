@@ -1,0 +1,10 @@
+{
+    "model_type": "RandomForestClassifier",
+    "accuracy": 0.5939849624060151,
+    "cv_accuracy": 0.6168903390551851,
+    "num_features": 2,
+    "num_classes": 26,
+    "training_samples": 1060,
+    "testing_samples": 266,
+    "timestamp": "2026-01-05T14:28:24.384501"
+}
