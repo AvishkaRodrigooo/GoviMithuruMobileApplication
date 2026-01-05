@@ -29,6 +29,8 @@ import InputPlannerScreen from './src/screens/cropEstablishment/InputPlannerScre
 import CropRecommenderScreen from './src/screens/cropEstablishment/CropRecommenderScreen ';
 import CropRecommendationResults from './src/screens/cropEstablishment/CropRecommendationResultsScreen';
 import AdminPriceManagementScreen from './src/screens/adminDashboard/AdminPriceManagementScreen';
+import CropCalendarScreen from './src/screens/cropEstablishment/CropCalendarScreen';
+import ProfitabilitySimulationScreen from './src/screens/cropEstablishment/ProfitabilitySimulationScreen';
 
 
 // Post Harvest Features
@@ -138,6 +140,8 @@ export default function App() {
         <Stack.Screen name="InputPlanner" component={InputPlannerScreen} options={{ title: 'Input Planner' }} />
         <Stack.Screen name="CropRecommender" component={CropRecommenderScreen} options={{ title: 'Crop Recommender' }} />
         <Stack.Screen name="CropRecommendationResults" component={CropRecommendationResultsScreen} options={{ title: 'Crop Recommendation Results' }} />
+        <Stack.Screen name="CropCalendar" component={CropCalendarScreen}options={{ title: 'Crop Calendar' }} />
+        <Stack.Screen name="ProfitabilitySimulation" component={ProfitabilitySimulationScreen}options={{ title: 'Profitability Simulation' }} />
         <Stack.Screen name="AdminPriceManagement" component={AdminPriceManagementScreen} 
 />
  </>
