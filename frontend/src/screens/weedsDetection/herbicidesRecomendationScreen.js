@@ -111,10 +111,10 @@ const HerbicideScreen = ({ navigation }) => {
         <View style={styles.header}>
          
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>🌾 Herbicide Guidelines</Text>
-            <Text style={styles.headerSubtitle}>Choosing suitable weed killers</Text>
+            <Text style={styles.headerTitle}>Herbicide Guidelines</Text>
+            <Text style={styles.headerSubtitle}>Choosing the right herbicide for your needs</Text>
           </View>
-          <MaterialCommunityIcons name="spray" size={28} color="#16a34a" style={styles.headerIcon} />
+          <MaterialCommunityIcons name="spray-bottle" size={36} color="#95ae95ff" style={styles.headerIcon} />
         </View>
 
         {/* Info Card */}
@@ -127,16 +127,16 @@ const HerbicideScreen = ({ navigation }) => {
             }
           ]}
         >
-          <MaterialCommunityIcons name="information" size={24} color="#3b82f6" />
+          <MaterialCommunityIcons name="information-outline" size={24} color="#5a7c59" />
           <Text style={styles.infoText}>
-            Suitable herbicide types for different weed plant types are shown below
+            Select the appropriate herbicide type for your specific weed control needs
           </Text>
         </Animated.View>
 
         {/* Herbicide Types Section */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Herbicide Types</Text>
-          <MaterialIcons name="category" size={20} color="#16a34a" />
+          <MaterialIcons name="category" size={20} color="#06602aff" />
         </View>
 
         {herbicideTypes.map((type) => (
@@ -189,8 +189,8 @@ const HerbicideScreen = ({ navigation }) => {
 
         {/* Safety Tips Section */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>⚠️ Safety Tips</Text>
-          <MaterialIcons name="warning" size={20} color="#f59e0b" />
+          <Text style={styles.sectionTitle}>Safety Precautions</Text>
+          <MaterialCommunityIcons name="alert-circle" size={20} color="#5a7c59" />
         </View>
 
         <View style={styles.safetyGrid}>
@@ -235,7 +235,7 @@ const HerbicideScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#f8f7f4',
   },
   scrollView: {
     flex: 1,
@@ -246,9 +246,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    backgroundColor: '#06602aff',
+    borderBottomWidth: 0,
   },
   backButton: {
     width: 40,
@@ -263,14 +262,15 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#166534',
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#ffffff',
+    letterSpacing: 0.3,
   },
   headerSubtitle: {
     fontSize: 14,
-    color: '#6b7280',
-    marginTop: 2,
+    color: '#d4e8c1',
+    marginTop: 4,
   },
   headerIcon: {
     marginLeft: 'auto',
@@ -278,50 +278,52 @@ const styles = StyleSheet.create({
   infoCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#f0fdf4',
     marginHorizontal: 20,
     marginTop: 20,
-    borderRadius: 14,
-    padding: 16,
+    borderRadius: 10,
+    padding: 14,
     gap: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#5a7c59',
   },
   infoText: {
     flex: 1,
     fontSize: 14,
-    color: '#1e40af',
+    color: '#2d5016',
     lineHeight: 20,
+    fontWeight: '500',
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     marginTop: 24,
-    marginBottom: 16,
+    marginBottom: 14,
     gap: 8,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: '700',
+    color: '#2d5016',
   },
   herbicideCard: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
     marginHorizontal: 20,
     marginBottom: 12,
-
-    borderRadius: 16,
-    padding: 10,
+    borderRadius: 12,
+    padding: 14,
     shadowColor: '#000',
     shadowOpacity: 0.08,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 4,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   iconContainer: {
     width: 50,
     height: 50,
-    borderRadius: 12,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -336,25 +338,27 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   cardTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#2d5016',
     flex: 1,
   },
   cardDescription: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#6b7280',
     marginBottom: 10,
-    lineHeight: 20,
+    lineHeight: 19,
   },
   examplesContainer: {
     marginBottom: 1,
   },
   examplesLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#374151',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#5a7c59',
     marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
   examplesList: {
     flexDirection: 'row',
@@ -362,14 +366,16 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   exampleTag: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f9fafb',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
   },
   exampleText: {
     fontSize: 12,
-    color: '#4b5563',
+    color: '#6b7280',
     fontWeight: '500',
   },
   detailsText: {
@@ -386,28 +392,29 @@ const styles = StyleSheet.create({
   },
   safetyCard: {
     width: width / 2 - 30,
-    backgroundColor: '#fff',
-    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    borderRadius: 10,
     padding: 14,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOpacity: 0.05,
-    shadowRadius: 6,
+    shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    elevation: 2,
   },
   safetyIconContainer: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 10,
+    backgroundColor: '#fef3c7',
   },
   safetyTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#2d5016',
     marginBottom: 4,
   },
   safetyDescription: {
@@ -425,11 +432,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 10,
     gap: 10,
   },
   primaryButton: {
-    backgroundColor: '#10b981',
+    backgroundColor: '#5a7c59',
   },
   secondaryButton: {
     backgroundColor: '#f3f4f6',
@@ -437,13 +444,13 @@ const styles = StyleSheet.create({
     borderColor: '#e5e7eb',
   },
   primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#ffffff',
   },
   secondaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#374151',
   },
 });

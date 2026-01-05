@@ -9,7 +9,9 @@ import SignInScreen from './src/screens/signinScreen';
 import SignUpScreen from './src/screens/signupScreen';
 import HomeScreen from './src/screens/homeScreen';
 import ProfileScreen from './src/screens/profileScreen';
+import WeatherForecastScreen from './src/screens/weatherForecastScreen';
 
+// Admin Dashboard
 import adminDashboardScreen from './src/screens/adminDashboard/adminDashboardScreen';
 import HerbicideRecommendationAdminScreen from './src/screens/adminDashboard/HerbicideRecommendationAdminScreen';
 
@@ -103,7 +105,7 @@ export default function App() {
         <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
         <Stack.Screen name="AdminDashboard" component={adminDashboardScreen} options={{ title: "Admin Dashboard"}}/>
         <Stack.Screen name="HerbicideRecommendation" component={HerbicideRecommendationAdminScreen} options={{ title: 'Herbicide Recommendation' }}/>
-        
+        <Stack.Screen name="WeatherForecast" component={WeatherForecastScreen} options={{ title: 'Weather Forecast' }}/>
 
         {/* Post Harvest Analysis Flow */}
         <Stack.Screen name="Stage" component={StorageDashboardScreen} options={{ title: 'Storage Analysis' }} />
