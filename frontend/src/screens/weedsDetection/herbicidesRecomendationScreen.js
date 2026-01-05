@@ -114,7 +114,7 @@ const HerbicideScreen = ({ navigation }) => {
             <Text style={styles.headerTitle}>Herbicide Guidelines</Text>
             <Text style={styles.headerSubtitle}>Choosing the right herbicide for your needs</Text>
           </View>
-          <MaterialCommunityIcons name="spray-bottle" size={34} color="#5a7c59" style={styles.headerIcon} />
+          <MaterialCommunityIcons name="spray-bottle" size={36} color="#95ae95ff" style={styles.headerIcon} />
         </View>
 
         {/* Info Card */}
@@ -136,7 +136,7 @@ const HerbicideScreen = ({ navigation }) => {
         {/* Herbicide Types Section */}
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Herbicide Types</Text>
-          <MaterialIcons name="category" size={20} color="#16a34a" />
+          <MaterialIcons name="category" size={20} color="#06602aff" />
         </View>
 
         {herbicideTypes.map((type) => (
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 20,
     paddingBottom: 16,
-    backgroundColor: '#2d5016',
+    backgroundColor: '#06602aff',
     borderBottomWidth: 0,
   },
   backButton: {

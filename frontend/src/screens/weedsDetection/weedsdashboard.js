@@ -48,7 +48,7 @@ export default function WeedsDashboardScreen({ navigation }) {
       >
         <View style={[styles.infoCard, styles.greenGradient]}>
           <View style={styles.iconContainer}>
-            <MaterialCommunityIcons name="leaf" size={28} color="#22c55e" />
+            <MaterialCommunityIcons name="leaf" size={28} color="#06602aff" />
           </View>
           <View style={styles.infoContent}>
             <Text style={styles.infoLabel}>Active Fields</Text>
@@ -59,7 +59,7 @@ export default function WeedsDashboardScreen({ navigation }) {
 
         <View style={[styles.infoCard, styles.blueGradient]}>
           <View style={styles.iconContainer}>
-            <MaterialCommunityIcons name="sprout" size={28} color="#3b82f6" />
+            <MaterialCommunityIcons name="sprout" size={28} color="#06602aff" />
           </View>
           <View style={styles.infoContent}>
             <Text style={styles.infoLabel}>Growth Stage</Text>
@@ -72,7 +72,7 @@ export default function WeedsDashboardScreen({ navigation }) {
       {/* Quick Stats Bar */}
       <View style={styles.statsBar}>
         <View style={styles.statItem}>
-          <MaterialIcons name="eco" size={20} color="#10b981" />
+          <MaterialIcons name="eco" size={20} color="#06602aff" />
           <Text style={styles.statText}>92% Healthy</Text>
         </View>
         <View style={styles.statDivider} />
@@ -99,7 +99,7 @@ export default function WeedsDashboardScreen({ navigation }) {
         android_ripple={{ color: '#f0fdf4' }}
       >
         <View style={styles.featureIconContainer}>
-          <MaterialCommunityIcons name="map-search" size={32} color="#5a7c59" />
+          <MaterialCommunityIcons name="map-search" size={32} color="#06602aff" />
         </View>
         <View style={styles.featureContent}>
           <View style={styles.featureTitleRow}>
@@ -122,7 +122,7 @@ export default function WeedsDashboardScreen({ navigation }) {
         android_ripple={{ color: '#f0fdf4' }}
       >
         <View style={styles.featureIconContainer}>
-          <MaterialCommunityIcons name="leaf-circle" size={32} color="#5a7c59" />
+          <MaterialCommunityIcons name="leaf-circle" size={32} color="#06602aff" />
         </View>
         <View style={styles.featureContent}>
           <View style={styles.featureTitleRow}>
@@ -146,7 +146,7 @@ export default function WeedsDashboardScreen({ navigation }) {
         android_ripple={{ color: '#f0fdf4' }}
       >
         <View style={styles.featureIconContainer}>
-          <MaterialCommunityIcons name="spray-bottle" size={32} color="#5a7c59" />
+          <MaterialCommunityIcons name="spray-bottle" size={32} color="#06602aff" />
         </View>
         <View style={styles.featureContent}>
           <View style={styles.featureTitleRow}>
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8f7f4',
   },
   headerContainer: {
-    backgroundColor: '#2d5016',
+    backgroundColor: '#06602aff',
     paddingBottom: 30,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
@@ -313,10 +313,10 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#111827',
+    color: '#06602aff',
   },
   stageValue: {
-    color: '#5a7c59',
+    color: '#06602aff',
   },
   infoSubtext: {
     fontSize: 11,
@@ -426,7 +426,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#7c3aed',
   },
   newBadge: {
-    backgroundColor: '#5a7c59',
+    backgroundColor: '#06602aff',
   },
   badgeText: {
     fontSize: 10,
@@ -546,7 +546,7 @@ const styles = StyleSheet.create({
   howTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#2d5016',
+    color: '#06602aff',
   },
   stepCard: {
     flexDirection: 'row',
@@ -564,7 +564,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: '#5a7c59',
+    backgroundColor: '#06602aff',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -579,7 +579,7 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#2d5016',
+    color: '#06602aff',
     marginBottom: 4,
   },
   stepDesc: {

@@ -148,8 +148,8 @@ export default function HomeScreen({ navigation }) {
             <View style={[styles.featureIcon, { backgroundColor: '#d1fae5' }]}>
               <MaterialCommunityIcons name="leaf" size={40} color="#10b981" />
             </View>
-            <Text style={styles.featureTitle}>Weed Control</Text>
-            <Text style={styles.featureDesc}>Smart management</Text>
+            <Text style={styles.featureTitle}>Weeds Controller</Text>
+            <Text style={styles.featureDesc}>Smart weeds management</Text>
           </Pressable>
         </View>
 
@@ -161,12 +161,13 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.featureTitle}>Harvest Advisory</Text>
             <Text style={styles.featureDesc}>Optimize storage time</Text>
           </Pressable>
-          <Pressable style={[styles.featureCard, styles.featureLarge]} onPress={() => navTo('Pricing', 'pricing')}>
+          <Pressable style={[styles.featureCard, styles.featureLarge]}  onPress={() => navigation.navigate('WeatherForecast')}>
             <View style={[styles.featureIcon, { backgroundColor: '#fee2e2' }]}>
-              <MaterialCommunityIcons name="chart-areaspline" size={40} color="#ef4444" />
+              <MaterialCommunityIcons name="weather-partly-cloudy" size={40} color="#3a6193ff" /> 
+            
             </View>
-            <Text style={styles.featureTitle}>Price Forecast</Text>
-            <Text style={styles.featureDesc}>Market trends</Text>
+            <Text style={styles.featureTitle}>Weather Forecast</Text>
+            <Text style={styles.featureDesc}>weather prediction</Text>
           </Pressable>
         </View>
 
