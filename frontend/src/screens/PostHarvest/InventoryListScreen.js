@@ -1,131 +1,216 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, FlatList, TouchableOpacity, 
-  TextInput, ActivityIndicator, Alert, SafeAreaView, Dimensions 
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+  Alert,
+  SafeAreaView,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient'; // Ensure this is installed
-import { db, auth } from '../../firebase/firebaseConfig'; 
-
-const { width } = Dimensions.get('window');
+import { LinearGradient } from 'expo-linear-gradient';
+import { db, auth } from '../../firebase/firebaseConfig';
 
 export default function InventoryListScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [inventory, setInventory] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
+  const [filtered, setFiltered] = useState([]);
   const [search, setSearch] = useState('');
+  const [locationsMap, setLocationsMap] = useState({});
 
-  useEffect(() => {
-    const unsubscribe = db.collection('harvests')
-      .where('userId', '==', auth.currentUser?.uid) 
-      .orderBy('createdAt', 'desc')
-      .onSnapshot(snapshot => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setInventory(data);
-        setFilteredData(data);
-        setLoading(false);
-      }, error => {
-        console.error("Firestore Error:", error);
-        setLoading(false);
-      });
+  /* ================= LOAD LOCATIONS ================= */
+  const loadLocations = async () => {
+    const snapshot = await db
+      .collection('storageLocations')
+      .where('userId', '==', auth.currentUser?.uid)
+      .get();
 
-    return () => unsubscribe();
-  }, []);
+    const map = {};
+    snapshot.docs.forEach(doc => {
+      map[doc.id] = doc.data();
+    });
 
-  const handleSearch = (text) => {
-    setSearch(text);
-    if (text) {
-      const newData = inventory.filter(item => {
-        const itemData = item.variety ? item.variety.toUpperCase() : '';
-        const textData = text.toUpperCase();
-        return itemData.indexOf(textData) > -1;
-      });
-      setFilteredData(newData);
-    } else {
-      setFilteredData(inventory);
-    }
+    setLocationsMap(map);
   };
 
-  const confirmDelete = (id) => {
-    Alert.alert("Remove Stock", "Delete this record from inventory?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: 'destructive', onPress: () => db.collection('harvests').doc(id).delete() }
+  /* ================= LOAD INVENTORY ================= */
+  useEffect(() => {
+    let unsubscribe;
+
+    (async () => {
+      await loadLocations();
+
+      unsubscribe = db
+        .collection('harvests')
+        .where('userId', '==', auth.currentUser?.uid)
+        .orderBy('createdAt', 'desc')
+        .onSnapshot(snapshot => {
+          const data = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+          }));
+
+          setInventory(data);
+          setFiltered(data);
+          setLoading(false);
+        });
+    })();
+
+    return () => unsubscribe && unsubscribe();
+  }, []);
+
+  /* ================= SEARCH ================= */
+  const handleSearch = text => {
+    setSearch(text);
+    if (!text) return setFiltered(inventory);
+
+    const q = text.toLowerCase();
+    setFiltered(
+      inventory.filter(item =>
+        item.variety?.toLowerCase().includes(q)
+      )
+    );
+  };
+
+  /* ================= DELETE ================= */
+  const confirmDelete = id => {
+    Alert.alert('Delete Stock', 'Remove this batch permanently?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => db.collection('harvests').doc(id).delete(),
+      },
     ]);
   };
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity 
-      activeOpacity={0.9}
-      onLongPress={() => confirmDelete(item.id)}
-    >
-      <LinearGradient 
-        colors={['#064e3b', '#065f46']} 
-        style={styles.headerCard}
+  /* ================= CARD ================= */
+  const renderItem = ({ item }) => {
+    const location = locationsMap[item.locationId];
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.92}
+        onPress={() =>
+          navigation.navigate('StockDetail', { stock: item })
+        }
       >
-        {/* Top Row: Variety and Grade */}
-        <View style={styles.cardHeaderRow}>
-          <View style={styles.iconBadge}>
-            <MaterialCommunityIcons name="rice" size={22} color="#fff" />
+        <LinearGradient
+          colors={['#064e3b', '#022c22']}
+          style={styles.card}
+        >
+          {/* LOCATION BADGE */}
+          <View style={styles.locationBadge}>
+            <MaterialCommunityIcons
+              name="map-marker"
+              size={14}
+              color="#16a34a"
+            />
+            <Text style={styles.locationText}>
+              {location?.locationName || 'Unknown Location'}
+            </Text>
           </View>
-          <View style={styles.gradeIndicator}>
-            <Text style={styles.gradeText}>Grade {item.grade}</Text>
-          </View>
-        </View>
 
-        {/* Center Section: Variety & Quantity */}
-        <Text style={styles.cardLabel}>{item.variety}</Text>
-        <Text style={styles.cardValue}>{item.quantityKg} <Text style={styles.unitText}>KG</Text></Text>
+          {/* HEADER */}
+          <View style={styles.headerRow}>
+            <View style={styles.riceIcon}>
+              <MaterialCommunityIcons
+                name="rice"
+                size={24}
+                color="#fff"
+              />
+            </View>
 
-        {/* Footer Section: Metadata */}
-        <View style={styles.metadataRow}>
-          <View style={styles.metaItem}>
-            <MaterialCommunityIcons name="map-marker" size={14} color="rgba(255,255,255,0.6)" />
-            <Text style={styles.metaText}>{item.location}</Text>
+            <View style={styles.gradePill}>
+              <Text style={styles.gradeText}>
+                Grade {item.grade || 'A'}
+              </Text>
+            </View>
           </View>
-          <View style={styles.vDivider} />
-          <View style={styles.metaItem}>
-            <MaterialCommunityIcons name="calendar-range" size={14} color="rgba(255,255,255,0.6)" />
-            <Text style={styles.metaText}>{item.season}</Text>
-          </View>
-        </View>
 
-        <View style={styles.cardFooter}>
-          <Text style={styles.footerDate}>Harvested: {item.harvestDate}</Text>
-          
-          {/* Action Row */}
+          {/* MAIN */}
+          <Text style={styles.variety}>{item.variety}</Text>
+          <Text style={styles.quantity}>
+            {item.quantityKg}{' '}
+            <Text style={styles.unit}>KG</Text>
+          </Text>
+
+          {/* META */}
+          <View style={styles.metaRow}>
+            <View style={styles.metaItem}>
+              <MaterialCommunityIcons
+                name="calendar-range"
+                size={14}
+                color="rgba(255,255,255,0.6)"
+              />
+              <Text style={styles.metaText}>{item.season}</Text>
+            </View>
+
+            <View style={styles.metaDivider} />
+
+            <View style={styles.metaItem}>
+              <MaterialCommunityIcons
+                name="package-variant"
+                size={14}
+                color="rgba(255,255,255,0.6)"
+              />
+              <Text style={styles.metaText}>{item.bags} Bags</Text>
+            </View>
+          </View>
+
+          {/* ACTIONS */}
           <View style={styles.actionRow}>
-            <TouchableOpacity 
-              onPress={() => navigation.navigate('RegisterHarvest', { editData: item, docId: item.id })}
-              style={styles.circleActionBtn}
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() =>
+                navigation.navigate('RegisterHarvest', {
+                  editData: item,
+                  docId: item.id,
+                })
+              }
             >
-              <MaterialCommunityIcons name="pencil" size={18} color="#fff" />
+              <MaterialCommunityIcons
+                name="pencil-outline"
+                size={18}
+                color="#fff"
+              />
             </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => confirmDelete(item.id)} 
-              style={[styles.circleActionBtn, { backgroundColor: 'rgba(225, 29, 72, 0.3)' }]}
+
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.deleteBtn]}
+              onPress={() => confirmDelete(item.id)}
             >
-              <MaterialCommunityIcons name="trash-can" size={18} color="#fff" />
+              <MaterialCommunityIcons
+                name="trash-can-outline"
+                size={18}
+                color="#fff"
+              />
             </TouchableOpacity>
           </View>
-        </View>
-      </LinearGradient>
-    </TouchableOpacity>
-  );
+        </LinearGradient>
+      </TouchableOpacity>
+    );
+  };
 
+  /* ================= UI ================= */
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.searchHeader}>
-        <Text style={styles.screenTitle}>Stock Inventory</Text>
+        <Text style={styles.title}>Rice Inventory</Text>
         <View style={styles.searchBar}>
-          <MaterialCommunityIcons name="magnify" size={22} color="#64748b" />
+          <MaterialCommunityIcons
+            name="magnify"
+            size={20}
+            color="#64748b"
+          />
           <TextInput
             placeholder="Search variety..."
-            style={styles.searchInput}
             value={search}
             onChangeText={handleSearch}
+            style={styles.searchInput}
           />
         </View>
       </View>
@@ -136,102 +221,165 @@ export default function InventoryListScreen({ navigation }) {
         </View>
       ) : (
         <FlatList
-          data={filteredData}
-          renderItem={renderItem}
+          data={filtered}
           keyExtractor={item => item.id}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
+          renderItem={renderItem}
+          contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="database-off" size={60} color="#cbd5e1" />
-              <Text style={styles.emptyText}>No stocks found.</Text>
+            <View style={styles.empty}>
+              <MaterialCommunityIcons
+                name="database-off"
+                size={60}
+                color="#cbd5e1"
+              />
+              <Text style={styles.emptyText}>
+                No rice stocks found
+              </Text>
             </View>
           }
         />
       )}
-      
-      <TouchableOpacity 
-        style={styles.fab} 
+
+      {/* FAB */}
+      <TouchableOpacity
+        style={styles.fab}
         onPress={() => navigation.navigate('RegisterHarvest')}
       >
-        <MaterialCommunityIcons name="plus" size={32} color="#fff" />
+        <MaterialCommunityIcons name="plus" size={30} color="#fff" />
       </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
+/* ================= STYLES ================= */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fcfcfc' },
+  container: { flex: 1, backgroundColor: '#f8fafc' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  searchHeader: { padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  screenTitle: { fontSize: 22, fontWeight: 'bold', color: '#1e293b', marginBottom: 15 },
-  searchBar: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#f1f5f9', 
-    paddingHorizontal: 15, 
-    borderRadius: 15, 
-    height: 50 
-  },
-  searchInput: { flex: 1, marginLeft: 10, fontSize: 16, color: '#1e293b' },
-  listContent: { padding: 20, paddingBottom: 100 },
 
-  // Updated Premium Card Style (Matching Dashboard Header)
-  headerCard: { 
-    width: '100%', 
-    borderRadius: 24, 
-    padding: 20, 
+  searchHeader: {
+    backgroundColor: '#fff',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  title: { fontSize: 22, fontWeight: '800', color: '#1e293b' },
+
+  searchBar: {
+    flexDirection: 'row',
+    backgroundColor: '#f1f5f9',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    height: 48,
+    marginTop: 14,
+  },
+  searchInput: { flex: 1, marginLeft: 10, fontSize: 16 },
+
+  card: {
+    borderRadius: 24,
+    padding: 20,
     marginBottom: 20,
     elevation: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
   },
-  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  iconBadge: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  gradeIndicator: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10 },
-  gradeText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
-  
-  cardLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: '600', textTransform: 'uppercase' },
-  cardValue: { color: '#fff', fontSize: 32, fontWeight: 'bold', marginTop: 2 },
-  unitText: { fontSize: 16, fontWeight: '400', color: 'rgba(255,255,255,0.7)' },
 
-  metadataRow: { flexDirection: 'row', alignItems: 'center', marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
+  locationBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ecfdf5',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  locationText: {
+    marginLeft: 4,
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#065f46',
+  },
+
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  riceIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  gradePill: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  gradeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+
+  variety: {
+    color: '#d1fae5',
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  quantity: {
+    color: '#fff',
+    fontSize: 34,
+    fontWeight: '900',
+  },
+  unit: { fontSize: 16, color: '#bbf7d0' },
+
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 14,
+  },
   metaItem: { flexDirection: 'row', alignItems: 'center' },
-  metaText: { color: '#fff', fontSize: 13, marginLeft: 5, fontWeight: '500' },
-  vDivider: { width: 1, height: 15, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: 15 },
-
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15 },
-  footerDate: { color: 'rgba(255,255,255,0.5)', fontSize: 11 },
-  
-  actionRow: { flexDirection: 'row' },
-  circleActionBtn: { 
-    width: 38, 
-    height: 38, 
-    borderRadius: 19, 
-    backgroundColor: 'rgba(255,255,255,0.15)', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    marginLeft: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)'
+  metaText: { marginLeft: 6, color: '#fff', fontSize: 13 },
+  metaDivider: {
+    width: 1,
+    height: 14,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    marginHorizontal: 14,
   },
 
-  fab: { 
-    position: 'absolute', 
-    bottom: 30, 
-    right: 25, 
-    backgroundColor: '#16a34a', 
-    width: 65, 
-    height: 65, 
-    borderRadius: 32.5, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
+  actionRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 18,
+  },
+  actionBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 12,
+  },
+  deleteBtn: {
+    backgroundColor: 'rgba(239,68,68,0.4)',
+  },
+
+  fab: {
+    position: 'absolute',
+    right: 24,
+    bottom: 30,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#16a34a',
+    justifyContent: 'center',
+    alignItems: 'center',
     elevation: 10,
-    shadowColor: '#16a34a',
-    shadowOpacity: 0.4,
-    shadowRadius: 10 
   },
-  emptyContainer: { alignItems: 'center', marginTop: 100 },
-  emptyText: { color: '#94a3b8', marginTop: 15, fontSize: 16 }
+
+  empty: { alignItems: 'center', marginTop: 120 },
+  emptyText: { marginTop: 12, fontSize: 16, color: '#94a3b8' },
 });

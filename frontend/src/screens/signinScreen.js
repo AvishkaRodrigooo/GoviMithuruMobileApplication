@@ -1,95 +1,91 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
   Alert,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
-  ScrollView
+  ScrollView,
+  ActivityIndicator,
 } from 'react-native';
-import { auth, db } from '../firebase/firebaseConfig';
+import { auth } from '../firebase/firebaseConfig';
 
 const SignInScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // ================= SIGN IN =================
   const handleSignIn = async () => {
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email');
+      Alert.alert('Validation Error', 'Please enter your email');
       return;
     }
 
     if (!password.trim()) {
-      Alert.alert('Error', 'Please enter your password');
+      Alert.alert('Validation Error', 'Please enter your password');
       return;
     }
 
     setLoading(true);
 
     try {
-      // 🔐 Firebase login
-      const userCredential = await auth.signInWithEmailAndPassword(email.trim(), password);
-      const user = userCredential.user;
+      // 🔐 Firebase Authentication
+      await auth.signInWithEmailAndPassword(email.trim(), password);
 
-      // 🔍 Firestore role check
-      const userSnap = await db.collection('users').doc(user.uid).get();
-
-      if (!userSnap.exists) {
-        Alert.alert('Error', 'User data not found');
-        await auth.signOut(); // Sign out if no user data
-        return;
-      }
-
-      const userData = userSnap.data();
-      const role = userData.role;
-
-      // 🧭 Navigate based on role
-      if (role === 'admin') {
-        navigation.replace('AdminDashboard');
-      } else {
-        navigation.replace('Home');
-      }
+      // ✅ REMOVED manual navigation - App.js handles it automatically
+      // The onAuthStateChanged listener in App.js will detect the sign-in
+      // and show the appropriate screen based on the user's role
 
     } catch (error) {
-      console.error('Login error:', error);
-      
-      let errorMessage = 'Login failed. Please try again.';
-      if (error.code === 'auth/user-not-found') {
-        errorMessage = 'User not found. Please check your email.';
-      } else if (error.code === 'auth/wrong-password') {
-        errorMessage = 'Incorrect password. Please try again.';
-      } else if (error.code === 'auth/invalid-email') {
-        errorMessage = 'Invalid email address.';
-      } else if (error.code === 'auth/network-request-failed') {
-        errorMessage = 'Network error. Please check your internet connection.';
+      console.log('Sign in error:', error);
+
+      let message = 'Login failed. Please try again.';
+
+      switch (error.code) {
+        case 'auth/user-not-found':
+          message = 'No account found with this email.';
+          break;
+        case 'auth/wrong-password':
+          message = 'Incorrect password.';
+          break;
+        case 'auth/invalid-email':
+          message = 'Invalid email address.';
+          break;
+        case 'auth/network-request-failed':
+          message = 'Network error. Please check your connection.';
+          break;
+        case 'auth/too-many-requests':
+          message = 'Too many attempts. Try again later.';
+          break;
       }
-      
-      Alert.alert('Login Failed', errorMessage);
+
+      Alert.alert('Login Failed', message);
     } finally {
       setLoading(false);
     }
   };
 
+  // ================= UI =================
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.innerContainer}>
-          
-          {/* Logo/Header Section */}
+
+          {/* ---------- HEADER ---------- */}
           <View style={styles.header}>
             <Text style={styles.appName}>GoviMithuru</Text>
             <Text style={styles.welcomeText}>Welcome Back!</Text>
             <Text style={styles.subtitle}>Sign in to continue</Text>
           </View>
-          
-          {/* Input Section */}
+
+          {/* ---------- FORM ---------- */}
           <View style={styles.formContainer}>
             <TextInput
               style={styles.input}
@@ -101,7 +97,7 @@ const SignInScreen = ({ navigation }) => {
               autoCorrect={false}
               placeholderTextColor="#999"
             />
-            
+
             <TextInput
               style={styles.input}
               placeholder="Password"
@@ -110,58 +106,66 @@ const SignInScreen = ({ navigation }) => {
               secureTextEntry
               placeholderTextColor="#999"
             />
-            
+
             {/* Forgot Password */}
             <TouchableOpacity style={styles.forgotPasswordContainer}>
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
-            
+
             {/* Sign In Button */}
-            <TouchableOpacity 
-              style={[styles.signInButton, loading && styles.disabledButton]} 
+            <TouchableOpacity
+              style={[styles.signInButton, loading && styles.disabledButton]}
               onPress={handleSignIn}
               disabled={loading}
             >
-              <Text style={styles.signInButtonText}>
-                {loading ? 'Signing In...' : 'Sign In'}
-              </Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.signInButtonText}>Sign In</Text>
+              )}
             </TouchableOpacity>
-            
+
             {/* Divider */}
             <View style={styles.dividerContainer}>
               <View style={styles.divider} />
               <Text style={styles.dividerText}>OR</Text>
               <View style={styles.divider} />
             </View>
-            
-            {/* Create Account Button */}
-            <TouchableOpacity 
-              style={styles.createAccountButton} 
+
+            {/* Create Account */}
+            <TouchableOpacity
+              style={styles.createAccountButton}
               onPress={() => navigation.navigate('SignUp')}
             >
-              <Text style={styles.createAccountButtonText}>Create New Account</Text>
+              <Text style={styles.createAccountButtonText}>
+                Create New Account
+              </Text>
             </TouchableOpacity>
-            
+
             {/* Footer */}
             <View style={styles.footer}>
-              <Text style={styles.footerText}>Don't have an account? </Text>
+              <Text style={styles.footerText}>Don't have an account?</Text>
               <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-                <Text style={styles.signUpLink}>Sign Up</Text>
+                <Text style={styles.signUpLink}> Sign Up</Text>
               </TouchableOpacity>
             </View>
           </View>
-          
-          {/* App Info */}
+
+          {/* ---------- APP INFO ---------- */}
           <View style={styles.appInfo}>
             <Text style={styles.appInfoText}>GoviMithuru App</Text>
             <Text style={styles.versionText}>2025</Text>
           </View>
+
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 };
 
+export default SignInScreen;
+
+// ================= STYLES =================
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -189,11 +193,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 5,
   },
   subtitle: {
     fontSize: 16,
     color: '#666',
+    marginTop: 4,
   },
   formContainer: {
     marginBottom: 30,
@@ -277,7 +281,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#16a34a',
     fontWeight: 'bold',
-    marginLeft: 5,
   },
   appInfo: {
     position: 'absolute',
@@ -289,12 +292,9 @@ const styles = StyleSheet.create({
   appInfoText: {
     fontSize: 14,
     color: '#999',
-    marginBottom: 5,
   },
   versionText: {
     fontSize: 12,
     color: '#ccc',
   },
 });
-
-export default SignInScreen;
