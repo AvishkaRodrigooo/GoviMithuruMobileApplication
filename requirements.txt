@@ -1,0 +1,17 @@
+fastapi
+uvicorn
+python-dotenv
+pandas
+numpy
+scikit-learn
+tensorflow-cpu==2.15.0
+keras
+joblib
+requests
+sqlalchemy
+twilio
+firebase-admin
+apscheduler
+flask
+flask-cors
+
