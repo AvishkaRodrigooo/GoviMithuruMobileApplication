@@ -75,6 +75,12 @@ system overview
 
 https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication/blob/82d4b24d7e3f7d48ada594edc49968a9624574f1/image%20(1).png
 
+system demo 
+
+https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication/blob/2eb4d00db172f6ede5cb85bcc0537ec08cd5c81e/function%20demo.gif
+
+backend start: python app.py
+Frontend start: npx expo start
 
 
 
