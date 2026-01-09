@@ -11,6 +11,10 @@ import HomeScreen from './src/screens/homeScreen';
 import ProfileScreen from './src/screens/profileScreen';
 
 
+// Pest Forcasting
+
+import PestPredictionHomeScreen from './src/screens/pestforecast/pestpredictionhomescreen';
+
 import StageIdentificationScreen from './src/screens/weedsDetection/StageIdentificationScreen';
 import weesDashboardScreen from './src/screens/weedsDetection/weedsdashboard';
 import WeedIdentifyScreen from './src/screens/weedsDetection/weedIdentifyScreen';
@@ -101,8 +105,14 @@ export default function App() {
         <Stack.Screen name="weedsDashboard" component={weesDashboardScreen} options={{ title: 'Weeds Dashboard' }} />
 
 
-         <Stack.Screen name="Pest" component={PricingForecastScreen} options={{ title: 'Pest Forecast' }} />
+         
         <Stack.Screen name="Pricing" component={PricingForecastScreen} options={{ title: 'Price Forecast' }} />
+
+        {/* pest forcasting */}
+
+        <Stack.Screen name="PestHome" component={PestPredictionHomeScreen} options={{ title: 'Pest Forecasting' }}
+/>
+
  </>
         ) : (
           // User is NOT signed in - show auth screens
