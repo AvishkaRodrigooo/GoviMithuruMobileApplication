@@ -79,7 +79,7 @@ system demo
 
 https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication/blob/2eb4d00db172f6ede5cb85bcc0537ec08cd5c81e/function%20demo.gif
 
-Git repo of pest- forcasting system  :
+Git repo of for pest- forcasting system  : https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication.git
 
 backend start: python app.py
 Frontend start: npx expo start
