@@ -42,8 +42,7 @@ Project Structure (Monorepo)
 
 
 ScreenMind/
-├── ScreenMindApp/        # 📱 React Native Frontend + Sensors
-├── backend-node/         # ⚙️ API Gateway & Logic Layer
+├── ...dApp/        # 📱 React Native Frontend + Sensors
 ├── backend-python/       # 🧠 AI/ML Inference Service
 ├── .gitignore            # Configuration
 └── README.md             # Documentation
