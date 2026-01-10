@@ -132,6 +132,32 @@ const HerbicideScreen = ({ navigation }) => {
             Select the appropriate herbicide type for your specific weed control needs
           </Text>
         </Animated.View>
+{/* Shop Buttons */}
+<View style={styles.shopButtonsContainer}>
+  <Pressable
+    style={[styles.shopButton, styles.agroButton]}
+    onPress={() => navigation.navigate('AgroShop')}
+  >
+    <MaterialCommunityIcons name="storefront" size={18} color="#fff" />
+    <Text style={styles.shopButtonText}>Agro Shop</Text>
+  </Pressable>
+
+  <Pressable
+    style={[styles.shopButton, styles.farmButton]}
+    onPress={() => navigation.navigate('FarmShop')}
+  >
+    <MaterialCommunityIcons name="tractor" size={18} color="#fff" />
+    <Text style={styles.shopButtonText}>Farm Shop</Text>
+  </Pressable>
+
+  <Pressable
+    style={[styles.shopButton, styles.fertilizerButton]}
+    onPress={() => navigation.navigate('FertilizerShop')}
+  >
+    <MaterialCommunityIcons name="sack" size={18} color="#fff" />
+    <Text style={styles.shopButtonText}>Fertilizer Shop</Text>
+  </Pressable>
+</View>
 
         {/* Herbicide Types Section */}
         <View style={styles.sectionHeader}>
@@ -261,6 +287,43 @@ const styles = StyleSheet.create({
   headerContent: {
     flex: 1,
   },
+  shopButtonsContainer: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  paddingHorizontal: 20,
+  marginTop: 20,
+  gap: 10,
+},
+
+shopButton: {
+  flex: 1,
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  paddingVertical: 12,
+  borderRadius: 10,
+  gap: 6,
+  elevation: 2,
+},
+
+agroButton: {
+  backgroundColor: '#58956eff',
+},
+
+farmButton: {
+  backgroundColor: '#4f6085ff',
+},
+
+fertilizerButton: {
+  backgroundColor: '#a08cb3ff',
+},
+
+shopButtonText: {
+  color: '#ffffff',
+  fontSize: 13,
+  fontWeight: '700',
+},
+
   headerTitle: {
     fontSize: 24,
     fontWeight: '700',

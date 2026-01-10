@@ -103,7 +103,7 @@ export default function WeedIdentifyScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>🌱 Weed Scanner</Text>
+        <Text style={styles.title}>🌱 Weeds Scanner</Text>
         <Text style={styles.subtitle}>Take a photo to identify weeds in your field</Text>
       </View>
 
@@ -144,7 +144,7 @@ export default function WeedIdentifyScreen() {
 
         {showResults && (
           <View style={styles.resultBox}>
-            <Text style={styles.resultTitle}>✅ Weed Detection Complete</Text>
+            <Text style={styles.resultTitle}>✅ Weeds Detection Complete</Text>
 
             <View style={styles.summaryCards}>
               <View style={styles.summaryCard}>
