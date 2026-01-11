@@ -1,119 +1,316 @@
-# GoviMithuruMobileApplication
-An AI-powered platform providing Sri Lankan paddy farmers with personalized guidance throughout the entire cultivation lifecycle. 
+# 🌾 PaddyLife AI  
+*An AI-Driven Platform Guiding Paddy Farmers Across the Full Cultivation Lifecycle*
 
-🔗GitHub Repository:
-https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication
+🔗 GitHub Repository: https://github.com/your-username/PaddyLife-AI-25-26J-242.git
 
-Project Overview
+## 1️⃣ Project Overview
 
-📌 Project Title
-GoviMithuru: AI-Driven Platform Guidong Paddy Farmers Across The Full Cultivation Lifecycle
+### 📌 Project Title  
+*PaddyLife AI: An AI-Driven Platform Guiding Paddy Farmers Across the Full Cultivation Lifecycle*
 
-Research Problem
+### 🧩 Problem Domain, Research Purpose & Motivation
 
-•Inefficient & Reactive Farming: Farmers rely on outdated methods and intuition, making them vulnerable to climate change, pests, and diseases, which leads to inconsistent yields and resource waste.
-•Critical Knowledge Gaps: There is a significant lack of access to real-time, hyper-local advisory services for crucial decisions like pest control, weed identification, optimal harvesting time, and proper storage techniques.
-•High Post-Harvest Losses: Significant economic losses occur after harvest due to poor timing, inadequate drying methods in unpredictable weather, and insufficient storage solutions against pests and spoilage.
-•Barriers to Technology Adoption: Complex and expensive modern solutions are inaccessible to smallholder farmers, compounded by a lack of personalized guidance for new farmers, hindering the sector's modernization and sustainability.
+Paddy farming is the backbone of Sri Lanka’s agricultural sector, yet farmers face numerous challenges that threaten productivity, sustainability, and livelihoods. These include outdated farming practices, limited access to real-time data, climate variability, pest outbreaks, inefficient nutrient use, and post-harvest losses. Many smallholder farmers lack modern tools, actionable insights, and access to technologies commonly used in other countries, leading to inconsistent yields, resource inefficiency, and economic hardship.
 
-Research Main Objective
+The primary purpose of this research is to develop an **integrated, AI-powered agricultural support platform** that guides paddy farmers through every stage of cultivation—from planning to post-harvest. By leveraging machine learning, computer vision, predictive analytics, and real-time field data, the system aims to:
 
-•To design and develop an integrated, AI-driven web platform that provides Sri Lankan paddy farmers with data-guided decision-making support across the entire cultivation lifecycle, aiming to increase productivity, profitability, and resilience against climate and pest risks.
-Specific Sub-Objectives & Components
-•Pest Attack Forecasting: To predict outbreaks using ML models on historical and real-time weather, crop stage, and pest data, sending proactive alerts to farmers.
-•AI-Powered Weed Detection: To accurately identify weed species in real-time using a smartphone camera and computer vision, providing tailored removal guidance.
-•Smart Harvest & Post-Harvest Advisor: To determine the optimal harvest time using crop maturity and weather data, and provide science-based storage and selling recommendations to minimize losses.
-•Crop Establishment Planner: To assist new farmers by recommending suitable paddy varieties and generating a personalized cultivation calendar based on their specific field's soil, climate, and market data. 
+- Provide hyper-local pest and disease forecasts
+- Enable real-time weed detection and management
+- Assist in crop planning and input optimization
+- Advise on optimal harvest timing and post-harvest handling
+- Improve decision-making, reduce losses, and enhance farmer livelihoods
 
+A core focus of *PaddyLife AI* is **accessibility and localization**. The platform is designed for smallholder and new-generation farmers in Sri Lanka, offering tailored, data-driven recommendations that align with local conditions, crop varieties, and farming practices.
 
-Overall System Diagram
+---
 
-i[image alt](https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication/blob/1523e0858ebf2ea0262a57214162b6c9439cf4d9/image.png)
+## 🔬 Research Components & AI Models
 
-1.Pest Forcasting System  
+The system is powered by four specialized AI modules designed to address key challenges in paddy farming.
 
-RESEARCH GAP & PROBLEM
-Traditional pest forecasting in Sri Lanka relies on seasonal calendars, farmer experience, and manual scouting – reactive, time-consuming, and inaccurate.
-Existing systems are rule-based or weather-only models, failing to adapt to changing climate conditions, pest diversity, and local farming contexts not based on paddy type.
-Farmers lack real-time, localized, and actionable predictions, leading to delayed detection, overuse of pesticides, reduced yields, and financial loss.
+### 1️⃣ Pest Attack Forecasting
 
-Shortcomings of Existing Systems
+* *Focus:* Early detection and prediction of pest outbreaks.
+* *Data Sources:* Historical weather data, crop growth stages, pest incidence records, soil conditions, humidity levels.
+* *AI Technique:* **Machine Learning models** (e.g., Random Forest, LSTM) trained on multimodal data to provide dynamic, location-specific pest alerts.
 
-Depend on seasonal calendars and farmer intuition → delayed pest detection. 
-Rule-based / weather-only models → cannot adapt to climate variability & pest diversity. 
-Manual data collection → time-consuming, labor-intensive, not scalable. 
-Lack of real-time forecasting & actionable insights → excessive pesticide use, crop loss. 
+### 2️⃣ AI-Powered Weed Detection & Removal Guidance
 
-SOLUTION
+* *Focus:* Accurate identification and management of weed species.
+* *Data Sources:* Mobile camera images, local weed-crop datasets, weather conditions.
+* *AI Technique:* **Computer Vision & Edge-optimized models** for real-time, pixel-level weed segmentation and species recognition.
 
-• Multimodal data fusion (weather, soil, crop stage, pest history,farmer images).
-• Adaptive AI Models (XG Boost Random Forest) enabling continuous learning and improved predictions.
-• Farmer participation via pest image uploads & field reports.
-• Real-time mobile alerts with  risk prediction, actionable recommendations.
+### 3️⃣ Smart Harvest & Post-Harvest Advisor
 
-Evidences for Completion
+* *Focus:* Optimizing harvest timing and reducing post-harvest losses.
+* *Data Sources:* NDVI, GDD, hyperlocal weather forecasts, market prices, storage conditions.
+* *AI Technique:* **Regression models & Time-series analysis** to predict ideal harvest windows and provide storage/packaging recommendations.
 
-•Functional AI Model: A trained and validated machine learning model file (e.g., .h5, .pkl) demonstrating high accuracy on test datasets for pest prediction.
-•Integrated System Module: Source code (e.g., GitHub repository) showing the integrated forecasting module within the larger platform, including API endpoints for data ingestion and alert generation.
-•Working Prototype: Screenshots or a video demonstration of the mobile interface showcasing
-•A dashboard displaying pest risk forecasts and maps.
-•Notifications (in-app or SMS) being triggered.
-•Dataset: The curated dataset of Sri Lankan pest images, weather, and soil data used for training and testing the model.
+### 4️⃣ Crop Establishment Planner for New Farmers
 
-Future work
-•Pest image data set processing.
-•Heat Map for pest in dashboard 
-•Pest library 
-Furthermore Testing 
+* *Focus:* Assisting new and smallholder farmers in crop selection and planning.
+* *Data Sources:* Soil data, rainfall patterns, market trends, farmer experience level.
+* *AI Technique:* **GIS integration, Simulation models (DSSAT), & Recommendation systems** to generate personalized planting calendars and profitability simulations.
 
-Git repo of for pest- forcasting system  : (https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication/tree/hashani-pest)
+---
 
-backend start: python app.py
-Frontend start: npx expo start
+### 🎯 Main Objectives
 
-2. AI-Powered Weed Detection:   
-4.Smart Harvest & Post-Harvest Advisor
-5. Crop Establishment Planner
+The primary objectives of *PaddyLife AI* are to:
 
+- Develop an end-to-end AI-driven platform for paddy farming support
+- Enable proactive pest and disease management through predictive analytics
+- Provide real-time weed detection and removal strategies
+- Optimize harvest timing and post-harvest handling to minimize losses
+- Assist new farmers with data-driven crop planning and input management
+- Enhance productivity, profitability, and climate resilience in Sri Lankan paddy farming
 
-<img width="774" height="888" alt="SystemDiagram" src="https://github.com/user-attachments/assets/09b56f08-1fa2-4436-ba75-0428401f4dea" />
+---
 
+### 👥 Target Users / Stakeholders
 
- 👥 Target Users / Stakeholders
+- Smallholder and new-generation paddy farmers in Sri Lanka
+- Agricultural cooperatives and extension services
+- Agri-tech researchers and developers
+- Policy makers and agricultural development organizations
 
+---
 
-System Architecture
+### ⚙ High-Level System Functionality
 
- Architecture Overview
+At a high level, PaddyLife AI:
 
+1. Collects field data via mobile inputs, sensors, and satellite feeds
+2. Processes data using AI/ML models for pest, weed, and harvest insights
+3. Delivers personalized recommendations via a web-based dashboard
+4. Supports farmer decision-making across the full cultivation lifecycle
+5. Continuously learns from farmer feedback and field reports
 
- Frontend – Mobile Application (ScreenMindApp)
+---
 
- AI / ML Backend (backend-python)
+## System Architecture
 
-Database & Storage
+### 🏗 Architecture Overview
 
+PaddyLife AI follows a **web-based, modular architecture** consisting of:
 
-Data Flow Between Components
+- A **responsive web frontend** for farmer interaction and visualization
+- A **backend API layer** for data management and business logic
+- **AI/ML services** for predictive modeling and image analysis
+- **Geospatial and weather data integration** for contextual insights
 
+> 📌 *Architecture Diagram*
+>
+![System Architecture](https://via.placeholder.com/800x400.png?text=PaddyLife+AI+System+Architecture)
 
-Project Structure (Monorepo)
+---
 
+### 🧩 Frontend – Web Dashboard
 
-ScreenMind/
-├── ...dApp/        # 📱 React Native Frontend + Sensors
-├── backend-python/       # 🧠 AI/ML Inference Service
-├── .gitignore            # Configuration
-└── README.md             # Documentation
+*Technology Stack*
 
-▶️ How to Run the Project
+- React.js / Vue.js
+- Tailwind CSS / Bootstrap
+- Chart.js for visualizations
 
-📌 Prerequisites
-Ensure the following software is installed on your system:
+*Responsibilities*
 
-Node.js (v18+ recommended)
-npm
-Python (v3.9+ recommended)
-Android Studio (for Android emulator)
-Java JDK 17 (for Android builds)
-Firebase Project (Authentication + Firestore enabled)
+- User authentication and profile management
+- Dashboard for pest alerts, weed detection, crop planning, and harvest advice
+- Image upload for weed identification
+- Interactive farming calendar and input planner
+- Real-time notifications and alerts
+
+---
+
+### 🌐 Backend – API & Data Layer
+
+*Technology Stack*
+
+- Node.js / Python (FastAPI/Django)
+- PostgreSQL / MongoDB
+- Firebase / AWS for storage
+
+*Responsibilities*
+
+- User and farm management
+- Data aggregation from weather APIs, satellite feeds, and farmer inputs
+- Communication with AI/ML services
+- Storage of pest, weed, crop, and market data
+- Generation of reports and insights
+
+---
+
+### 🤖 AI / ML Services
+
+*Technology Stack*
+
+- Python
+- TensorFlow / PyTorch
+- OpenCV for image processing
+- Scikit-learn for traditional ML models
+
+*Responsibilities*
+
+- Pest forecasting using historical and real-time data
+- Weed detection via computer vision models
+- Harvest timing prediction using NDVI/GDD and weather data
+- Crop recommendation and profitability simulation
+- Model retraining based on farmer feedback
+
+---
+
+### 🗄 Database & External Integrations
+
+*Primary Database*
+
+- Stores farmer profiles, farm details, pest/weed records, harvest logs, and AI predictions.
+
+*External Data Sources*
+
+- Weather APIs (e.g., OpenWeatherMap)
+- Satellite data (e.g., Sentinel Hub for NDVI)
+- Market price feeds
+- Soil and land data via GIS services
+
+---
+
+### 🔄 Data Flow Between Components
+
+1. Farmer interacts with the **web dashboard**
+2. Field data (images, logs) sent to backend
+3. Backend processes and routes data to relevant AI services
+4. AI models return predictions (pest risk, weed ID, harvest advice)
+5. Backend stores results and pushes alerts to frontend
+6. Farmer receives actionable insights and recommendations
+
+---
+
+## 🏗 Project Structure (Monorepo)
+
+```bash
+PaddyLife-AI/
+├── frontend/                 # 🌐 Web Dashboard
+├── backend-api/              # ⚙ Node.js/Python Backend
+├── ai-services/              # 🧠 Python AI/ML Models
+│   ├── pest-forecasting/
+│   ├── weed-detection/
+│   ├── harvest-advisor/
+│   └── crop-planner/
+├── database/                 # 🗄 SQL/NoSQL Schemas & Scripts
+├── docs/                     # 📖 Documentation
+└── README.md                 # 🏠 Project Overview
+```
+
+---
+
+## ▶ How to Run the Project
+
+### 📌 Prerequisites
+
+Ensure the following are installed:
+
+- Node.js (v16+)
+- Python (v3.9+)
+- PostgreSQL / MongoDB
+- Git
+
+---
+
+### 🌐 1. Run the Backend API
+
+```bash
+cd backend-api
+npm install
+# or pip install -r requirements.txt (if Python)
+```
+
+Create a `.env` file:
+
+```env
+PORT=5000
+DB_URI=your_database_uri
+WEATHER_API_KEY=your_key
+```
+
+Start the server:
+
+```bash
+npm start
+# or python app.py
+```
+
+---
+
+### 🖥 2. Run the Frontend
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+Access the dashboard at:
+
+```
+http://localhost:3000
+```
+
+---
+
+### 🤖 3. Run AI Services
+
+Each AI module can be run independently:
+
+```bash
+cd ai-services/pest-forecasting
+python train_model.py
+python serve_model.py
+```
+
+Repeat for other modules as needed.
+
+---
+
+## 🔐 Privacy & Ethical Considerations
+
+- Farmer data is anonymized and stored securely
+- Consent is obtained before data collection
+- Farmers retain ownership of their data
+- Models are trained on locally relevant datasets
+- System promotes sustainable and eco-friendly farming practices
+
+---
+
+## 📊 Expected Outcomes
+
+- Increased paddy yield and farmer income
+- Reduced pesticide and fertilizer misuse
+- Lower post-harvest losses
+- Enhanced climate resilience
+- Empowered farmers through accessible technology
+
+---
+
+## 👨‍💻 Contributors
+
+*PaddyLife AI Research Group*  
+**Centre of Excellence for AI (CoEAI), SLIIT**
+
+- **IT22906762 Thambugala T.G.H.D** – Pest Attack Forecasting  
+- **IT22364074 Rodrigo K.A.A.L** – AI-Powered Weed Detection  
+- **IT22339942 Dilakshan K** – Smart Harvest & Post-Harvest Advisor  
+- **IT22330932 Wijesinghe M.D.C.M** – Crop Establishment Planner
+
+**Supervisors:**  
+- Mrs. Lokesha Weerasinghe (Senior Lecturer)  
+- Ms. Shalini Rupasinghe (Assistant Lecturer)  
+- External Advisor – Department of Agricultural Development
+
+---
+
+## 📄 License
+
+This project is developed for **academic and research purposes** under SLIIT regulations.
+
+---
