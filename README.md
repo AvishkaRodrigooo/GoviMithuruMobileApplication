@@ -66,7 +66,7 @@ Future work
 •Pest library 
 Furthermore Testing 
 
-Git repo of for pest- forcasting system  : https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication.git
+Git repo of for pest- forcasting system  : (https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication/tree/hashani-pest)
 
 backend start: python app.py
 Frontend start: npx expo start
