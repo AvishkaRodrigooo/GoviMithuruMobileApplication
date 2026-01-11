@@ -181,24 +181,21 @@ Ensure the following are installed:
 ### 🌐 1. Run the Backend API
 
 ```bash
-cd backend-api
-npm install
-# or pip install -r requirements.txt (if Python)
+cd flaskBackend
+pip install -r requirements.txt 
 ```
 
 Create a `.env` file:
 
 ```env
 PORT=5000
-DB_URI=your_database_uri
-WEATHER_API_KEY=your_key
+OPENWEATHER_API_KEY=31b23f0bd17fc2b435c7ac3ec401d02a
 ```
 
 Start the server:
 
 ```bash
-npm start
-# or python app.py
+python app.py
 ```
 
 ---
@@ -208,28 +205,14 @@ npm start
 ```bash
 cd frontend
 npm install
-npm start
+npx expo start
 ```
 
 Access the dashboard at:
 
 ```
-http://localhost:3000
+http://localhost:5000
 ```
-
----
-
-### 🤖 3. Run AI Services
-
-Each AI module can be run independently:
-
-```bash
-cd ai-services/pest-forecasting
-python train_model.py
-python serve_model.py
-```
-
-Repeat for other modules as needed.
 
 ---
 
@@ -237,7 +220,7 @@ Repeat for other modules as needed.
 
 ### **Accuracy Targets:**
 - **Pest Forecasting:** >85% accuracy in outbreak prediction
-- **Weed Detection:** >85% accuracy in species identification
+- **Weeds Detection:** >85% accuracy in species identification
 - **Post-Harvest:** 89.2% accuracy in storage optimization
 - **Crop Planning:** 80-90% accuracy in soil classification
 
@@ -278,7 +261,7 @@ Repeat for other modules as needed.
 
 ### **Research Group:**
 - **IT22906762** - Thambugala T.G.H.D (Pest Forecasting)
-- **IT22364074** - Rodrigo K.A.A.L (Weed Detection)
+- **IT22364074** - Rodrigo K.A.A.L (Weeds Detection and stages identification)
 - **IT22339942** - Dilakshan K (Post-Harvest Advisor)
 - **IT22330932** - Wijesinghe M.D.C.M (Crop Establishment Planner)
 
