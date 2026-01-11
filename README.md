@@ -120,53 +120,17 @@ ystem Diagram**
 ## 🏗 Project Structure (Monorepo)
 
 ```bash
-PaddyLife-AI/
-├── frontend/                 # 🌐 Web Dashboard
-├── flaskBackend/              # ⚙ Node.js/Python Backend
-├── ai-services/              # 🧠 Python AI/ML Models
+PaddyLife-AI/                
+├── flaskBackend/              # ⚙ Python Backend  # 🧠 Python AI/ML Models
+├── frontend/                  # 🌐 Web Dashboard
 │   ├── pest-forecasting/
-│   ├── weed-detection/
+│   ├── weeds-detection/
 │   ├── harvest-advisor/
-│   └── crop-planner/
-├── database/                 # 🗄 SQL/NoSQL Schemas & Scripts
-├── docs/                     # 📖 Documentation
+│   └── crop-planner/                   
 └── README.md                 # 🏠 Project Overview
 ```
 
 ---
-
-GOVIMITHURUMOBILEAPPLICATION/
-├── .expo/ # Expo project config & cache
-├── .git/ # Git repository
-├── flaskBackend/ # Flask backend API
-│
-├── frontend/ # React Native frontend
-│ ├── .expo/ # Expo internal files
-│ ├── assets/ # Images, icons, fonts
-│ ├── node_modules/ # Installed dependencies
-│ ├── src/
-│ │ ├── firebase/ # Firebase configuration
-│ │ ├── pages/ # App pages (if any)
-│ │ ├── screens/ # App screens
-│ │ │ ├── adminDashboard/
-│ │ │ ├── cropEstablishment/
-│ │ │ ├── PostHarvest/
-│ │ │ ├── weedsDetection/
-│ │ │ ├── homeScreen.js
-│ │ │ ├── profileScreen.js
-│ │ │ ├── signinScreen.js
-│ │ │ ├── signupScreen.js
-│ │ │ └── weatherForecastScreen.js
-│ │ └── utils/ # Utility functions
-│ ├── .env # Environment variables
-│ ├── .gitignore
-│ ├── App.js # Root component
-│ ├── app.json
-│ ├── index.js # Entry point
-│ ├── package-lock.json
-│ └── package.json
-└── .gitignore
-
 
 ## 📱 **User Interfaces & Prototypes**
 
@@ -176,11 +140,12 @@ GOVIMITHURUMOBILEAPPLICATION/
 - Push notification system
 - Pest library and identification
 
-### **Weed Detection Interface:**
+### **Weeds Detection and stages identification Interface:**
 - Mobile camera integration
-- Real-time weed scanning
+- Real-time weeds scanning
+- 
 - Herbicide recommendations
-- Growth stage analysis
+- Growth stage analysis(Padddy)
 
 ### **Post-Harvest Advisor:**
 - Storage condition monitoring
