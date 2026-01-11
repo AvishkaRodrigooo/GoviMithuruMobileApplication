@@ -254,6 +254,8 @@ http://localhost:5000
 2. **Multi-language Expansion:** Full Sinhala and Tamil support
 3. **Advanced Analytics:** Predictive yield modeling
 4. **Offline Capabilities:** Enhanced mobile functionality
+5. **Pest Librray  management with pest detection through pest identification**: In Pest forcasting system
+6. **Heat map acording to the Pest distribution** : In pest Forcasting system 
 
 ---
 
