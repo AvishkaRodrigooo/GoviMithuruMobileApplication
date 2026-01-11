@@ -2,7 +2,7 @@
 *AI-Powered Paddy Farming Support Platform*
 
 🔗 **Group ID:** 25J-26J-242  
-🔗 **GitHub Repository:** [[https://github.com/your-username/PaddyLife-AI-25-26J-242.git](https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication)](https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication)
+🔗 **GitHub Repository:** (https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication)](https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication)
 
 ---
 
@@ -42,7 +42,7 @@ To design and develop an integrated, AI-driven web platform that provides Sri La
 
 ---
 
-### 2️⃣ **AI-Powered Weeds Detection & Stages Identification** *(by IT22364074 - Rodrigo K.A.A.L)*
+### 2️⃣ **AI-Powered Weed Detection & Stages Identification** *(by IT22364074 - Rodrigo K.A.A.L)*
 
 **Problem:** Paddy yield loss of 30-45% due to weeds; no growth stage identification in current solutions.
 
@@ -104,8 +104,8 @@ To design and develop an integrated, AI-driven web platform that provides Sri La
 
 ## 🏗 **System Architecture**
 
-### **<img width="774" height="888" alt="SystemDiagram" src="https://github.com/user-attachments/assets/2763e326-0abb-41e1-b5af-0d8f5b4d29b6" />
-
+### **Overall S<img width="774" height="888" alt="SystemDiagram" src="https://github.com/user-attachments/assets/2763e326-0abb-41e1-b5af-0d8f5b4d29b6" />
+ystem Diagram**
 
 
 ### **Data Flow:**
@@ -113,6 +113,21 @@ To design and develop an integrated, AI-driven web platform that provides Sri La
 2. **AI Processing:** Four specialized modules analyze data
 3. **Recommendations:** Personalized advice for each farming stage
 4. **Farmer Interface:** Mobile and web access to insights
+
+
+🏗 Project Structure
+
+PaddyLife-AI/
+├── frontend/                 # 🌐 Web Dashboard
+├── backend-api/              # ⚙ Node.js/Python Backend
+├── ai-services/              # 🧠 Python AI/ML Models
+│   ├── pest-forecasting/
+│   ├── weed-detection/
+│   ├── harvest-advisor/
+│   └── crop-planner/
+├── database/                 # 🗄 SQL/NoSQL Schemas & Scripts
+├── docs/                     # 📖 Documentation
+└── README.md                 # 🏠 Project Overview
 
 ---
 
@@ -141,6 +156,54 @@ To design and develop an integrated, AI-driven web platform that provides Sri La
 - Crop variety recommendations
 - Input cost calculator
 - Farming calendar generator
+
+---
+
+▶ How to Run the Project
+📌 Prerequisites
+Ensure the following are installed:
+
+Node.js (v16+)
+
+Python (v3.9+)
+
+PostgreSQL / MongoDB
+
+Git
+
+🌐 1. Run the Backend API
+bash
+cd backend-api
+npm install
+# or pip install -r requirements.txt (if Python)
+Create a .env file:
+
+env
+PORT=5000
+DB_URI=your_database_uri
+WEATHER_API_KEY=your_key
+Start the server:
+
+bash
+npm start
+# or python app.py
+🖥 2. Run the Frontend
+bash
+cd frontend
+npm install
+npm start
+Access the dashboard at:
+
+text
+http://localhost:3000
+🤖 3. Run AI Services
+Each AI module can be run independently:
+
+bash
+cd ai-services/pest-forecasting
+python train_model.py
+python serve_model.py
+Repeat for other modules as needed.
 
 ---
 
@@ -183,18 +246,6 @@ To design and develop an integrated, AI-driven web platform that provides Sri La
 3. **Advanced Analytics:** Predictive yield modeling
 4. **Offline Capabilities:** Enhanced mobile functionality
 
-### **Commercialization Pathways:**
-- **Government Partnerships:** Integration with agricultural extension services
-- **NGO Collaborations:** Rural farmer adoption programs
-- **Private Sector:** Agri-input company integrations
-- **Subscription Model:** Freemium access for advanced features
-
-### **Intellectual Property:**
-- **Software Copyright:** Platform code and AI models
-- **Patent Potential:** Novel algorithms for pest and weed detection
-- **Trademark:** "වේ සහනය" brand registration
-- **Data Ownership:** Farmer data rights protection
-
 ---
 
 ## 👥 **Project Team**
@@ -211,7 +262,7 @@ To design and develop an integrated, AI-driven web platform that provides Sri La
 - **External Advisor** - Department of Agricultural Development
 
 ### **Institution:**
-**Centre of Excellence for AI (CoEAI), SLIIT**
+**Sri Lanka Institute of Information Technology**
 
 ---
 
@@ -233,11 +284,10 @@ To design and develop an integrated, AI-driven web platform that provides Sri La
 
 ## 📄 **License & Usage**
 
-This project is developed for **academic research and practical implementation** under SLIIT regulations. All intellectual property rights are reserved by the development team and SLIIT.
+This project is intended for academic and research purposes only.
 
-*"වී කෘෂිකර්මයේ සම්පූර්ණ සහනය - AI-Driven Paddy Farming Support"*
+*"වී කෘෂිකර්මයේ සම්පූර්ණ සහය - AI-Driven Paddy Farming Support"*
 
 ---
-**Last Updated:** January 2026  
 **Project Status:** Development Phase  
 **Target Launch:** Maha Season 2026/2027
