@@ -1,4 +1,4 @@
-# 🌾 Ketha Aruna (කෙත් අරුණ)  
+# 🌾 Keth Aruna (කෙත් අරුණ)  
 *An AI-Driven Platform Guiding Paddy Farmers Across the Full Cultivation Lifecycle*
 
 🔗 GitHub Repository: https://github.com/your-username/PaddyLife-AI-25-26J-242.git
