@@ -101,7 +101,8 @@ PaddyLife AI follows a **web-based, modular architecture** consisting of:
 
 > 📌 *Architecture Diagram*
 >
-![System Architecture](https://via.placeholder.com/800x400.png?text=PaddyLife+AI+System+Architecture)
+![System Architecture](htt<img width="774" height="888" alt="SystemDiagram" src="https://github.com/user-attachments/assets/ccf74006-7f90-488c-be46-b535c6caf92a" />
+ps://via.placeholder.com/800x400.png?text=PaddyLife+AI+System+Architecture)
 
 ---
 
