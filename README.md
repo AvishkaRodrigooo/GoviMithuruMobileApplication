@@ -76,6 +76,7 @@ Frontend start: npx expo start
 5. Crop Establishment Planner
 
 
+<img width="774" height="888" alt="SystemDiagram" src="https://github.com/user-attachments/assets/09b56f08-1fa2-4436-ba75-0428401f4dea" />
 
 
  👥 Target Users / Stakeholders
