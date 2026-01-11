@@ -2,7 +2,7 @@
 *AI-Powered Paddy Farming Support Platform*
 
 🔗 **Group ID:** 25J-26J-242  
-🔗 **GitHub Repository:** [https://github.com/your-username/PaddyLife-AI-25-26J-242.git](https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication)
+🔗 **GitHub Repository:** [[https://github.com/your-username/PaddyLife-AI-25-26J-242.git](https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication)](https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication)
 
 ---
 
