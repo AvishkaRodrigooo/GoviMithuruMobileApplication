@@ -159,6 +159,7 @@ PaddyLife-AI/
 - Crop variety recommendations
 - Input cost calculator
 - Farming calendar generator
+- Profitability Simulator
 
 ---
 
