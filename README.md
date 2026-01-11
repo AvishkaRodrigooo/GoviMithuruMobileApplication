@@ -1,4 +1,4 @@
-# 🌾 **Govimithuru (ගෝවිමිතුරු)**  
+# 🌾 **Govimithuru (ගොවිමිතුරු)**  
 *AI-Powered Paddy Farming Support Platform*
 
 🔗 **Group ID:** 25J-26J-242  
