@@ -42,7 +42,7 @@ To design and develop an integrated, AI-driven web platform that provides Sri La
 
 ---
 
-### 2️⃣ **AI-Powered Weed Detection & Stages Identification** *(by IT22364074 - Rodrigo K.A.A.L)*
+### 2️⃣ **AI-Powered Weeds Detection & Stages Identification** *(by IT22364074 - Rodrigo K.A.A.L)*
 
 **Problem:** Paddy yield loss of 30-45% due to weeds; no growth stage identification in current solutions.
 
@@ -104,8 +104,8 @@ To design and develop an integrated, AI-driven web platform that provides Sri La
 
 ## 🏗 **System Architecture**
 
-### **Overall S<img width="774" height="888" alt="SystemDiagram" src="https://github.com/user-attachments/assets/2763e326-0abb-41e1-b5af-0d8f5b4d29b6" />
-ystem Diagram**
+### **<img width="774" height="888" alt="SystemDiagram" src="https://github.com/user-attachments/assets/2763e326-0abb-41e1-b5af-0d8f5b4d29b6" />
+
 
 
 ### **Data Flow:**
