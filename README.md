@@ -135,6 +135,38 @@ PaddyLife-AI/
 
 ---
 
+GOVIMITHURUMOBILEAPPLICATION/
+├── .expo/ # Expo project config & cache
+├── .git/ # Git repository
+├── flaskBackend/ # Flask backend API
+│
+├── frontend/ # React Native frontend
+│ ├── .expo/ # Expo internal files
+│ ├── assets/ # Images, icons, fonts
+│ ├── node_modules/ # Installed dependencies
+│ ├── src/
+│ │ ├── firebase/ # Firebase configuration
+│ │ ├── pages/ # App pages (if any)
+│ │ ├── screens/ # App screens
+│ │ │ ├── adminDashboard/
+│ │ │ ├── cropEstablishment/
+│ │ │ ├── PostHarvest/
+│ │ │ ├── weedsDetection/
+│ │ │ ├── homeScreen.js
+│ │ │ ├── profileScreen.js
+│ │ │ ├── signinScreen.js
+│ │ │ ├── signupScreen.js
+│ │ │ └── weatherForecastScreen.js
+│ │ └── utils/ # Utility functions
+│ ├── .env # Environment variables
+│ ├── .gitignore
+│ ├── App.js # Root component
+│ ├── app.json
+│ ├── index.js # Entry point
+│ ├── package-lock.json
+│ └── package.json
+└── .gitignore
+
 
 ## 📱 **User Interfaces & Prototypes**
 
