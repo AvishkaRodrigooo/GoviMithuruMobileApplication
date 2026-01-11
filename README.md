@@ -33,13 +33,15 @@ To design and develop an integrated, AI-driven web platform that provides Sri La
 - **Farmer Participation:** Community-driven data through pest image uploads
 
 **Key Features:**
-- 7-Day Risk Forecasting
+- 7-Day Risk Forecasting charts
 - Pest Attack Predictor with versatile data
 - Hyper-local alerts based on district and paddy variety
 - Android push notifications for high-risk scenarios
 
-**Technologies:** Python, TensorFlow, Machine Learning Models
+**Technologies:** Python, XG boost, Random Forest  Machine Learning Models open cv, billingual intellegence ,
 
+Git repo of for pest- forcasting system  : (https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication/tree/hashani-pest)
+ 
 ---
 
 ### 2️⃣ **AI-Powered Weeds Detection & Stages Identification** *(by IT22364074 - Rodrigo K.A.A.L)*
