@@ -163,7 +163,7 @@ PaddyLife-AI/
 - Farming calendar generator
 
 ---
----
+
 
 ## ▶ How to Run the Project
 
@@ -178,38 +178,57 @@ Ensure the following are installed:
 
 ---
 
-🌐 1. Run the Backend API
-bash
+### 🌐 1. Run the Backend API
+
+```bash
 cd backend-api
 npm install
 # or pip install -r requirements.txt (if Python)
-Create a .env file:
+```
 
-env
+Create a `.env` file:
+
+```env
 PORT=5000
 DB_URI=your_database_uri
 WEATHER_API_KEY=your_key
+```
+
 Start the server:
 
-bash
+```bash
 npm start
 # or python app.py
-🖥 2. Run the Frontend
-bash
+```
+
+---
+
+### 🖥 2. Run the Frontend
+
+```bash
 cd frontend
 npm install
 npm start
+```
+
 Access the dashboard at:
 
-text
+```
 http://localhost:3000
-🤖 3. Run AI Services
+```
+
+---
+
+### 🤖 3. Run AI Services
+
 Each AI module can be run independently:
 
-bash
+```bash
 cd ai-services/pest-forecasting
 python train_model.py
 python serve_model.py
+```
+
 Repeat for other modules as needed.
 
 ---
