@@ -114,11 +114,12 @@ ystem Diagram**
 3. **Recommendations:** Personalized advice for each farming stage
 4. **Farmer Interface:** Mobile and web access to insights
 
+
 ---
 
 ## 🏗 Project Structure (Monorepo)
 
-bash
+```bash
 PaddyLife-AI/
 ├── frontend/                 # 🌐 Web Dashboard
 ├── backend-api/              # ⚙ Node.js/Python Backend
@@ -130,7 +131,7 @@ PaddyLife-AI/
 ├── database/                 # 🗄 SQL/NoSQL Schemas & Scripts
 ├── docs/                     # 📖 Documentation
 └── README.md                 # 🏠 Project Overview
-
+```
 
 ---
 
