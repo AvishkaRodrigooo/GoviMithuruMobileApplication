@@ -42,23 +42,23 @@ To design and develop an integrated, AI-driven web platform that provides Sri La
 
 ---
 
-### 2️⃣ **AI-Powered Weed Detection & Stages Identification** *(by IT22364074 - Rodrigo K.A.A.L)*
+### 2️⃣ **AI-Powered Weeds Detection & Stages Identification** *(by IT22364074 - Rodrigo K.A.A.L)*
 
-**Problem:** Paddy yield loss of 30-45% due to weeds; no growth stage identification in current solutions.
+**Problem:** Paddy yield loss of 30-45% due to weeds; no growth stage(Paddy plant) identification in current solutions.
 
 **Solution:**
-- **Real-time Weed Detection:** CNN models for local weed identification (කලාඳුරු, දිය මෙනේරිය)
-- **Growth Stage Classification:** Fertilizer recommendations based on plant stage
+- **Real-time Weeds Detection:** CNN models for local weeds identification (කලාඳුරු, දිය මෙනේරිය)
+- **Paddy plant growth Stage Identification:** Fertilizer recommendations based on plant stage
 - **Edge AI Implementation:** Runs on farmers' smartphones (offline capability)
 - **Herbicide Guidance:** Chemical and manual removal strategies
 
 **Key Features:**
-- Weed species identification via mobile camera
-- Growth stage-based fertilizer recommendations
-- Localized herbicide guidelines
-- Farmer-input based decision support system
+- Weeds species(3) identification via mobile camera and recommendations
+- Identify weeds localization
+- Weeds herbicide guidelines
+- Farmer-input based decision support system(Stages Identification)
 
-**Technologies:** Computer Vision (OpenCV), CNNs, TensorFlow Lite, React Native
+**Technologies:** Computer Vision (OpenCV), CNNs, TensorFlow Lite, React Native, Yolo8m
 
 ---
 
@@ -78,7 +78,7 @@ To design and develop an integrated, AI-driven web platform that provides Sri La
 - Sensor integration for real-time monitoring
 - Dealer dashboard for direct transactions
 
-**Technologies:** XGBoost, LightGBM, LSTM, Flask REST API, Cloud Run
+**Technologies:** XGBoost, LightGBM, LSTM, Flask REST API
 
 ---
 
@@ -104,12 +104,12 @@ To design and develop an integrated, AI-driven web platform that provides Sri La
 
 ## 🏗 **System Architecture**
 
-### **Overall S<img width="774" height="888" alt="SystemDiagram" src="https://github.com/user-attachments/assets/2763e326-0abb-41e1-b5af-0d8f5b4d29b6" />
+### **Overall System Diagram**<img width="774" height="888" alt="SystemDiagram" src="https://github.com/user-attachments/assets/2763e326-0abb-41e1-b5af-0d8f5b4d29b6" />
 ystem Diagram**
 
 
 ### **Data Flow:**
-1. **Data Collection:** Weather, soil, market, farmer inputs
+1. **Data Collection:** Weather, weeds, soil, market, farmer inputs
 2. **AI Processing:** Four specialized modules analyze data
 3. **Recommendations:** Personalized advice for each farming stage
 4. **Farmer Interface:** Mobile and web access to insights
@@ -142,10 +142,10 @@ PaddyLife-AI/
 
 ### **Weeds Detection and stages identification Interface:**
 - Mobile camera integration
-- Real-time weeds scanning
-- 
+- Real-time weeds localization scanning
+- Real-time weeds type detetction
 - Herbicide recommendations
-- Growth stage analysis(Padddy)
+- Growth stage analysis(Padddy plant)
 
 ### **Post-Harvest Advisor:**
 - Storage condition monitoring
@@ -168,9 +168,8 @@ PaddyLife-AI/
 
 Ensure the following are installed:
 
-- Node.js (v16+)
-- Python (v3.9+)
-- PostgreSQL / MongoDB
+- Python (3.10)
+- Firebase
 - Git
 
 ---
