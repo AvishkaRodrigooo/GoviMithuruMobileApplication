@@ -270,7 +270,7 @@ http://localhost:5000
 ### **Supervisors:**
 - **Mrs. Lokesha Weerasinghe** (Senior Lecturer)
 - **Ms. Shalini Rupasinghe** (Assistant Lecturer)
-- **External Advisor** - Department of Agricultural Development
+- **Mrs. Nandani Rupasinghe** - External Advisor (Department of Agricultural Development)
 
 ### **Institution:**
 **Sri Lanka Institute of Information Technology**
