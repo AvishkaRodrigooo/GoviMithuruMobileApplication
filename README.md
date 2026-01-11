@@ -114,9 +114,11 @@ ystem Diagram**
 3. **Recommendations:** Personalized advice for each farming stage
 4. **Farmer Interface:** Mobile and web access to insights
 
+---
 
-🏗 Project Structure
+## 🏗 Project Structure (Monorepo)
 
+bash
 PaddyLife-AI/
 ├── frontend/                 # 🌐 Web Dashboard
 ├── backend-api/              # ⚙ Node.js/Python Backend
@@ -129,7 +131,9 @@ PaddyLife-AI/
 ├── docs/                     # 📖 Documentation
 └── README.md                 # 🏠 Project Overview
 
+
 ---
+
 
 ## 📱 **User Interfaces & Prototypes**
 
@@ -158,18 +162,20 @@ PaddyLife-AI/
 - Farming calendar generator
 
 ---
+---
 
-▶ How to Run the Project
-📌 Prerequisites
+## ▶ How to Run the Project
+
+### 📌 Prerequisites
+
 Ensure the following are installed:
 
-Node.js (v16+)
+- Node.js (v16+)
+- Python (v3.9+)
+- PostgreSQL / MongoDB
+- Git
 
-Python (v3.9+)
-
-PostgreSQL / MongoDB
-
-Git
+---
 
 🌐 1. Run the Backend API
 bash
