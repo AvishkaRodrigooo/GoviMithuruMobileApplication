@@ -38,9 +38,11 @@ To design and develop an integrated, AI-driven web platform that provides Sri La
 - Hyper-local alerts based on district and paddy variety
 - Android push notifications for high-risk scenarios
 
-**Technologies:** Python, XG boost, Random Forest  Machine Learning Models open cv, billingual intellegence ,
+**Technologies:** Python, XG boost, Random Forest  Machine Learning Models open cv, billingual intellegence 
 
 Git repo of for pest- forcasting system  : (https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication/tree/hashani-pest)
+Start project : Backend  - python app.py 
+                Frontend - npm expo start
  
 ---
 
