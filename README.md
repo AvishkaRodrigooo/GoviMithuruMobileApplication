@@ -15,7 +15,7 @@ Paddy farming is the backbone of Sri Lanka’s agricultural sector, yet farmers 
 The primary purpose of this research is to develop an **integrated, AI-powered agricultural support platform** that guides paddy farmers through every stage of cultivation—from planning to post-harvest. By leveraging machine learning, computer vision, predictive analytics, and real-time field data, the system aims to:
 
 - Provide hyper-local pest and disease forecasts
-- Enable real-time weed detection and management
+- Enable real-time weeds detection and management
 - Assist in crop planning and input optimization
 - Advise on optimal harvest timing and post-harvest handling
 - Improve decision-making, reduce losses, and enhance farmer livelihoods
@@ -34,10 +34,10 @@ The system is powered by four specialized AI modules designed to address key cha
 * *Data Sources:* Historical weather data, crop growth stages, pest incidence records, soil conditions, humidity levels.
 * *AI Technique:* **Machine Learning models** (e.g., Random Forest, LSTM) trained on multimodal data to provide dynamic, location-specific pest alerts.
 
-### 2️⃣ AI-Powered Weed Detection & Removal Guidance
+### 2️⃣ AI-Powered Weeds Detection & Stages Identification
 
 * *Focus:* Accurate identification and management of weed species.
-* *Data Sources:* Mobile camera images, local weed-crop datasets, weather conditions.
+* *Data Sources:* Mobile camera images, local weeds types datasets, weather conditions.
 * *AI Technique:* **Computer Vision & Edge-optimized models** for real-time, pixel-level weed segmentation and species recognition.
 
 ### 3️⃣ Smart Harvest & Post-Harvest Advisor
@@ -101,7 +101,7 @@ PaddyLife AI follows a **web-based, modular architecture** consisting of:
 
 > 📌 *Architecture Diagram*
 >
-![System Architecture](htt<img width="774" height="888" alt="SystemDiagram" src="https://github.com/user-attachments/assets/ccf74006-7f90-488c-be46-b535c6caf92a" />
+<img width="774" height="888" alt="SystemDiagram" src="https://github.com/user-attachments/assets/ccf74006-7f90-488c-be46-b535c6caf92a" />
 
 
 ---
@@ -128,8 +128,7 @@ PaddyLife AI follows a **web-based, modular architecture** consisting of:
 
 *Technology Stack*
 
-- Node.js / Python (FastAPI/Django)
-- PostgreSQL / MongoDB
+- FlaskApi
 - Firebase / AWS for storage
 
 *Responsibilities*
