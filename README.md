@@ -1,4 +1,4 @@
-# 🌾 **Keth Aruna (කෙත් අරුණ)**  
+# 🌾 **Govimithuru (ගෝවිමිතුරු)**  
 *AI-Powered Paddy Farming Support Platform*
 
 🔗 **Group ID:** 25J-26J-242  
