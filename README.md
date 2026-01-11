@@ -122,7 +122,7 @@ ystem Diagram**
 ```bash
 PaddyLife-AI/
 ├── frontend/                 # 🌐 Web Dashboard
-├── backend-api/              # ⚙ Node.js/Python Backend
+├── flaskBackend/              # ⚙ Node.js/Python Backend
 ├── ai-services/              # 🧠 Python AI/ML Models
 │   ├── pest-forecasting/
 │   ├── weed-detection/
