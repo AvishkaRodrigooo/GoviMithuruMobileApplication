@@ -2,7 +2,7 @@
 *AI-Powered Paddy Farming Support Platform*
 
 🔗 **Group ID:** 25J-26J-242  
-🔗 **GitHub Repository:** https://github.com/your-username/PaddyLife-AI-25-26J-242.git
+🔗 **GitHub Repository:** [https://github.com/your-username/PaddyLife-AI-25-26J-242.git](https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication)
 
 ---
 
@@ -104,20 +104,9 @@ To design and develop an integrated, AI-driven web platform that provides Sri La
 
 ## 🏗 **System Architecture**
 
-### **Overall System Diagram**
-```
-┌─────────────────────────────────────────────────┐
-│           AI-Driven Paddy Farming Platform       │
-├─────────────────────────────────────────────────┤
-│  Pest Forecasting │ Weed Detection │ Post-Harvest│
-│  ──────────────── ──────────────── ─────────────│
-│  Crop Establishment Planner (Central Module)     │
-├─────────────────────────────────────────────────┤
-│          Data Collection & Processing Layer      │
-│  • Weather Data   • Soil Data    • Market Data  │
-│  • Pest History   • Farmer Inputs• Satellite    │
-└─────────────────────────────────────────────────┘
-```
+### **Overall S<img width="774" height="888" alt="SystemDiagram" src="https://github.com/user-attachments/assets/2763e326-0abb-41e1-b5af-0d8f5b4d29b6" />
+ystem Diagram**
+
 
 ### **Data Flow:**
 1. **Data Collection:** Weather, soil, market, farmer inputs
