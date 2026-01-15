@@ -25,6 +25,7 @@ import prePlantHerbicidesScreen from './src/screens/weedsDetection/herbicides/pr
 import oneShotHerbicidesScreen from './src/screens/weedsDetection/herbicides/oneshotHerbicidesScreen';
 import grassKillersScreen from './src/screens/weedsDetection/herbicides/grassKillersScreen';
 import broadLeavesKillersScreen from './src/screens/weedsDetection/herbicides/broadleavesKillersScreen';
+import AgroShopsScreen from './src/screens/weedsDetection/shops/AgroShopsScreen';
 
 import InputPlannerScreen from './src/screens/cropEstablishment/InputPlannerScreen ';
 import CropRecommenderScreen from './src/screens/cropEstablishment/CropRecommenderScreen ';
@@ -106,7 +107,11 @@ export default function App() {
         <Stack.Screen name="AdminDashboard" component={adminDashboardScreen} options={{ title: "Admin Dashboard"}}/>
         <Stack.Screen name="HerbicideRecommendation" component={HerbicideRecommendationAdminScreen} options={{ title: 'Herbicide Recommendation' }}/>
         <Stack.Screen name="WeatherForecast" component={WeatherForecastScreen} options={{ title: 'Weather Forecast' }}/>
-
+  <Stack.Screen
+        name="AgroShop"
+        component={AgroShopsScreen}
+        options={{ title: "Agro Shops Nearby" }}
+      />
         {/* Post Harvest Analysis Flow */}
         <Stack.Screen name="Stage" component={StorageDashboardScreen} options={{ title: 'Storage Analysis' }} />
         <Stack.Screen name="RegisterHarvest" component={RegisterHarvestScreen} options={{ title: 'Register Harvest' }} />
