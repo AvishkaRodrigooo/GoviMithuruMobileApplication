@@ -134,13 +134,14 @@ const HerbicideScreen = ({ navigation }) => {
         </Animated.View>
 {/* Shop Buttons */}
 <View style={styles.shopButtonsContainer}>
-  <Pressable
-    style={[styles.shopButton, styles.agroButton]}
-    onPress={() => navigation.navigate('AgroShop')}
-  >
-    <MaterialCommunityIcons name="storefront" size={18} color="#fff" />
-    <Text style={styles.shopButtonText}>Agro Shop</Text>
-  </Pressable>
+ <Pressable
+  style={[styles.shopButton, styles.agroButton]}
+  onPress={() => navigation.navigate('AgroShop')}
+>
+  <MaterialCommunityIcons name="storefront" size={18} color="#fff" />
+  <Text style={styles.shopButtonText}>Agro Shop</Text>
+</Pressable>
+
 
   <Pressable
     style={[styles.shopButton, styles.farmButton]}
