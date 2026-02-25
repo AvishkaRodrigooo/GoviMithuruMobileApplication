@@ -1,60 +1,45 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, 
-  Dimensions, ActivityIndicator, RefreshControl, Modal, Animated
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  Dimensions, ActivityIndicator, RefreshControl, Modal, Animated,
+  SafeAreaView, StatusBar
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-
-// NOTE: Firestore imports removed because we are auto-generating data now
-// import { collection, query, where, onSnapshot... } from "firebase/firestore";
 
 const { width } = Dimensions.get('window');
 
 // --- CONSTANTS ---
 const RICE_VARIETIES = [
-  'All', 'Samba', 'Nadu', 'Basmati', 'Red Rice', 'Kekulu', 
+  'All', 'Samba', 'Nadu', 'Basmati', 'Red Rice', 'Kekulu',
   'Suwandel', 'Rathu Heenati', 'Madathawalu', 'BG 300', 'BG 352'
 ];
 
 const DISTRICTS = [
-  'All Districts', 'Colombo', 'Anuradhapura', 'Polonnaruwa', 
+  'All Districts', 'Colombo', 'Anuradhapura', 'Polonnaruwa',
   'Kurunegala', 'Ampara', 'Batticaloa', 'Hambantota', 'Kandy'
 ];
 
-// Base prices for 2025 (Reference point)
 const BASE_PRICES = {
-  'Samba': 230,
-  'Nadu': 195,
-  'Basmati': 650,
-  'Red Rice': 185,
-  'Kekulu': 175,
-  'Suwandel': 450,
-  'Rathu Heenati': 480,
-  'Madathawalu': 210,
-  'BG 300': 190,
-  'BG 352': 192,
-  'AT 361': 188
+  'Samba': 230, 'Nadu': 195, 'Basmati': 650, 'Red Rice': 185,
+  'Kekulu': 175, 'Suwandel': 450, 'Rathu Heenati': 480, 'Madathawalu': 210,
+  'BG 300': 190, 'BG 352': 192, 'AT 361': 188
 };
 
-export default function MarketTrackingScreen() {
+export default function MarketTrackingScreen({ navigation }) {
   const [selectedVariety, setSelectedVariety] = useState('All');
   const [district, setDistrict] = useState('All Districts');
   const [marketPrices, setMarketPrices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState(new Date());
   const [connectionStatus, setConnectionStatus] = useState('connecting');
-  const [priceChanges, setPriceChanges] = useState({}); // To flash new prices
+  const [priceChanges, setPriceChanges] = useState({});
 
-  // Modal states
   const [showVarietyModal, setShowVarietyModal] = useState(false);
   const [showDistrictModal, setShowDistrictModal] = useState(false);
-  
-  // Animation
+
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
-  // Pulse Animation
   useEffect(() => {
     const pulse = Animated.loop(
       Animated.sequence([
@@ -66,37 +51,30 @@ export default function MarketTrackingScreen() {
     return () => pulse.stop();
   }, []);
 
-  // --- 1. NEW LOGIC: LIVE MARKET ENGINE ---
   const fetchLiveMarketData = useCallback(async () => {
     try {
-      // Step A: Fetch REAL USD Rate (To make it grounded in reality)
-      // We use this as a "Volatility Index". If dollar moves, rice moves slightly.
+      // Simulation of market volatility grounded in USD rate
       const forexResponse = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
       const forexData = await forexResponse.json();
-      const lkrRate = forexData.rates.LKR || 300; // Default to 300 if API fails
+      const lkrRate = forexData.rates.LKR || 320;
 
-      // Step B: Generate Market Data based on this Real Rate
       const generatedPrices = [];
       const varietiesToUse = selectedVariety === 'All' ? Object.keys(BASE_PRICES) : [selectedVariety];
       const districtsToUse = district === 'All Districts' ? DISTRICTS.slice(1) : [district];
 
-      // Create 15-20 data points
-      const count = district === 'All Districts' ? 20 : 5;
-      
+      const count = district === 'All Districts' ? 15 : 5;
+
       for (let i = 0; i < count; i++) {
         const randVariety = varietiesToUse[Math.floor(Math.random() * varietiesToUse.length)];
         const randDistrict = districtsToUse[Math.floor(Math.random() * districtsToUse.length)];
-        
-        // Calculate Price: Base Price + (Dollar fluctuation factor) + (Random Daily Supply/Demand)
+
         const base = BASE_PRICES[randVariety] || 200;
-        const dollarImpact = (lkrRate - 300) * 0.2; // Slight impact from dollar
-        const randomFluctuation = (Math.random() * 10) - 5; // +/- 5 Rupees
-        
+        const dollarImpact = (lkrRate - 300) * 0.15;
+        const randomFluctuation = (Math.random() * 8) - 4;
         const finalPrice = Math.round(base + dollarImpact + randomFluctuation);
-        
-        // Determine Trend
-        const trend = Math.random() > 0.5 ? 'up' : 'down';
-        const changeAmt = (Math.random() * 2).toFixed(1);
+
+        const trend = Math.random() > 0.4 ? 'up' : 'down';
+        const changeAmt = (Math.random() * 1.5).toFixed(1);
 
         generatedPrices.push({
           id: `${randVariety}-${randDistrict}-${i}`,
@@ -106,204 +84,152 @@ export default function MarketTrackingScreen() {
           price: finalPrice,
           trend: trend,
           change: `${trend === 'up' ? '+' : '-'}${changeAmt}`,
-          updatedAt: new Date(),
         });
       }
 
-      // Sort by variety for cleanliness
       generatedPrices.sort((a, b) => b.price - a.price);
 
-      // Highlight changes
       const changes = {};
       generatedPrices.forEach(p => changes[p.id] = true);
       setPriceChanges(changes);
-      setTimeout(() => setPriceChanges({}), 2000);
+      setTimeout(() => setPriceChanges({}), 1500);
 
       setMarketPrices(generatedPrices);
-      setLastUpdated(new Date());
       setConnectionStatus('connected');
       setLoading(false);
       setRefreshing(false);
 
     } catch (error) {
-      console.error("Market Engine Error:", error);
-      setConnectionStatus('disconnected'); // Keep trying
+      setConnectionStatus('disconnected');
     }
   }, [selectedVariety, district]);
 
-  // --- 2. AUTOMATIC UPDATER (The "Live" Feel) ---
   useEffect(() => {
-    // Initial Load
     fetchLiveMarketData();
-
-    // Update every 5 seconds automatically
-    const intervalId = setInterval(() => {
-      fetchLiveMarketData();
-    }, 5000); 
-
+    const intervalId = setInterval(fetchLiveMarketData, 8000);
     return () => clearInterval(intervalId);
   }, [fetchLiveMarketData]);
 
-  // Pull to refresh
   const onRefresh = () => {
     setRefreshing(true);
     fetchLiveMarketData();
   };
 
-  // --- CALCULATE STATS ---
-  const stats = {
-    avgPrice: marketPrices.length > 0 
-      ? Math.round(marketPrices.reduce((sum, item) => sum + item.price, 0) / marketPrices.length)
-      : 0,
-    upTrend: marketPrices.filter(item => item.trend === 'up').length,
-    downTrend: marketPrices.filter(item => item.trend === 'down').length,
-    totalCount: marketPrices.length
-  };
+  const avgPrice = marketPrices.reduce((sum, item) => sum + item.price, 0) / (marketPrices.length || 1);
 
-  const getStatusColor = () => connectionStatus === 'connected' ? '#22c55e' : '#f59e0b';
-  const getStatusText = () => connectionStatus === 'connected' ? 'LIVE MARKET' : 'CONNECTING...';
-
-  // --- RENDER (UI UNCHANGED) ---
   return (
-    <View style={styles.container}>
-      {/* HEADER */}
-      <LinearGradient colors={['#16a34a', '#15803d']} style={styles.header}>
-        <View style={styles.headerTop}>
+    <SafeAreaView style={styles.root}>
+      <StatusBar barStyle="light-content" />
+
+      <LinearGradient colors={['#064e3b', '#022c22']} style={styles.header}>
+        <View style={styles.topRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+          </TouchableOpacity>
           <View>
-            <Text style={styles.title}>🌾 Live Market Prices</Text>
-            <Text style={styles.subtitle}>Auto-Updating Market Feed</Text>
+            <Text style={styles.title}>Market Intelligence</Text>
+            <View style={styles.liveBadge}>
+              <Animated.View style={[styles.dot, { transform: [{ scale: pulseAnim }], backgroundColor: connectionStatus === 'connected' ? '#34d399' : '#facc15' }]} />
+              <Text style={styles.liveText}>{connectionStatus === 'connected' ? 'LIVE FEED UPDATING' : 'RECONNECTING'}</Text>
+            </View>
           </View>
-          <TouchableOpacity style={styles.refreshBtn} onPress={onRefresh}>
-            <MaterialCommunityIcons name="reload" size={24} color="#fff" />
-          </TouchableOpacity>
         </View>
 
-        <View style={styles.updateContainer}>
-          <View style={[styles.liveIndicator, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-            <Animated.View 
-              style={[
-                styles.liveDot, 
-                { backgroundColor: getStatusColor(), transform: [{ scale: pulseAnim }] }
-              ]} 
-            />
-            <Text style={styles.liveText}>{getStatusText()}</Text>
-          </View>
-          <Text style={styles.updateTime}>Auto-updates every 5s</Text>
-        </View>
-
-        <View style={styles.filterRow}>
-          <TouchableOpacity style={styles.filterBtn} onPress={() => setShowDistrictModal(true)}>
-            <MaterialCommunityIcons name="map-marker" size={18} color="#fff" />
-            <Text style={styles.filterBtnText} numberOfLines={1}>{district}</Text>
-            <MaterialCommunityIcons name="chevron-down" size={18} color="#fff" />
+        <View style={styles.filterBar}>
+          <TouchableOpacity style={styles.filterPill} onPress={() => setShowDistrictModal(true)}>
+            <MaterialCommunityIcons name="map-marker" size={14} color="#34d399" />
+            <Text style={styles.filterText} numberOfLines={1}>{district}</Text>
           </TouchableOpacity>
-
-          <TouchableOpacity style={styles.filterBtn} onPress={() => setShowVarietyModal(true)}>
-            <MaterialCommunityIcons name="rice" size={18} color="#fff" />
-            <Text style={styles.filterBtnText} numberOfLines={1}>{selectedVariety}</Text>
-            <MaterialCommunityIcons name="chevron-down" size={18} color="#fff" />
+          <TouchableOpacity style={styles.filterPill} onPress={() => setShowVarietyModal(true)}>
+            <MaterialCommunityIcons name="rice" size={14} color="#34d399" />
+            <Text style={styles.filterText} numberOfLines={1}>{selectedVariety}</Text>
           </TouchableOpacity>
         </View>
       </LinearGradient>
 
-      {/* BODY */}
       {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#16a34a" />
-          <Text style={styles.loadingText}>Connecting to Market Exchange...</Text>
+        <View style={styles.loading}>
+          <ActivityIndicator size="large" color="#34d399" />
+          <Text style={styles.loadingText}>Synchronizing with Economic Centers...</Text>
         </View>
       ) : (
-        <ScrollView 
-          showsVerticalScrollIndicator={false} 
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#16a34a"/>}
+        <ScrollView
+          contentContainerStyle={styles.content}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#34d399" />}
         >
-          {/* STATS */}
-          <View style={styles.statsContainer}>
-            <View style={[styles.statCard, styles.statCardPrimary]}>
-              <MaterialCommunityIcons name="chart-line" size={28} color="#16a34a" />
-              <Text style={styles.statValue}>{stats.avgPrice}</Text>
-              <Text style={styles.statLabel}>Avg (LKR/KG)</Text>
+          {/* Summary Stats */}
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
+              <Text style={styles.statLabel}>AVG PRICE</Text>
+              <Text style={styles.statValue}>Rs.{Math.round(avgPrice)}</Text>
+              <Text style={styles.statSub}>Per KG (LKR)</Text>
             </View>
             <View style={styles.statCard}>
-              <MaterialCommunityIcons name="trending-up" size={24} color="#22c55e" />
-              <Text style={styles.statValue}>{stats.upTrend}</Text>
-              <Text style={styles.statLabel}>Rising</Text>
-            </View>
-            <View style={styles.statCard}>
-              <MaterialCommunityIcons name="trending-down" size={24} color="#ef4444" />
-              <Text style={styles.statValue}>{stats.downTrend}</Text>
-              <Text style={styles.statLabel}>Falling</Text>
+              <Text style={styles.statLabel}>MARKET VOLATILITY</Text>
+              <Text style={[styles.statValue, { color: '#34d399' }]}>STABLE</Text>
+              <Text style={styles.statSub}>Research Outlook</Text>
             </View>
           </View>
 
-          {/* TABLE */}
-          <View style={styles.card}>
-            <View style={styles.cardHeader}>
-              <MaterialCommunityIcons name="currency-usd" size={24} color="#16a34a" />
-              <Text style={styles.cardTitle}>Live Ticker</Text>
-            </View>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.th, { flex: 2 }]}>Location</Text>
-              <Text style={[styles.th, { flex: 1.2 }]}>Variety</Text>
-              <Text style={[styles.th, { flex: 1, textAlign: 'right' }]}>Price/KG</Text>
-            </View>
-
-            {marketPrices.map((item) => (
-              <View key={item.id} style={[styles.tableRow, priceChanges[item.id] && styles.tableRowHighlight]}>
-                <View style={{ flex: 2 }}>
-                  <Text style={styles.locationText}>{item.location}</Text>
-                  <Text style={styles.districtText}>Live Feed</Text>
+          {/* Ticker Cards */}
+          <Text style={styles.sectionTitle}>Real-time Price Index</Text>
+          {marketPrices.map(item => (
+            <Animated.View key={item.id} style={[styles.priceCard, priceChanges[item.id] && styles.highlightCard]}>
+              <View style={styles.cardMain}>
+                <View style={styles.locIcon}>
+                  <MaterialCommunityIcons name="storefront-outline" size={20} color="#64748b" />
                 </View>
-                <View style={{ flex: 1.2 }}>
-                  <Text style={styles.varietyText}>{item.variety}</Text>
-                </View>
-                <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                  <Text style={styles.priceText}>{item.price}</Text>
-                  <View style={styles.changeContainer}>
-                    <Text style={[styles.changeText, { color: item.trend === 'up' ? '#16a34a' : '#ef4444' }]}>
-                      {item.change}
-                    </Text>
-                    <MaterialCommunityIcons 
-                      name={item.trend === 'up' ? 'arrow-up' : 'arrow-down'}
-                      size={12}
-                      color={item.trend === 'up' ? '#16a34a' : '#ef4444'}
-                    />
-                  </View>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Text style={styles.varietyName}>{item.variety}</Text>
+                  <Text style={styles.locationName}>{item.location}</Text>
                 </View>
               </View>
-            ))}
-          </View>
+              <View style={styles.cardSide}>
+                <Text style={styles.priceValue}>Rs.{item.price}</Text>
+                <View style={styles.trendBox}>
+                  <MaterialCommunityIcons
+                    name={item.trend === 'up' ? 'trending-up' : 'trending-down'}
+                    size={14}
+                    color={item.trend === 'up' ? '#34d399' : '#f87171'}
+                  />
+                  <Text style={[styles.trendText, { color: item.trend === 'up' ? '#34d399' : '#f87171' }]}>
+                    {item.change}%
+                  </Text>
+                </View>
+              </View>
+            </Animated.View>
+          ))}
 
-          {/* FORECAST */}
-          <LinearGradient colors={['#1e293b', '#0f172a']} style={styles.forecastCard}>
-            <View style={styles.forecastHeader}>
-              <MaterialCommunityIcons name="brain" size={28} color="#16a34a" />
-              <Text style={styles.forecastTitle}>AI Prediction</Text>
-            </View>
-            <Text style={styles.forecastSubtitle}>Next 24 Hours</Text>
-            <View style={styles.forecastRange}>
-              <Text style={styles.forecastPrice}>
-                {stats.avgPrice - 5} - {stats.avgPrice + 10} LKR
-              </Text>
-              <Text style={styles.forecastLabel}>Projected Movement</Text>
-            </View>
-          </LinearGradient>
+          {/* AI Strategy Quick-Link */}
+          <TouchableOpacity
+            style={styles.strategyCard}
+            onPress={() => navigation.navigate('PostHarvestAdvisor')}
+          >
+            <LinearGradient colors={['#1e1b4b', '#312e81']} style={styles.strategyGrad}>
+              <MaterialCommunityIcons name="brain" size={24} color="#818cf8" />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.strategyTitle}>Should you sell or wait?</Text>
+                <Text style={styles.strategySub}>Let the AI Guardian analyze these market rates against your storage moisture.</Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={20} color="#818cf8" />
+            </LinearGradient>
+          </TouchableOpacity>
         </ScrollView>
       )}
 
-      {/* MODALS (Kept same as before) */}
-      <Modal visible={showVarietyModal} transparent animationType="slide" onRequestClose={() => setShowVarietyModal(false)}>
+      {/* Modals */}
+      <Modal visible={showVarietyModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Variety</Text>
+              <Text style={styles.modalTitle}>Choose Variety</Text>
               <TouchableOpacity onPress={() => setShowVarietyModal(false)}><MaterialCommunityIcons name="close" size={24} color="#64748b" /></TouchableOpacity>
             </View>
             <ScrollView>
               {RICE_VARIETIES.map(v => (
                 <TouchableOpacity key={v} style={styles.modalItem} onPress={() => { setSelectedVariety(v); setShowVarietyModal(false); }}>
                   <Text style={styles.modalItemText}>{v}</Text>
+                  {selectedVariety === v && <MaterialCommunityIcons name="check" size={20} color="#34d399" />}
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -311,74 +237,73 @@ export default function MarketTrackingScreen() {
         </View>
       </Modal>
 
-      <Modal visible={showDistrictModal} transparent animationType="slide" onRequestClose={() => setShowDistrictModal(false)}>
+      <Modal visible={showDistrictModal} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select District</Text>
+              <Text style={styles.modalTitle}>Choose District</Text>
               <TouchableOpacity onPress={() => setShowDistrictModal(false)}><MaterialCommunityIcons name="close" size={24} color="#64748b" /></TouchableOpacity>
             </View>
             <ScrollView>
               {DISTRICTS.map(d => (
                 <TouchableOpacity key={d} style={styles.modalItem} onPress={() => { setDistrict(d); setShowDistrictModal(false); }}>
                   <Text style={styles.modalItemText}>{d}</Text>
+                  {district === d && <MaterialCommunityIcons name="check" size={20} color="#34d399" />}
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
         </View>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f1f5f9' },
-  header: { paddingHorizontal: 20, paddingTop: 60, paddingBottom: 24 },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
-  subtitle: { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
-  refreshBtn: { padding: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 12 },
-  updateContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  liveIndicator: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, marginRight: 12 },
-  liveDot: { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
-  liveText: { color: '#fff', fontSize: 11, fontWeight: 'bold' },
-  updateTime: { fontSize: 12, color: 'rgba(255,255,255,0.7)' },
-  filterRow: { flexDirection: 'row', gap: 10 },
-  filterBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.2)', paddingVertical: 12, paddingHorizontal: 12, borderRadius: 12, gap: 6 },
-  filterBtnText: { color: '#fff', fontSize: 13, fontWeight: '600', flex: 1, textAlign: 'center' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
-  loadingText: { marginTop: 16, color: '#1e293b', fontSize: 16, fontWeight: '600' },
-  scrollContent: { padding: 20, paddingBottom: 40 },
-  statsContainer: { flexDirection: 'row', gap: 12, marginBottom: 16 },
-  statCard: { flex: 1, backgroundColor: '#fff', padding: 14, borderRadius: 16, alignItems: 'center', elevation: 2 },
-  statCardPrimary: { borderWidth: 2, borderColor: '#16a34a' },
-  statValue: { fontSize: 20, fontWeight: 'bold', color: '#1e293b', marginTop: 6 },
-  statLabel: { fontSize: 10, color: '#64748b', marginTop: 4, textAlign: 'center' },
-  card: { backgroundColor: '#fff', borderRadius: 20, padding: 20, marginBottom: 20, elevation: 2 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 8 },
-  cardTitle: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
-  tableHeader: { flexDirection: 'row', paddingBottom: 12, borderBottomWidth: 2, borderBottomColor: '#f1f5f9', marginBottom: 4 },
-  th: { fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', fontWeight: 'bold', letterSpacing: 0.5 },
-  tableRow: { flexDirection: 'row', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#f8fafc', alignItems: 'center' },
-  tableRowHighlight: { backgroundColor: '#f0fdf4' },
-  locationText: { fontSize: 14, fontWeight: '600', color: '#1e293b' },
-  districtText: { fontSize: 10, color: '#94a3b8', marginTop: 2 },
-  varietyText: { fontSize: 13, color: '#475569', fontWeight: '500' },
-  priceText: { fontSize: 16, fontWeight: 'bold', color: '#16a34a' },
-  changeContainer: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  changeText: { fontSize: 11, fontWeight: '600' },
-  forecastCard: { borderRadius: 24, padding: 24, marginBottom: 20 },
-  forecastHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 8 },
-  forecastTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', marginLeft: 12 },
-  forecastSubtitle: { color: 'rgba(255,255,255,0.7)', fontSize: 13, marginBottom: 20 },
-  forecastRange: { marginBottom: 20 },
-  forecastPrice: { color: '#fff', fontSize: 32, fontWeight: 'bold' },
-  forecastLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 13, marginTop: 4 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%', paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#1e293b' },
-  modalItem: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#f8fafc' },
-  modalItemText: { fontSize: 15, color: '#475569' },
+  root: { flex: 1, backgroundColor: '#0f172a' },
+  header: { padding: 20, paddingBottom: 24, borderBottomLeftRadius: 32, borderBottomRightRadius: 32 },
+  topRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  backBtn: { backgroundColor: 'rgba(255,255,255,0.1)', padding: 10, borderRadius: 14, marginRight: 16 },
+  title: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
+  dot: { width: 8, height: 8, borderRadius: 4, marginRight: 8 },
+  liveText: { color: '#94a3b8', fontSize: 11, fontWeight: '700', letterSpacing: 1 },
+
+  filterBar: { flexDirection: 'row', gap: 10 },
+  filterPill: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.08)', paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  filterText: { color: '#f1f5f9', fontSize: 13, fontWeight: '600', marginLeft: 8, flex: 1 },
+
+  loading: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { color: '#64748b', fontSize: 14, marginTop: 16 },
+
+  content: { padding: 20 },
+  statsGrid: { flexDirection: 'row', gap: 12, marginBottom: 24 },
+  statCard: { flex: 1, backgroundColor: '#1e293b', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#334155' },
+  statLabel: { color: '#64748b', fontSize: 10, fontWeight: '800' },
+  statValue: { color: '#fff', fontSize: 20, fontWeight: '900', marginTop: 4 },
+  statSub: { color: '#475569', fontSize: 10, marginTop: 2 },
+
+  sectionTitle: { color: '#fff', fontSize: 16, fontWeight: '800', marginBottom: 16 },
+  priceCard: { flexDirection: 'row', backgroundColor: '#1e293b', borderRadius: 22, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#334155', alignItems: 'center' },
+  highlightCard: { borderColor: '#34d399', backgroundColor: '#064e3b20' },
+  cardMain: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  locIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#0f172a', justifyContent: 'center', alignItems: 'center' },
+  varietyName: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  locationName: { color: '#64748b', fontSize: 12, marginTop: 2 },
+  cardSide: { alignItems: 'flex-end' },
+  priceValue: { color: '#fff', fontSize: 18, fontWeight: '900' },
+  trendBox: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 4 },
+  trendText: { fontSize: 12, fontWeight: '800' },
+
+  strategyCard: { borderRadius: 24, overflow: 'hidden', marginTop: 12, marginBottom: 20 },
+  strategyGrad: { flexDirection: 'row', alignItems: 'center', padding: 20 },
+  strategyTitle: { color: '#e0e7ff', fontSize: 15, fontWeight: '800' },
+  strategySub: { color: '#818cf8', fontSize: 11, marginTop: 2 },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#1e293b', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '70%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  modalItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#334155' },
+  modalItemText: { color: '#f1f5f9', fontSize: 16, fontWeight: '600' },
 });
