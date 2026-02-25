@@ -1,4 +1,29 @@
+"""
+routes/postharvest_guardian.py
+──────────────────────────────────────────────────────────────────────────────
+Post-Harvest Guardian API Blueprint — GoviMithuru App
+Author: Post-Harvest Team Member
 
+INTEGRATION (add to app.py — 2 lines only):
+    from routes.postharvest_guardian import postharvest_bp
+    app.register_blueprint(postharvest_bp)
+
+PLACE MODEL FILES IN:
+    /models/postharvest/storage_model.pkl
+    /models/postharvest/label_encoders.pkl
+    /models/postharvest/price_scaler.pkl
+    /models/postharvest/model_metadata.json
+
+ENDPOINTS (all under /api/guardian/):
+    POST /api/guardian/predict       → Storage + Price prediction + Risk signal
+    POST /api/guardian/advice        → AI advisory from Claude LLM
+    GET  /api/guardian/varieties     → List of all supported varieties
+    GET  /api/guardian/prices        → Current price forecasts for all varieties
+    GET  /api/guardian/health        → Service health check
+
+DOES NOT MODIFY: predict.py, weed_predict.py, or any other existing blueprints.
+──────────────────────────────────────────────────────────────────────────────
+"""
 
 from flask import Blueprint, request, jsonify, current_app
 import os
@@ -7,10 +32,123 @@ import pickle
 import numpy as np
 import pandas as pd
 import anthropic
+import requests
 from datetime import datetime
 from functools import lru_cache
 
 postharvest_bp = Blueprint('postharvest', __name__, url_prefix='/api/guardian')
+
+def _call_ollama_local(system_prompt, user_content):
+    """
+    Calls locally running Ollama. 
+    Using 127.0.0.1 to avoid Windows localhost resolution lag.
+    """
+    url = "http://127.0.0.1:11434/api/chat"
+    payload = {
+        "model": "qwen3:8b",
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_content}
+        ],
+        "stream": False,
+        "options": {"temperature": 0.1, "num_predict": 1024}
+    }
+
+    try:
+        print(f"[Ollama] 🏠 Calling local model (qwen3:8b)...")
+        # 180s timeout - local models can be very slow on CPUs
+        response = requests.post(url, json=payload, timeout=180)
+        response.raise_for_status()
+        return response.json()['message']['content']
+    except Exception as e:
+        print(f"[Ollama] ❌ Error: {str(e)[:100]}")
+        return None
+
+def _is_valid_key(key):
+    """Checks if a key exists and isn't just a placeholder."""
+    if not key: return False
+    dummy_markers = ["your_", "placeholder", "key_here", "api_key", "AIzaSy_dummy", "gsk_dummy"]
+    return not any(marker in key.lower() for marker in dummy_markers)
+
+def _call_groq_free(system_prompt, user_content):
+    """
+    Calls Groq API (Llama 3.3). 
+    """
+    api_key = os.getenv('GROQ_API_KEY')
+    if not _is_valid_key(api_key): return None
+    
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    # Using Llama 3.3 70B - standard and highly reliable
+    payload = {
+        "model": "llama-3.3-70b-versatile",
+        "messages": [
+            {"role": "system", "content": f"{system_prompt}\n\nYou must respond in valid JSON format."},
+            {"role": "user", "content": user_content}
+        ],
+        "temperature": 0.1,
+        "response_format": {"type": "json_object"}
+    }
+    
+    try:
+        print(f"[Groq] 🚀 Calling Llama 3.3...")
+        response = requests.post(url, json=payload, headers=headers, timeout=25)
+        if response.status_code == 429: return "QUOTA_EXCEEDED"
+        if response.status_code != 200:
+            print(f"[Groq] ❌ HTTP Error {response.status_code}: {response.text[:150]}")
+            return None
+        return response.json()['choices'][0]['message']['content']
+    except Exception as e:
+        print(f"[Groq] ❌ Exception: {str(e)[:100]}")
+        return None
+
+def _call_gemini_free(system_prompt, user_content):
+    """
+    Calls Google Gemini 1.5 Flash API.
+    """
+    api_key = os.getenv('GOOGLE_API_KEY')
+    if not _is_valid_key(api_key): return None
+
+    # Using v1 endpoint for better stability
+    url = f"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={api_key}"
+
+    payload = {
+        "contents": [{
+            "parts": [{"text": f"{system_prompt}\n\nDATA:\n{user_content}\n\nOutput only the JSON object."}]
+        }],
+        "generationConfig": {
+            "temperature": 0.1,
+            "maxOutputTokens": 2048,
+            "responseMimeType": "application/json"
+        }
+    }
+
+    try:
+        print(f"[Gemini] 📤 Calling Gemini v1...")
+        response = requests.post(url, json=payload, timeout=25)
+        
+        if response.status_code == 429:
+            print("[Gemini] ⚠️ Quota Exhausted.")
+            return "QUOTA_EXCEEDED"
+        
+        if response.status_code != 200:
+            print(f"[Gemini] ❌ HTTP Error {response.status_code}: {response.text[:150]}")
+            return None
+            
+        res_json = response.json()
+        if 'candidates' not in res_json:
+            print(f"[Gemini] ❌ Invalid response structure: {res_json}")
+            return None
+            
+        text = res_json['candidates'][0]['content']['parts'][0]['text']
+        return text.strip()
+    except Exception as e:
+        print(f"[Gemini] ❌ Exception: {str(e)[:100]}")
+        return None
+
 
 # ─── Model file paths ────────────────────────────────────────────────────────
 MODEL_DIR     = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'models', 'postharvest')
@@ -341,113 +479,146 @@ def get_ai_advice():
             "Intervention_Viable":      intervention_viable,
         }
 
-        system_prompt = """You are an Expert Post-Harvest Agriculture Advisor for the Sri Lanka Department of Agriculture (GoviMithuru App).
+        system_prompt = """You are an Expert Post-Harvest Agriculture Advisor for the GoviMithuru App.
 Your goal: maximize farmer profit while ensuring ZERO food waste.
 
-RESPONSE FORMAT — Three sections (no markdown headers, use plain text):
+RESPONSE FORMAT: You MUST return a VALID JSON object with exactly these keys:
+- signal: exactly "GREEN", "YELLOW", or "RED"
+- summary: one bold sentence summary
+- conflict: 2-3 sentences explaining the timeline conflict between spoilage (XGBoost) and peak price (LSTM)
+- option_sell: JSON object with {value_lkr: total, rationale: string}
+- option_wait: JSON object with {steps: list of 4 action strings, value_lkr: total profit if successful}
+- quick_tips: array of 3 short, urgent bullet points
 
-1. STATUS REPORT: Start with exactly one of: "🟢 GREEN SIGNAL", "🟡 YELLOW CAUTION", or "🔴 RED ALERT"
-   followed by one clear sentence.
+Use the word "vee" (paddy) naturally. Tone: Professional, expert, and empathetic."""
 
-2. THE CONFLICT: Explain simply in 2-3 sentences: "Your vee (rice) is safe for X days, but the best price 
-   is Y days away." Use the word "vee" (Sinhala for rice paddy) naturally once.
+        # ── Call LLM APIs (Speed Optimized Priority) ───────────────────────
+        api_key_google    = os.getenv('GOOGLE_API_KEY')
+        api_key_groq      = os.getenv('GROQ_API_KEY')
+        
+        raw_llm_response = None
+        source = "rule_based"
 
-3. STRATEGIC ADVICE — Two options:
-   Option A (Sell Now): Calculate exact LKR earned. When is this right?
-   Option B (Intervene & Wait): Step-by-step actions to extend storage life:
-     - Dry paddy to 13% moisture (reduces fungal risk)
-     - Use hermetic/airtight bags (cuts oxygen → slows spoilage)
-     - Keep warehouse below 25°C
-     - Apply food-grade diatomaceous earth if pests present
-   Then calculate profit if Option B succeeds.
+        # 1. TRY GEMINI FIRST (Fastest Cloud Free Tier)
+        if _is_valid_key(api_key_google):
+            gem_res = _call_gemini_free(system_prompt, json.dumps(llm_payload))
+            if gem_res and gem_res != "QUOTA_EXCEEDED":
+                raw_llm_response = gem_res
+                source = "gemini_api"
 
-TONE: Professional but empathetic. Scientifically accurate. Think like a trusted village agricultural officer.
-Keep the entire response under 280 words."""
+        # 2. TRY GROQ SECOND (Fast Cloud Fallback)
+        if not raw_llm_response and _is_valid_key(api_key_groq):
+            res = _call_groq_free(system_prompt, json.dumps(llm_payload))
+            if res and res != "QUOTA_EXCEEDED":
+                raw_llm_response = res
+                source = "groq_api"
 
-        # ── Call Anthropic API ───────────────────────────────────────────────
-        api_key = os.getenv('ANTHROPIC_API_KEY')
-        if not api_key:
-            return jsonify({
-                "success": False,
-                "error":   "ANTHROPIC_API_KEY not configured",
-                "advice":  _rule_based_advice(signal, storage_days, days_to_peak,
-                                               current_price, peak_price, quantity_kg,
-                                               potential_profit, buffer_days, variety)
-            }), 200  # Return rule-based fallback instead of error
+        # 3. TRY LOCAL OLLAMA THIRD (No Internet/Key Fallback)
+        if not raw_llm_response:
+            oll_res = _call_ollama_local(system_prompt, json.dumps(llm_payload))
+            if oll_res:
+                raw_llm_response = oll_res
+                source = "local_ollama"
 
-        client = anthropic.Anthropic(api_key=api_key)
-        message = client.messages.create(
-            model="claude-opus-4-6",
-            max_tokens=600,
-            system=system_prompt,
-            messages=[{
-                "role":    "user",
-                "content": f"Please analyze this farmer's situation:\n\n{json.dumps(llm_payload, indent=2)}"
-            }]
-        )
+        # 3. Parse LLM JSON
+        if raw_llm_response:
+            try:
+                # Rigorous cleaning
+                clean_json = raw_llm_response.strip()
+                if "{" in clean_json:
+                    clean_json = clean_json[clean_json.find("{"):clean_json.rfind("}")+1]
+                
+                advice_json = json.loads(clean_json)
+                return jsonify({
+                    "success": True,
+                    "advice":  advice_json,
+                    "source":  source,
+                }), 200
+            except Exception as e:
+                print(f"[AI] ❌ Parse Error: {e}")
 
-        advice_text = message.content[0].text if message.content else ""
-
-        return jsonify({
-            "success": True,
-            "advice":  advice_text,
-            "source":  "claude_api",
-        }), 200
-
-    except anthropic.APIConnectionError:
+        # 4. Final Fallback (The Scientist)
+        print("[AI] 🛡️ Returning Rule-Based Advisor (Fallback)")
         return jsonify({
             "success": False,
-            "error":   "Cannot connect to AI service",
-            "advice":  _rule_based_advice(signal, storage_days, days_to_peak,
-                                           current_price, peak_price, quantity_kg,
-                                           potential_profit, buffer_days, variety)
+            "source":  "rule_fallback",
+            "advice":  _rule_based_advice_json(signal, storage_days, days_to_peak,
+                                            current_price, peak_price, quantity_kg,
+                                            potential_profit, buffer_days, variety)
         }), 200
+
     except Exception as e:
         current_app.logger.error(f"[PostHarvest /advice] {e}")
         return jsonify({"error": "Advisory failed", "detail": str(e)}), 500
 
 
-def _rule_based_advice(signal, storage_days, days_to_peak, current_price,
-                        peak_price, quantity_kg, potential_profit, buffer_days, variety) -> str:
-    """Fallback advisory when Claude API is unavailable."""
-    sell_now_value = current_price * quantity_kg
-    wait_value     = peak_price * quantity_kg
+@postharvest_bp.route('/chat', methods=['POST'])
+def chat_ai():
+    """Expert Chat endpoint for free-form Q&A."""
+    try:
+        data = request.get_json()
+        question = data.get('question', '')
+        context = data.get('context', {})
+        
+        system_msg = "You are the PostHarvest Guardian, a helpful AI expert for Sri Lankan paddy farmers. Answer questions about rice storage, drying, market trends, and pest control. Keep answers concise, practical, and empathetic."
+        user_msg = f"Context: {json.dumps(context)}\n\nQuestion: {question}"
 
-    if signal == "GREEN":
-        return (
-            f"🟢 GREEN SIGNAL — Your {variety} is in a safe position.\n\n"
-            f"THE CONFLICT: Your vee (rice) is safe for {storage_days} days, and the best market "
-            f"price arrives in just {days_to_peak} days. You have a comfortable buffer of {buffer_days} days.\n\n"
-            f"STRATEGIC ADVICE:\n"
-            f"Option A (Sell Now): Earn {sell_now_value:,.0f} LKR at {current_price} LKR/kg. Safe, but not optimal.\n"
-            f"Option B (Wait): Store using current conditions. Earn {wait_value:,.0f} LKR at {peak_price} LKR/kg. "
-            f"Potential gain of {potential_profit:,.0f} LKR. Monitor moisture weekly."
-        )
-    elif signal == "YELLOW":
-        return (
-            f"🟡 YELLOW CAUTION — Proceed carefully with your {variety} storage.\n\n"
-            f"THE CONFLICT: Your vee is safe for {storage_days} days, but the best price is "
-            f"{days_to_peak} days away. You have only a {buffer_days}-day buffer — any deterioration "
-            f"in conditions could shift this to a RED alert.\n\n"
-            f"STRATEGIC ADVICE:\n"
-            f"Option A (Sell Now): Earn {sell_now_value:,.0f} LKR immediately. Eliminates risk.\n"
-            f"Option B (Intervene): 1) Reduce moisture to 13% by sun-drying. 2) Transfer to hermetic bags. "
-            f"3) Ensure warehouse stays below 25°C. If successful, earn {wait_value:,.0f} LKR."
-        )
-    else:
-        return (
-            f"🔴 RED ALERT — Immediate action required for your {variety}.\n\n"
-            f"THE CONFLICT: Your vee is safe for only {storage_days} days, but the best price is "
-            f"{days_to_peak} days away. Your rice will develop fungus {abs(buffer_days)} days "
-            f"BEFORE the price peaks. Waiting is not an option in current conditions.\n\n"
-            f"STRATEGIC ADVICE:\n"
-            f"Option A (Sell Now — RECOMMENDED): Earn {sell_now_value:,.0f} LKR immediately. "
-            f"This prevents total loss.\n"
-            f"Option B (Emergency Intervention): 1) IMMEDIATELY dry paddy to 13% moisture. "
-            f"2) Use hermetic/airtight bags. 3) Move to a cooler location below 25°C. "
-            f"If you complete these steps within 48 hours, you may extend storage life enough "
-            f"to wait for the {peak_price} LKR/kg peak."
-        )
+        # 1. Try Gemini (Speed Priority)
+        api_key_google = os.getenv('GOOGLE_API_KEY')
+        if _is_valid_key(api_key_google):
+            res = _call_gemini_free(system_msg, user_msg)
+            if res and res != "QUOTA_EXCEEDED":
+                return jsonify({"success": True, "answer": res, "source": "gemini"}), 200
+
+        # 2. Try Anthropic (Quality Fallback)
+        api_key_anthropic = os.getenv('ANTHROPIC_API_KEY')
+        if _is_valid_key(api_key_anthropic):
+            try:
+                client = anthropic.Anthropic(api_key=api_key_anthropic)
+                message = client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=500,
+                    system=system_msg,
+                    messages=[{"role": "user", "content": user_msg}]
+                )
+                return jsonify({"success": True, "answer": message.content[0].text, "source": "claude"}), 200
+            except: pass
+
+        # 3. Try Ollama (Local Fallback)
+        ollama_res = _call_ollama_local(system_msg, user_msg)
+        if ollama_res:
+            return jsonify({"success": True, "answer": ollama_res, "source": "local_ollama"}), 200
+
+        return jsonify({"success": False, "error": "No LLM provider available"}), 400
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+def _rule_based_advice_json(signal, storage_days, days_to_peak, current_price,
+                         peak_price, quantity_kg, potential_profit, buffer_days, variety) -> dict:
+    """Fallback JSON advice structure."""
+    sell_now_val = current_price * quantity_kg
+    wait_val     = peak_price * quantity_kg
+    
+    return {
+        "signal": signal,
+        "summary": "Wait for higher prices but improve storage conditions immediately." if signal != "RED" else "Immediate sale is recommended to prevent total crop loss.",
+        "conflict": f"Your {variety} has a storage life of {storage_days} days, but the market peak is {days_to_peak} days away. You have a {buffer_days} day safety window.",
+        "option_sell": {
+            "value_lkr": f"{sell_now_val:,.0f}",
+            "rationale": "Safest option. Guarantees income today with zero risk of spoilage."
+        },
+        "option_wait": {
+            "value_lkr": f"{(wait_val - sell_now_val):,.0f} EXTRA Profit",
+            "steps": [
+                "Dry the paddy to exactly 13% moisture",
+                "Use airtight Hermetic bags for longer life",
+                "Ensure ventilation keeps warehouse cool",
+                "Monitor for weevil activity weekly"
+            ]
+        },
+        "quick_tips": ["Check MC%", "Use Hermetic bags", "Clean storage area"]
+    }
 
 
 @postharvest_bp.route('/varieties', methods=['GET'])
