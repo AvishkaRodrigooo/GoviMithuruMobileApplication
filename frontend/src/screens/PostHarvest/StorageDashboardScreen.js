@@ -156,6 +156,9 @@ export default function StorageDashboardScreen({ navigation }) {
             Total Weight: {totals.kg} KG • Market price based on trends
           </Text>
         </View>
+        <TouchableOpacity onPress={() => navigation.navigate('PostHarvestAdvisor')}>
+   <Text>AI Guardian</Text>
+   </TouchableOpacity>
 
         {/* ================= LIST ================= */}
         <Text style={styles.sectionTitle}>Batch Details</Text>

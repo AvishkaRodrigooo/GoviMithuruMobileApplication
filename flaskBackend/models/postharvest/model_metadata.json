@@ -1,0 +1,313 @@
+{
+  "model_version": "1.0.0",
+  "trained_on": "2026-02-24T19:00:18.539252",
+  "xgboost": {
+    "r2_score": 0.6649,
+    "rmse_days": 1233.5,
+    "mae_days": 585.7,
+    "best_params": {
+      "learning_rate": 0.05,
+      "max_depth": 3,
+      "min_samples_leaf": 10,
+      "n_estimators": 100,
+      "subsample": 1.0
+    },
+    "feature_cols": [
+      "Variety_Enc",
+      "Type_Enc",
+      "Method_Enc",
+      "MC (%)",
+      "Temp (C)",
+      "High_Moisture",
+      "High_Temp",
+      "MC_Temp_Interaction"
+    ],
+    "feature_importances": {
+      "MC (%)": 0.4982,
+      "MC_Temp_Interaction": 0.2479,
+      "Temp (C)": 0.2139,
+      "Variety_Enc": 0.0373,
+      "Method_Enc": 0.0015,
+      "Type_Enc": 0.0013,
+      "High_Moisture": 0.0,
+      "High_Temp": 0.0
+    }
+  },
+  "label_encoders": {
+    "varieties": [
+      "At 307",
+      "At 362",
+      "Bg 300",
+      "Bg 352",
+      "Bg 358",
+      "Bg 360",
+      "Bg 403",
+      "Bg 94-1",
+      "Bw 367",
+      "Kalu Heenati",
+      "Kuruluthuda",
+      "Ld 368",
+      "Pachchaperumal",
+      "Pokkali",
+      "Rath Suwandel",
+      "Suwandel"
+    ],
+    "methods": [
+      "Cold storage",
+      "Gene bank",
+      "Gunny bag",
+      "Polythene bag"
+    ],
+    "types": [
+      "Improved",
+      "Traditional"
+    ]
+  },
+  "price_forecasts": {
+    "Bg 352": {
+      "current_lkr": 256.73,
+      "peak_lkr": 256.94,
+      "days_to_peak": 294,
+      "weeks_to_peak": 42,
+      "gain_lkr_per_kg": 0.21,
+      "gain_pct": 0.08,
+      "current_season": "Harvest_Glut",
+      "horizon_prices": {
+        "day_7": 236.07,
+        "day_14": 238.63,
+        "day_30": 238.63,
+        "day_60": 238.46,
+        "day_90": 201.71
+      }
+    },
+    "Bg 300": {
+      "current_lkr": 249.58,
+      "peak_lkr": 258.39,
+      "days_to_peak": 294,
+      "weeks_to_peak": 42,
+      "gain_lkr_per_kg": 8.81,
+      "gain_pct": 3.53,
+      "current_season": "Harvest_Glut",
+      "horizon_prices": {
+        "day_7": 241.32,
+        "day_14": 234.77,
+        "day_30": 235.27,
+        "day_60": 241.74,
+        "day_90": 205.74
+      }
+    },
+    "Bg 403": {
+      "current_lkr": 255.73,
+      "peak_lkr": 258.68,
+      "days_to_peak": 294,
+      "weeks_to_peak": 42,
+      "gain_lkr_per_kg": 2.95,
+      "gain_pct": 1.15,
+      "current_season": "Harvest_Glut",
+      "horizon_prices": {
+        "day_7": 237.86,
+        "day_14": 234.43,
+        "day_30": 239.72,
+        "day_60": 237.5,
+        "day_90": 208.96
+      }
+    },
+    "Ld 368": {
+      "current_lkr": 251.16,
+      "peak_lkr": 256.69,
+      "days_to_peak": 301,
+      "weeks_to_peak": 43,
+      "gain_lkr_per_kg": 5.53,
+      "gain_pct": 2.2,
+      "current_season": "Harvest_Glut",
+      "horizon_prices": {
+        "day_7": 238.84,
+        "day_14": 241.47,
+        "day_30": 240.29,
+        "day_60": 239.46,
+        "day_90": 205.95
+      }
+    },
+    "At 362": {
+      "current_lkr": 299.89,
+      "peak_lkr": 311.19,
+      "days_to_peak": 294,
+      "weeks_to_peak": 42,
+      "gain_lkr_per_kg": 11.3,
+      "gain_pct": 3.77,
+      "current_season": "Harvest_Glut",
+      "horizon_prices": {
+        "day_7": 285.64,
+        "day_14": 285.53,
+        "day_30": 282.99,
+        "day_60": 293.18,
+        "day_90": 246.89
+      }
+    },
+    "At 307": {
+      "current_lkr": 314.71,
+      "peak_lkr": 306.86,
+      "days_to_peak": 294,
+      "weeks_to_peak": 42,
+      "gain_lkr_per_kg": -7.85,
+      "gain_pct": -2.49,
+      "current_season": "Harvest_Glut",
+      "horizon_prices": {
+        "day_7": 284.04,
+        "day_14": 282.71,
+        "day_30": 287.72,
+        "day_60": 289.81,
+        "day_90": 242.02
+      }
+    },
+    "Bg 358": {
+      "current_lkr": 316.41,
+      "peak_lkr": 309.15,
+      "days_to_peak": 294,
+      "weeks_to_peak": 42,
+      "gain_lkr_per_kg": -7.26,
+      "gain_pct": -2.29,
+      "current_season": "Harvest_Glut",
+      "horizon_prices": {
+        "day_7": 287.07,
+        "day_14": 288.05,
+        "day_30": 284.36,
+        "day_60": 283.95,
+        "day_90": 246.93
+      }
+    },
+    "Bw 367": {
+      "current_lkr": 303.29,
+      "peak_lkr": 305.32,
+      "days_to_peak": 287,
+      "weeks_to_peak": 41,
+      "gain_lkr_per_kg": 2.03,
+      "gain_pct": 0.67,
+      "current_season": "Harvest_Glut",
+      "horizon_prices": {
+        "day_7": 284.64,
+        "day_14": 281.05,
+        "day_30": 285.34,
+        "day_60": 290.41,
+        "day_90": 248.37
+      }
+    },
+    "Suwandel": {
+      "current_lkr": 903.91,
+      "peak_lkr": 914.02,
+      "days_to_peak": 287,
+      "weeks_to_peak": 41,
+      "gain_lkr_per_kg": 10.11,
+      "gain_pct": 1.12,
+      "current_season": "Harvest_Glut",
+      "horizon_prices": {
+        "day_7": 824.83,
+        "day_14": 825.19,
+        "day_30": 819.04,
+        "day_60": 844.76,
+        "day_90": 713.98
+      }
+    },
+    "Rath Suwandel": {
+      "current_lkr": 704.31,
+      "peak_lkr": 740.76,
+      "days_to_peak": 301,
+      "weeks_to_peak": 43,
+      "gain_lkr_per_kg": 36.45,
+      "gain_pct": 5.18,
+      "current_season": "Harvest_Glut",
+      "horizon_prices": {
+        "day_7": 667.59,
+        "day_14": 677.96,
+        "day_30": 661.84,
+        "day_60": 680.01,
+        "day_90": 592.39
+      }
+    },
+    "Kalu Heenati": {
+      "current_lkr": 899.8,
+      "peak_lkr": 916.75,
+      "days_to_peak": 280,
+      "weeks_to_peak": 40,
+      "gain_lkr_per_kg": 16.95,
+      "gain_pct": 1.88,
+      "current_season": "Harvest_Glut",
+      "horizon_prices": {
+        "day_7": 832.56,
+        "day_14": 850.39,
+        "day_30": 841.21,
+        "day_60": 835.71,
+        "day_90": 736.94
+      }
+    },
+    "Pokkali": {
+      "current_lkr": 715.74,
+      "peak_lkr": 743.03,
+      "days_to_peak": 294,
+      "weeks_to_peak": 42,
+      "gain_lkr_per_kg": 27.29,
+      "gain_pct": 3.81,
+      "current_season": "Harvest_Glut",
+      "horizon_prices": {
+        "day_7": 657.97,
+        "day_14": 689.52,
+        "day_30": 655.89,
+        "day_60": 659.26,
+        "day_90": 553.47
+      }
+    },
+    "Kuruluthuda": {
+      "current_lkr": 703.66,
+      "peak_lkr": 730.14,
+      "days_to_peak": 140,
+      "weeks_to_peak": 20,
+      "gain_lkr_per_kg": 26.48,
+      "gain_pct": 3.76,
+      "current_season": "Harvest_Glut",
+      "horizon_prices": {
+        "day_7": 672.23,
+        "day_14": 659.93,
+        "day_30": 667.84,
+        "day_60": 675.32,
+        "day_90": 590.03
+      }
+    },
+    "Pachchaperumal": {
+      "current_lkr": 734.73,
+      "peak_lkr": 746.97,
+      "days_to_peak": 294,
+      "weeks_to_peak": 42,
+      "gain_lkr_per_kg": 12.24,
+      "gain_pct": 1.67,
+      "current_season": "Harvest_Glut",
+      "horizon_prices": {
+        "day_7": 666.06,
+        "day_14": 687.72,
+        "day_30": 666.94,
+        "day_60": 676.2,
+        "day_90": 580.01
+      }
+    }
+  },
+  "price_varieties": [
+    "Bg 352",
+    "Bg 300",
+    "Bg 403",
+    "Ld 368",
+    "At 362",
+    "At 307",
+    "Bg 358",
+    "Bw 367",
+    "Suwandel",
+    "Rath Suwandel",
+    "Kalu Heenati",
+    "Pokkali",
+    "Kuruluthuda",
+    "Pachchaperumal"
+  ],
+  "risk_thresholds": {
+    "green_buffer_days": 30,
+    "moisture_danger": 14.0,
+    "temp_danger": 30.0
+  }
+}

@@ -3,8 +3,8 @@ from pymongo import MongoClient
 import os
 from dotenv import load_dotenv
 from ultralytics import YOLO
+from routes.postharvest_guardian import postharvest_bp
 
-load_dotenv()
 app = Flask(__name__)
 
 # MongoDB connection
@@ -17,7 +17,8 @@ app.db = db
 
 # Load YOLO model ONCE here, before registering blueprints
 app.model = YOLO("models/best.pt")
-
+app.register_blueprint(postharvest_bp)
+load_dotenv()
 # Import blueprints
 
 from routes.predict import predict_bp
