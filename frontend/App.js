@@ -31,6 +31,8 @@ import InputPlannerScreen from './src/screens/cropEstablishment/InputPlannerScre
 import CropRecommenderScreen from './src/screens/cropEstablishment/CropRecommenderScreen ';
 
 // Post Harvest Features
+import KnowledgeSelectionScreen from './src/screens/PostHarvest/KnowledgeSelectionScreen';
+import KnowledgeQuizScreen from './src/screens/PostHarvest/KnowledgeQuizScreen';
 import StorageDashboardScreen from './src/screens/PostHarvest/StorageDashboardScreen';
 import RegisterHarvestScreen from './src/screens/PostHarvest/RegisterHarvestScreen';
 import SensorConnectionScreen from './src/screens/PostHarvest/SensorConnectionScreen';
@@ -115,6 +117,9 @@ export default function App() {
               options={{ title: "Agro Shops Nearby" }}
             />
             {/* Post Harvest Analysis Flow */}
+            <Stack.Screen name="PostHarvestOnboarding" component={KnowledgeSelectionScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="KnowledgeQuiz" component={KnowledgeQuizScreen} options={{ headerShown: false }} />
+
             <Stack.Screen name="Stage" component={StorageDashboardScreen} options={{ title: 'Storage Analysis' }} />
             <Stack.Screen name="RegisterHarvest" component={RegisterHarvestScreen} options={{ title: 'Register Harvest' }} />
             <Stack.Screen name="ConnectSensors" component={SensorConnectionScreen} options={{ title: 'Connect Sensors' }} />

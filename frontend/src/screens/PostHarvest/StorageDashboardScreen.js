@@ -9,7 +9,7 @@ import { db, auth } from '../../firebase/firebaseConfig';
 
 const { width } = Dimensions.get('window');
 
-export default function StorageDashboardScreen({ navigation }) {
+export default function StorageDashboardScreen({ navigation, route }) {
   const [harvests, setHarvests] = useState([]);
   const [totals, setTotals] = useState({ kg: 0, bags: 0, value: 0 });
   const [loading, setLoading] = useState(true);
@@ -140,13 +140,63 @@ export default function StorageDashboardScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        {/* ================= STACK LIST ================= */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Active Batch Monitoring</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('InventoryList')}>
-            <Text style={styles.seeAll}>VIEW ALL</Text>
-          </TouchableOpacity>
-        </View>
+        {/* ================= BEGINNER GUIDE CONTENT ================= */}
+        {route?.params?.userLevel === 'BEGINNER' && (
+          <View style={styles.beginnerSection}>
+            <Text style={styles.sectionTitle}>Beginner Decision Guide 🎓</Text>
+            <Text style={styles.sectionSub}>Essential steps for successful storage</Text>
+
+            <View style={styles.guideCard}>
+              <View style={styles.guideStep}>
+                <View style={styles.guideNumber}><Text style={styles.guideNumberText}>1</Text></View>
+                <View style={styles.guideInfo}>
+                  <Text style={styles.guideLabel}>Check Moisture (MC%)</Text>
+                  <Text style={styles.guideDesc}>Ensure your paddy is at 13% MC. Above 14% causes rotting and fungus.</Text>
+                </View>
+              </View>
+
+              <View style={styles.guideStep}>
+                <View style={styles.guideNumber}><Text style={styles.guideNumberText}>2</Text></View>
+                <View style={styles.guideInfo}>
+                  <Text style={styles.guideLabel}>Select Correct Bags</Text>
+                  <Text style={styles.guideDesc}>Use Hermetic (air-tight) bags for long storage. Use gunny bags only for few weeks.</Text>
+                </View>
+              </View>
+
+              <View style={styles.guideStep}>
+                <View style={styles.guideNumber}><Text style={styles.guideNumberText}>3</Text></View>
+                <View style={styles.guideInfo}>
+                  <Text style={styles.guideLabel}>Monitor Temperature</Text>
+                  <Text style={styles.guideDesc}>Keep storage away from direct sunlight. Hot rice attracts weevils (ghun).</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* ================= INTERMEDIATE CONTENT ================= */}
+        {route?.params?.userLevel === 'INTERMEDIATE' && (
+          <View style={styles.beginnerSection}>
+            <Text style={styles.sectionTitle}>Monitoring Hub 🔍</Text>
+            <Text style={styles.sectionSub}>Optimization & Loss Prevention</Text>
+            <View style={[styles.guideCard, { borderColor: '#3b82f6' }]}>
+              <Text style={[styles.guideLabel, { color: '#3b82f6' }]}>Pro Tip: Equilibrium Moisture</Text>
+              <Text style={styles.guideDesc}>Your paddy interacts with air humidity. If RH is {'>'}70%, your rice will gain moisture even inside the bag. Monitor ambient RH!</Text>
+            </View>
+          </View>
+        )}
+
+        {/* ================= ADVANCED CONTENT ================= */}
+        {route?.params?.userLevel === 'ADVANCED' && (
+          <View style={styles.beginnerSection}>
+            <Text style={styles.sectionTitle}>Market Strategy 📈</Text>
+            <Text style={styles.sectionSub}>Risk/Reward Timing Insights</Text>
+            <View style={[styles.guideCard, { borderColor: '#8b5cf6' }]}>
+              <Text style={[styles.guideLabel, { color: '#a78bfa' }]}>Biological Limit Analysis</Text>
+              <Text style={styles.guideDesc}>Current XGBoost data suggests variety-specific spoilage limits. Use the Guardian Advisor to view the 'Risk-Reward Bridge' for your current stack.</Text>
+            </View>
+          </View>
+        )}
 
         {loading ? (
           <ActivityIndicator size="large" color="#34d399" style={{ marginTop: 20 }} />
@@ -223,5 +273,16 @@ const styles = StyleSheet.create({
   batchSide: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   batchQty: { color: '#34d399', fontSize: 16, fontWeight: '800' },
 
-  empty: { padding: 40, alignItems: 'center' }
+  empty: { padding: 40, alignItems: 'center' },
+
+  // Beginner Guide Styles
+  beginnerSection: { marginBottom: 32 },
+  sectionSub: { color: '#64748b', fontSize: 13, marginBottom: 16 },
+  guideCard: { backgroundColor: '#1e293b', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#334155' },
+  guideStep: { flexDirection: 'row', marginBottom: 20, gap: 14 },
+  guideNumber: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#34d399', alignItems: 'center', justifyContent: 'center' },
+  guideNumberText: { color: '#064e3b', fontWeight: 'bold', fontSize: 14 },
+  guideInfo: { flex: 1 },
+  guideLabel: { color: '#fff', fontSize: 15, fontWeight: '700', marginBottom: 4 },
+  guideDesc: { color: '#94a3b8', fontSize: 12, lineHeight: 18 },
 });
