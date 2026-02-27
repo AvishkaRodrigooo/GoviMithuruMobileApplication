@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, 
-  Text, 
-  Pressable, 
-  StyleSheet, 
-  ScrollView, 
-  Dimensions, 
-  ActivityIndicator, 
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  ScrollView,
+  Dimensions,
+  ActivityIndicator,
   Linking, // To open the news in browser
-  Image 
+  Image
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -32,7 +32,7 @@ export default function HomeScreen({ navigation }) {
     try {
       const response = await fetch(API_URL);
       const data = await response.json();
-      
+
       if (data.items) {
         // Transform the data to match our UI
         const formattedNews = data.items.slice(0, 10).map((item, index) => ({
@@ -42,15 +42,15 @@ export default function HomeScreen({ navigation }) {
           source: item.author || "Google News",
           link: item.link,
           // Assign tags based on keywords in the title
-          tag: item.title.toLowerCase().includes('price') ? 'Price' : 
-               item.title.toLowerCase().includes('weather') ? 'Weather' : 
-               item.title.toLowerCase().includes('fertilizer') ? 'Subsidy' : 'General',
+          tag: item.title.toLowerCase().includes('price') ? 'Price' :
+            item.title.toLowerCase().includes('weather') ? 'Weather' :
+              item.title.toLowerCase().includes('fertilizer') ? 'Subsidy' : 'General',
           tagColor: item.title.toLowerCase().includes('price') ? '#dc2626' : // Red
-                    item.title.toLowerCase().includes('weather') ? '#2563eb' : // Blue
-                    item.title.toLowerCase().includes('fertilizer') ? '#16a34a' : '#8b5cf6', // Green/Purple
+            item.title.toLowerCase().includes('weather') ? '#2563eb' : // Blue
+              item.title.toLowerCase().includes('fertilizer') ? '#16a34a' : '#8b5cf6', // Green/Purple
           icon: item.title.toLowerCase().includes('price') ? 'cash-multiple' :
-                item.title.toLowerCase().includes('weather') ? 'weather-pouring' :
-                'newspaper-variant'
+            item.title.toLowerCase().includes('weather') ? 'weather-pouring' :
+              'newspaper-variant'
         }));
         setNewsData(formattedNews);
       }
@@ -77,7 +77,7 @@ export default function HomeScreen({ navigation }) {
     const date = new Date(dateString);
     const now = new Date();
     const diffInHours = Math.floor((now - date) / (1000 * 60 * 60));
-    
+
     if (diffInHours < 1) return 'Just now';
     if (diffInHours < 24) return `${diffInHours} hrs ago`;
     return `${Math.floor(diffInHours / 24)} days ago`;
@@ -110,7 +110,7 @@ export default function HomeScreen({ navigation }) {
         </View>
       </View>
 
-      <ScrollView 
+      <ScrollView
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -154,17 +154,17 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         <View style={styles.featuresGrid}>
-          <Pressable style={[styles.featureCard, styles.featureLarge]} onPress={() => navTo('Stage', 'harvest')}>
+          <Pressable style={[styles.featureCard, styles.featureLarge]} onPress={() => navTo('PostHarvestOnboarding', 'harvest')}>
             <View style={[styles.featureIcon, { backgroundColor: '#dbeafe' }]}>
               <MaterialCommunityIcons name="warehouse" size={40} color="#3b82f6" />
             </View>
             <Text style={styles.featureTitle}>Harvest Advisory</Text>
             <Text style={styles.featureDesc}>Optimize storage time</Text>
           </Pressable>
-          <Pressable style={[styles.featureCard, styles.featureLarge]}  onPress={() => navigation.navigate('WeatherForecast')}>
+          <Pressable style={[styles.featureCard, styles.featureLarge]} onPress={() => navigation.navigate('WeatherForecast')}>
             <View style={[styles.featureIcon, { backgroundColor: '#fee2e2' }]}>
-              <MaterialCommunityIcons name="weather-partly-cloudy" size={40} color="#3a6193ff" /> 
-            
+              <MaterialCommunityIcons name="weather-partly-cloudy" size={40} color="#3a6193ff" />
+
             </View>
             <Text style={styles.featureTitle}>Weather Forecast</Text>
             <Text style={styles.featureDesc}>weather prediction</Text>
@@ -190,7 +190,7 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.featureDesc}>Best varieties for your soil</Text>
           </Pressable>
         </View>
-        
+
 
         {/* --- LIVE NEWS SECTION --- */}
         <View style={styles.newsHeaderRow}>
@@ -202,22 +202,22 @@ export default function HomeScreen({ navigation }) {
 
         <View style={styles.newsContainer}>
           {loading ? (
-            <ActivityIndicator size="large" color="#16a34a" style={{marginTop: 20}} />
+            <ActivityIndicator size="large" color="#16a34a" style={{ marginTop: 20 }} />
           ) : newsData.length === 0 ? (
-            <Text style={{textAlign: 'center', color: '#9ca3af', marginTop: 10}}>
+            <Text style={{ textAlign: 'center', color: '#9ca3af', marginTop: 10 }}>
               No internet connection or news available.
             </Text>
           ) : (
             newsData.map((item) => (
-              <Pressable 
-                key={item.id} 
+              <Pressable
+                key={item.id}
                 style={styles.newsCard}
                 onPress={() => openNewsLink(item.link)} // Make it clickable!
               >
-                <View style={[styles.newsIconBox, { backgroundColor: item.tagColor + '20' }]}> 
+                <View style={[styles.newsIconBox, { backgroundColor: item.tagColor + '20' }]}>
                   <MaterialCommunityIcons name={item.icon} size={24} color={item.tagColor} />
                 </View>
-                
+
                 <View style={styles.newsContent}>
                   <View style={styles.newsTopRow}>
                     <View style={[styles.tagBadge, { backgroundColor: item.tagColor }]}>
@@ -225,9 +225,9 @@ export default function HomeScreen({ navigation }) {
                     </View>
                     <Text style={styles.newsTime}>{formatDate(item.time)}</Text>
                   </View>
-                  
+
                   <Text style={styles.newsTitle} numberOfLines={3}>{item.title}</Text>
-                  
+
                   <View style={styles.newsFooter}>
                     <MaterialCommunityIcons name="web" size={14} color="#9ca3af" />
                     <Text style={styles.newsSource} numberOfLines={1}>
@@ -246,16 +246,16 @@ export default function HomeScreen({ navigation }) {
       {/* Bottom Nav */}
       <View style={styles.bottomNav}>
         {['home', 'pest', 'harvest', 'weeds', 'pricing'].map((tab) => (
-          <Pressable 
-            key={tab} 
-            style={styles.navItem} 
-            onPress={() => navTo(tab === 'home' ? 'Home' : tab === 'pest' ? 'Pest' : tab === 'harvest' ? 'Stage' : tab === 'weeds' ? 'weedsDashboard' : 'Pricing', tab)}
+          <Pressable
+            key={tab}
+            style={styles.navItem}
+            onPress={() => navTo(tab === 'home' ? 'Home' : tab === 'pest' ? 'Pest' : tab === 'harvest' ? 'PostHarvestOnboarding' : tab === 'weeds' ? 'weedsDashboard' : 'Pricing', tab)}
           >
             <View style={[styles.navIconWrapper, activeTab === tab && styles.navIconActive]}>
-              <MaterialCommunityIcons 
-                name={tab === 'home' ? 'home' : tab === 'pest' ? 'bug' : tab === 'harvest' ? 'warehouse' : tab === 'weeds' ? 'leaf' : 'currency-usd'} 
-                size={24} 
-                color={activeTab === tab ? '#fff' : '#9ca3af'} 
+              <MaterialCommunityIcons
+                name={tab === 'home' ? 'home' : tab === 'pest' ? 'bug' : tab === 'harvest' ? 'warehouse' : tab === 'weeds' ? 'leaf' : 'currency-usd'}
+                size={24}
+                color={activeTab === tab ? '#fff' : '#9ca3af'}
               />
             </View>
             <Text style={[styles.navText, activeTab === tab && styles.navTextActive]}>
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
   featureIcon: { width: 60, height: 60, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   featureTitle: { fontSize: 15, fontWeight: 'bold', color: '#111827' },
   featureDesc: { fontSize: 11, color: '#6b7280', marginTop: 4 },
-  
+
   // News Styles
   newsHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 16 },
   newsContainer: { gap: 12 },

@@ -460,6 +460,7 @@ def get_ai_advice():
         potential_profit = float(data.get('potential_profit', 0))
         intervention_viable = data.get('intervention_viable', True)
         days_after_drying   = int(data.get('days_after_drying', 180))
+        user_notes          = data.get('notes', 'None provided.')
 
         # ── Build LLM payload ────────────────────────────────────────────────
         llm_payload = {
@@ -477,6 +478,7 @@ def get_ai_advice():
             "Buffer_Days":              buffer_days,
             "Storage_After_Drying":     f"{days_after_drying} days",
             "Intervention_Viable":      intervention_viable,
+            "Farmer_Context_Notes":     user_notes,
         }
 
         system_prompt = """You are an Expert Post-Harvest Agriculture Advisor for the GoviMithuru App.
@@ -659,4 +661,84 @@ def health_check():
             "metadata":         m.get('metadata') is not None,
         },
         "timestamp": datetime.utcnow().isoformat(),
+    }), 200
+
+
+@postharvest_bp.route('/quiz', methods=['GET'])
+def get_quiz():
+    """Generates 3 quick questions to test farmer knowledge level."""
+    system_prompt = "You are a teacher for Sri Lankan paddy farmers. Generate 3 multiple-choice questions about paddy storage and moisture. Return ONLY JSON."
+    user_prompt = """Generate 3 questions. 
+    FORMAT: array of objects {question, options: [A, B, C, D], answer: "A/B/C/D", explanation: "short tip"}.
+    Questions should range from easy (moisture) to hard (hermetic storage)."""
+    
+    # 1. Try Gemini first (Fastest)
+    api_key = os.getenv('GOOGLE_API_KEY')
+    raw_res = None
+    if _is_valid_key(api_key):
+        raw_res = _call_gemini_free(system_prompt, user_prompt)
+    
+    # 2. Try Ollama (Local) as requested by user
+    if not raw_res or raw_res == "QUOTA_EXCEEDED":
+        raw_res = _call_ollama_local(system_prompt, user_prompt)
+    
+    # 3. Handle Fallback if all else fails
+    if not raw_res:
+        # Fallback questions if AI fails
+        questions = [
+            {
+                "question": "What is the recommended moisture level for long-term paddy storage?",
+                "options": ["10%", "13%", "16%", "20%"],
+                "answer": "B",
+                "explanation": "13% moisture prevents fungal growth and keeps seeds viable."
+            },
+            {
+                "question": "Which storage method provides the best protection against weevils?",
+                "options": ["Open gunny bags", "Polythene bags", "Hermetic (airtight) bags", "Wooden boxes"],
+                "answer": "C",
+                "explanation": "Hermetic bags suffocate insects by removing oxygen."
+            },
+            {
+                "question": "What happens if paddy is stored at 17% moisture?",
+                "options": ["It stays fresh", "It germinates to sprouts", "It rots and heats up", "It becomes more valuable"],
+                "answer": "C",
+                "explanation": "High moisture causes high respiration, heat, and rapid rotting."
+            }
+        ]
+        return jsonify({"success": True, "questions": questions, "source": "static"}), 200
+
+    try:
+        clean_json = raw_res.strip()
+        start = clean_json.find("[")
+        end = clean_json.rfind("]") + 1
+        if start != -1 and end != -1:
+            questions = json.loads(clean_json[start:end])
+            return jsonify({"success": True, "questions": questions, "source": "ai"}), 200
+    except Exception as e:
+        print(f"[Quiz AI Error] {e}")
+        
+    return jsonify({"error": "Failed to generate quiz"}), 500
+
+
+@postharvest_bp.route('/evaluate-level', methods=['POST'])
+def evaluate_level():
+    """Evaluates score and returns user level."""
+    data = request.get_json()
+    score = data.get('score', 0) # 0 to 3
+    
+    if score >= 3:
+        level = "ADVANCED"
+        desc  = "Expert: You understand hermetic storage and biological limits."
+    elif score >= 2:
+        level = "INTERMEDIATE"
+        desc  = "Practitioner: You know the basics but could optimize for profit."
+    else:
+        level = "BEGINNER"
+        desc  = "Learner: Let's start with basic moisture and bag selection."
+        
+    return jsonify({
+        "success": True,
+        "level":   level,
+        "description": desc,
+        "redirect": "Dashboard"
     }), 200
