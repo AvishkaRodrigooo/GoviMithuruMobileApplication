@@ -10,41 +10,63 @@ import { db, auth } from '../../firebase/firebaseConfig';
 const { width } = Dimensions.get('window');
 
 export default function StorageDashboardScreen({ navigation, route }) {
+  const [locations, setLocations] = useState([]);
   const [harvests, setHarvests] = useState([]);
   const [totals, setTotals] = useState({ kg: 0, bags: 0, value: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = db
-      .collection('harvests')
-      .where('userId', '==', auth.currentUser?.uid)
-      .onSnapshot(
-        snapshot => {
-          let kg = 0;
-          let bags = 0;
+    const fetchData = async () => {
+      try {
+        const uid = auth.currentUser?.uid;
+        if (!uid) return;
 
-          const list = snapshot.docs.map(doc => {
-            const data = doc.data();
-            kg += Number(data.quantityKg || 0);
-            bags += Number(data.bags || 0);
-            return { id: doc.id, ...data };
-          });
+        // 1. Fetch Storage Locations (The 3 warehouses etc)
+        const locSnap = await db.collection('storageLocations').where('userId', '==', uid).get();
+        const locList = locSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setLocations(locList);
 
-          setHarvests(list);
-          setTotals({
-            kg: kg.toFixed(0),
-            bags: bags.toFixed(1),
-            value: (kg * 242).toLocaleString('en-LK'),
-          });
-          setLoading(false);
-        },
-        error => {
-          console.error(error);
-          setLoading(false);
-        }
-      );
+        // 2. Fetch Harvests
+        const harvestUnsubscribe = db
+          .collection('harvests')
+          .where('userId', '==', uid)
+          .onSnapshot(
+            snapshot => {
+              let kg = 0;
+              let bags = 0;
 
-    return () => unsubscribe();
+              const list = snapshot.docs.map(doc => {
+                const data = doc.data();
+                kg += Number(data.quantityKg || 0);
+                bags += Number(data.bags || 0);
+                return { id: doc.id, ...data };
+              });
+
+              setHarvests(list);
+              setTotals({
+                kg: kg.toFixed(0),
+                bags: bags.toFixed(1),
+                value: (kg * 242).toLocaleString('en-LK'),
+              });
+              setLoading(false);
+            },
+            error => {
+              console.error(error);
+              setLoading(false);
+            }
+          );
+
+        return harvestUnsubscribe;
+      } catch (err) {
+        console.error(err);
+        setLoading(false);
+      }
+    };
+
+    const unsubscribe = fetchData();
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
   }, []);
 
   const handleDelete = id => {
@@ -200,31 +222,74 @@ export default function StorageDashboardScreen({ navigation, route }) {
 
         {loading ? (
           <ActivityIndicator size="large" color="#34d399" style={{ marginTop: 20 }} />
-        ) : harvests.length === 0 ? (
+        ) : locations.length === 0 && harvests.length === 0 ? (
           <View style={styles.empty}>
             <MaterialCommunityIcons name="paddy" size={60} color="#1e293b" />
-            <Text style={{ color: '#64748b', marginTop: 12 }}>No harvests registered yet.</Text>
+            <Text style={{ color: '#64748b', marginTop: 12 }}>No storage locations or harvests registered.</Text>
           </View>
         ) : (
-          harvests.slice(0, 5).map(item => (
-            <TouchableOpacity
-              key={item.id}
-              style={styles.batchCard}
-              onPress={() => navigation.navigate('RegisterHarvest', { editData: item, docId: item.id })}
-            >
-              <View style={styles.batchIcon}>
-                <MaterialCommunityIcons name="layers-outline" size={22} color="#64748b" />
+          locations.map(loc => {
+            const locStocks = harvests.filter(h => h.locationId === loc.id || h.locationName === loc.locationName);
+
+            return (
+              <View key={loc.id} style={styles.locationSection}>
+                <View style={styles.locationHeader}>
+                  <MaterialCommunityIcons
+                    name={
+                      loc.storageType === 'Warehouse' ? 'warehouse' :
+                        loc.storageType === 'Home' ? 'home-variant-outline' :
+                          loc.storageType === 'Silo' ? 'database' :
+                            'storefront-outline'
+                    }
+                    size={22}
+                    color="#34d399"
+                  />
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={styles.locationTitle}>{loc.locationName.toUpperCase()}</Text>
+                    <Text style={styles.locationSubText}>{loc.storageType} • {loc.storageArea} {loc.areaUnit}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.locationAnalysisBtn}
+                    onPress={() => navigation.navigate('WarehouseAnalysis', { locationId: loc.id })}
+                  >
+                    <LinearGradient colors={['#059669', '#10b981']} style={styles.vizBtnGrad}>
+                      <Text style={styles.vizBtnText}>VIEW STORAGE</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                  <View style={styles.locationBadge}>
+                    <Text style={styles.locationBadgeText}>{locStocks.length} BATCHES</Text>
+                  </View>
+                </View>
+
+                {locStocks.map(item => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.batchCard}
+                    onPress={() => navigation.navigate('RegisterHarvest', { editData: item, docId: item.id })}
+                  >
+                    <View style={styles.batchIcon}>
+                      <MaterialCommunityIcons name="layers-outline" size={22} color="#64748b" />
+                    </View>
+                    <View style={styles.batchMain}>
+                      <Text style={styles.batchTitle}>{item.variety}</Text>
+                      <Text style={styles.batchSub}>{item.season} • {item.quantityKg} KG</Text>
+                    </View>
+                    <View style={styles.batchSide}>
+                      <TouchableOpacity
+                        style={styles.batchAdviceBtn}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          navigation.navigate('PostHarvestAdvisor', { batch: item });
+                        }}
+                      >
+                        <MaterialCommunityIcons name="brain" size={20} color="#34d399" />
+                      </TouchableOpacity>
+                    </View>
+                  </TouchableOpacity>
+                ))}
               </View>
-              <View style={styles.batchMain}>
-                <Text style={styles.batchTitle}>{item.variety}</Text>
-                <Text style={styles.batchSub}>{item.location} • {item.season}</Text>
-              </View>
-              <View style={styles.batchSide}>
-                <Text style={styles.batchQty}>{item.quantityKg} KG</Text>
-                <MaterialCommunityIcons name="chevron-right" size={18} color="#334155" />
-              </View>
-            </TouchableOpacity>
-          ))
+            );
+          })
         )}
       </ScrollView>
     </SafeAreaView>
@@ -265,13 +330,24 @@ const styles = StyleSheet.create({
   sectionTitle: { color: '#fff', fontSize: 17, fontWeight: '800' },
   seeAll: { color: '#34d399', fontSize: 11, fontWeight: '800' },
 
+  // Location Grouping Styles
+  locationSection: { marginBottom: 24 },
+  locationHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 10 },
+  locationTitle: { color: '#94a3b8', fontSize: 13, fontWeight: '800', letterSpacing: 1 },
+  locationSubText: { color: '#64748b', fontSize: 10, marginTop: 2 },
+  locationAnalysisBtn: { borderRadius: 10, overflow: 'hidden', marginRight: 8, borderWidth: 1, borderColor: '#34d39940' },
+  vizBtnGrad: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8, gap: 6 },
+  vizBtnText: { color: '#fff', fontSize: 10, fontWeight: '900' },
+  locationBadge: { backgroundColor: '#34d39920', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  locationBadgeText: { color: '#34d399', fontSize: 9, fontWeight: '900' },
+
   batchCard: { flexDirection: 'row', backgroundColor: '#1e293b', padding: 16, borderRadius: 20, marginBottom: 12, alignItems: 'center', borderWidth: 1, borderColor: '#334155' },
   batchIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#0f172a', justifyContent: 'center', alignItems: 'center' },
   batchMain: { flex: 1, marginLeft: 14 },
   batchTitle: { color: '#fff', fontSize: 15, fontWeight: '700' },
   batchSub: { color: '#64748b', fontSize: 11, marginTop: 2 },
-  batchSide: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  batchQty: { color: '#34d399', fontSize: 16, fontWeight: '800' },
+  batchSide: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  batchAdviceBtn: { backgroundColor: '#34d39915', padding: 8, borderRadius: 10, borderWidth: 1, borderColor: '#34d39940' },
 
   empty: { padding: 40, alignItems: 'center' },
 

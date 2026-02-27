@@ -460,6 +460,7 @@ def get_ai_advice():
         potential_profit = float(data.get('potential_profit', 0))
         intervention_viable = data.get('intervention_viable', True)
         days_after_drying   = int(data.get('days_after_drying', 180))
+        user_notes          = data.get('notes', 'None provided.')
 
         # ── Build LLM payload ────────────────────────────────────────────────
         llm_payload = {
@@ -477,6 +478,7 @@ def get_ai_advice():
             "Buffer_Days":              buffer_days,
             "Storage_After_Drying":     f"{days_after_drying} days",
             "Intervention_Viable":      intervention_viable,
+            "Farmer_Context_Notes":     user_notes,
         }
 
         system_prompt = """You are an Expert Post-Harvest Agriculture Advisor for the GoviMithuru App.

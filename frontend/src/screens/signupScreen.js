@@ -24,6 +24,8 @@ const SignUpScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [role, setRole] = useState('farmer'); // farmer, dealer
+  const [location, setLocation] = useState('');
 
   const validateEmail = (email) => {
     const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -99,7 +101,8 @@ const SignUpScreen = ({ navigation }) => {
         email: email.trim(),
         phone: phone.trim(),
         createdAt: new Date().toISOString(),
-        role: 'farmer',
+        role: role,
+        location: location.trim(),
         profileImage: '',
         status: 'active',
       });
@@ -158,23 +161,54 @@ const SignUpScreen = ({ navigation }) => {
       >
         <View style={styles.innerContainer}>
           <View style={styles.header}>
-           
+
             <Text style={styles.title}>Join GoviMithuru</Text>
             <Text style={styles.subtitle}>Create New account</Text>
           </View>
 
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>Username</Text>
+              <Text style={styles.label}>Account Type</Text>
+              <View style={styles.roleContainer}>
+                <TouchableOpacity
+                  style={[styles.roleButton, role === 'farmer' && styles.activeRoleButton]}
+                  onPress={() => setRole('farmer')}
+                >
+                  <Text style={[styles.roleButtonText, role === 'farmer' && styles.activeRoleButtonText]}>Farmer</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.roleButton, role === 'dealer' && styles.activeRoleButton]}
+                  onPress={() => setRole('dealer')}
+                >
+                  <Text style={[styles.roleButtonText, role === 'dealer' && styles.activeRoleButtonText]}>Dealer</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>Full Name</Text>
               <TextInput
                 style={styles.input}
-                placeholder="Enter user name"
+                placeholder="Enter full name"
                 value={name}
                 onChangeText={setName}
                 autoCapitalize="words"
                 placeholderTextColor="#999"
               />
             </View>
+
+            {role === 'dealer' && (
+              <View style={styles.inputContainer}>
+                <Text style={styles.label}>Business Location / District</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Polonnaruwa Economic Center"
+                  value={location}
+                  onChangeText={setLocation}
+                  placeholderTextColor="#999"
+                />
+              </View>
+            )}
 
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Email Address</Text>
@@ -365,6 +399,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     backgroundColor: '#f8fafc',
     color: '#334155',
+  },
+  roleContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 5,
+  },
+  roleButton: {
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+  },
+  activeRoleButton: {
+    backgroundColor: '#16a34a',
+    borderColor: '#16a34a',
+  },
+  roleButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  activeRoleButtonText: {
+    color: '#fff',
   },
   phoneInputContainer: {
     flexDirection: 'row',

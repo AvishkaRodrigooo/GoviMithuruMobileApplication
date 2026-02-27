@@ -55,17 +55,21 @@ const TypewriterText = ({ text, onComplete }) => {
   return <Text style={styles.adviceText}>{displayedText}</Text>;
 };
 
-export default function PostHarvestAdvisorScreen({ navigation }) {
+export default function PostHarvestAdvisorScreen({ navigation, route }) {
+  // Check if we are analyzing a specific batch
+  const initialBatch = route.params?.batch;
+
   // Navigation tabs
   const [activeTab, setActiveTab] = useState('analyze'); // analyze | advisor | tips
 
-  // Form state
-  const [variety, setVariety] = useState('Bg 352');
-  const [varietyType, setVarietyType] = useState('Improved');
-  const [method, setMethod] = useState('Gunny bag');
-  const [moisture, setMoisture] = useState(13.5);
+  // Form state - pre-filled if batch exists
+  const [variety, setVariety] = useState(initialBatch?.variety || 'Bg 352');
+  const [varietyType, setVarietyType] = useState(initialBatch?.varietyType || 'Improved');
+  const [method, setMethod] = useState(initialBatch?.storageMethod || 'Gunny bag');
+  const [moisture, setMoisture] = useState(initialBatch?.moisturePct || 13.5);
   const [temp, setTemp] = useState(28);
-  const [quantity, setQuantity] = useState('1000');
+  const [quantity, setQuantity] = useState(initialBatch?.quantityKg?.toString() || '1000');
+  const [notes, setNotes] = useState('');
 
   // Result state
   const [prediction, setPrediction] = useState(null);
@@ -79,6 +83,17 @@ export default function PostHarvestAdvisorScreen({ navigation }) {
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
+
+  // Sync state if batch changes (e.g. navigating from different cards)
+  useEffect(() => {
+    if (route.params?.batch) {
+      const b = route.params.batch;
+      setVariety(b.variety || 'Bg 352');
+      setVarietyType(b.varietyType || 'Improved');
+      setMethod(b.storageMethod || 'Gunny bag');
+      setQuantity(b.quantityKg?.toString() || '1000');
+    }
+  }, [route.params?.batch]);
 
   useEffect(() => {
     Animated.parallel([
@@ -144,6 +159,7 @@ export default function PostHarvestAdvisorScreen({ navigation }) {
           potential_profit: rr.potential_profit_lkr,
           intervention_viable: rr.intervention_viable,
           days_after_drying: rr.days_after_drying,
+          notes: notes,
         }),
       });
       const data = await res.json();
@@ -205,84 +221,146 @@ export default function PostHarvestAdvisorScreen({ navigation }) {
   // ─── TABS RENDER ───────────────────────────────────────────────────────────
 
   const renderAnalyze = () => (
-    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-      <View style={styles.formCard}>
-        <View style={styles.sectionHeader}>
-          <MaterialCommunityIcons name="paddy" size={20} color="#34d399" />
-          <Text style={styles.sectionTitle}>Condition Analysis</Text>
-        </View>
-
-        <TouchableOpacity style={styles.pickerTrigger} onPress={() => setModalType('variety')}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.pickerLabel}>Rice Variety</Text>
-            <Text style={styles.pickerValue}>{variety}</Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-down" size={20} color="#64748b" />
-        </TouchableOpacity>
-
-        <View style={styles.row}>
-          <TouchableOpacity style={[styles.pickerTrigger, { flex: 1, marginRight: 8 }]} onPress={() => setModalType('type')}>
-            <View>
-              <Text style={styles.pickerLabel}>Type</Text>
-              <Text style={styles.pickerValue}>{varietyType}</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.pickerTrigger, { flex: 1 }]} onPress={() => setModalType('method')}>
-            <View>
-              <Text style={styles.pickerLabel}>Method</Text>
-              <Text style={styles.pickerValue}>{method}</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        <SliderRow label="Moisture Level" value={moisture} min={5} max={22} unit="%" danger={14} onChange={setMoisture} />
-        <SliderRow label="Warehouse Temp" value={temp} min={10} max={45} unit="°C" danger={30} onChange={setTemp} />
-
-        <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Quantity (kg)</Text>
-          <TextInput
-            style={styles.textInput}
-            keyboardType="numeric"
-            value={quantity}
-            onChangeText={setQuantity}
-            placeholder="0.0"
-            placeholderTextColor="#475569"
-          />
-        </View>
-
-        <TouchableOpacity style={styles.analyzeBtn} onPress={runAnalysis} disabled={loadingPred}>
-          <LinearGradient colors={['#059669', '#16a34a']} style={styles.btnGrad}>
-            {loadingPred ? <ActivityIndicator color="#fff" /> : <><MaterialCommunityIcons name="brain" size={20} color="#fff" /><Text style={styles.btnText}>Run ML Forecast</Text></>}
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
-
-      {prediction && (
-        <View style={styles.resultsWrapper}>
-          {/* Signal Banner */}
-          <View style={[styles.signalBanner, { backgroundColor: SIGNAL_CONFIG[prediction.risk_reward.signal].bg[0], borderColor: SIGNAL_CONFIG[prediction.risk_reward.signal].color }]}>
-            <MaterialCommunityIcons name={SIGNAL_CONFIG[prediction.risk_reward.signal].icon} size={32} color={SIGNAL_CONFIG[prediction.risk_reward.signal].color} />
+    <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        {initialBatch && (
+          <View style={styles.contextCard}>
+            <MaterialCommunityIcons name="layers-outline" size={24} color="#34d399" />
             <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={[styles.signalLabel, { color: SIGNAL_CONFIG[prediction.risk_reward.signal].color }]}>{SIGNAL_CONFIG[prediction.risk_reward.signal].label}</Text>
-              <Text style={styles.signalSub}>{prediction.risk_reward.action}</Text>
+              <Text style={styles.contextLabel}>Analyzing Specific Batch</Text>
+              <Text style={styles.contextValue}>{initialBatch.variety} • {initialBatch.location}</Text>
+            </View>
+            <View style={styles.contextBadge}>
+              <Text style={styles.contextBadgeText}>PRE-FILLED</Text>
             </View>
           </View>
+        )}
 
-          {/* Metrics */}
-          <View style={styles.metricsGrid}>
-            <MetricCard icon="timer-sand" label="Storage Life" value={`${prediction.storage.storage_days}d`} sub={`${prediction.storage.storage_months} months`} accent="#34d399" />
-            <MetricCard icon="trending-up" label="Price Peak" value={`${prediction.price.days_to_peak}d`} sub={`Target Day ${prediction.price.days_to_peak}`} accent="#facc15" />
-            <MetricCard icon="cash" label="Est. Gain" value={`+${(prediction.risk_reward.potential_profit_lkr / 1000).toFixed(1)}k`} sub="LKR Total" accent="#2dd4bf" />
+        <View style={styles.formCard}>
+          <View style={styles.sectionHeader}>
+            <MaterialCommunityIcons name="tune-variant" size={20} color="#34d399" />
+            <Text style={styles.sectionTitle}>Details & Calibration</Text>
           </View>
 
-          <TouchableOpacity style={styles.advisorCta} onPress={getAIAdvice}>
-            <LinearGradient colors={['#4c1d95', '#7c3aed']} style={styles.btnGrad}>
-              <MaterialCommunityIcons name="robot" size={20} color="#fff" />
-              <Text style={styles.btnText}>View Expert AI Advisory</Text>
+          <TouchableOpacity style={styles.pickerTrigger} onPress={() => setModalType('variety')}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.pickerLabel}>Rice Variety</Text>
+              <Text style={styles.pickerValue}>{variety}</Text>
+            </View>
+            <MaterialCommunityIcons name="chevron-down" size={20} color="#64748b" />
+          </TouchableOpacity>
+
+          <View style={styles.row}>
+            <TouchableOpacity style={[styles.pickerTrigger, { flex: 1, marginRight: 8 }]} onPress={() => setModalType('type')}>
+              <View>
+                <Text style={styles.pickerLabel}>Type</Text>
+                <Text style={styles.pickerValue}>{varietyType}</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.pickerTrigger, { flex: 1 }]} onPress={() => setModalType('method')}>
+              <View>
+                <Text style={styles.pickerLabel}>Method</Text>
+                <Text style={styles.pickerValue}>{method}</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          <SliderRow label="Moisture Level" value={moisture} min={5} max={22} unit="%" danger={14} onChange={setMoisture} />
+          <SliderRow label="Warehouse Temp" value={temp} min={10} max={45} unit="°C" danger={30} onChange={setTemp} />
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Quantity (kg)</Text>
+            <TextInput
+              style={styles.textInput}
+              keyboardType="numeric"
+              value={quantity}
+              onChangeText={setQuantity}
+              placeholder="0.0"
+              placeholderTextColor="#475569"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Farmer Context & Observations (Optional)</Text>
+            <TextInput
+              style={[styles.textInput, { height: 80, textAlignVertical: 'top' }]}
+              multiline
+              numberOfLines={3}
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="e.g. Storage floor seems a bit damp, or I noticed some weevils (ghun) near the entrance..."
+              placeholderTextColor="#475569"
+            />
+          </View>
+
+          <TouchableOpacity style={styles.analyzeBtn} onPress={runAnalysis} disabled={loadingPred}>
+            <LinearGradient colors={['#059669', '#16a34a']} style={styles.btnGrad}>
+              {loadingPred ? <ActivityIndicator color="#fff" /> : <><MaterialCommunityIcons name="brain" size={20} color="#fff" /><Text style={styles.btnText}>Run ML Forecast</Text></>}
             </LinearGradient>
           </TouchableOpacity>
         </View>
-      )}
+
+        {prediction && (
+          <View style={styles.resultsWrapper}>
+            {/* Risk-Reward Signal */}
+            <View style={[styles.signalBanner, { backgroundColor: SIGNAL_CONFIG[prediction.risk_reward.signal].bg[0], borderColor: SIGNAL_CONFIG[prediction.risk_reward.signal].color }]}>
+              <MaterialCommunityIcons name={SIGNAL_CONFIG[prediction.risk_reward.signal].icon} size={32} color={SIGNAL_CONFIG[prediction.risk_reward.signal].color} />
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={[styles.signalLabel, { color: SIGNAL_CONFIG[prediction.risk_reward.signal].color }]}>{SIGNAL_CONFIG[prediction.risk_reward.signal].label}</Text>
+                <Text style={styles.signalSub}>{prediction.risk_reward.action}</Text>
+              </View>
+            </View>
+
+            {/* Premium Price Forecast Interface */}
+            <View style={styles.priceForecastCard}>
+              <View style={styles.forecastHeader}>
+                <MaterialCommunityIcons name="trending-up" size={24} color="#facc15" />
+                <Text style={styles.forecastTitle}>Price Forecast & Market Timing</Text>
+              </View>
+
+              <View style={styles.priceComparisonContainer}>
+                <View style={styles.priceBox}>
+                  <Text style={styles.priceMeta}>CURRENT</Text>
+                  <Text style={styles.priceLarge}>Rs. {prediction.price.current_lkr}</Text>
+                  <Text style={styles.priceUnit}>per kg</Text>
+                </View>
+
+                <View style={styles.priceArrowBox}>
+                  <MaterialCommunityIcons name="arrow-right-thick" size={24} color="#34d399" />
+                  <Text style={styles.gainPercent}>+{prediction.price.gain_pct}%</Text>
+                </View>
+
+                <View style={[styles.priceBox, styles.peakPriceBox]}>
+                  <Text style={[styles.priceMeta, { color: '#facc15' }]}>PREDICTED PEAK</Text>
+                  <Text style={[styles.priceLarge, { color: '#facc15' }]}>Rs. {prediction.price.peak_lkr}</Text>
+                  <Text style={styles.priceUnit}>in {prediction.price.days_to_peak} days</Text>
+                </View>
+              </View>
+
+              <LinearGradient colors={['#1e3a8a30', '#1e3a8a10']} style={styles.profitHighlight}>
+                <View style={styles.profitLabelRow}>
+                  <Text style={styles.profitMeta}>POTENTIAL EXTRA PROFIT</Text>
+                  <Text style={styles.profitMain}>Rs. {prediction.risk_reward.potential_profit_lkr.toLocaleString()}</Text>
+                </View>
+                <Text style={styles.profitDesc}>Total gain if stored correctly until target day.</Text>
+              </LinearGradient>
+            </View>
+
+            {/* Storage Vital Stats */}
+            <View style={styles.metricsGrid}>
+              <MetricCard icon="timer-sand" label="Storage Life" value={`${prediction.storage.storage_days}d`} sub={`${prediction.storage.storage_months}mo`} accent="#34d399" />
+              <MetricCard icon="water-percent" label="Moisture Status" value={prediction.storage.moisture_risk} sub={prediction.storage.moisture_risk === 'SAFE' ? 'Stable' : 'Risk'} accent={prediction.storage.moisture_risk === 'SAFE' ? '#34d399' : '#f87171'} />
+            </View>
+
+            <TouchableOpacity style={styles.advisorCta} onPress={getAIAdvice}>
+              <LinearGradient colors={['#4c1d95', '#7c3aed']} style={styles.btnGrad}>
+                <MaterialCommunityIcons name="robot" size={20} color="#fff" />
+                <Text style={styles.btnText}>View Expert AI Advisory</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
     </Animated.View>
   );
 
@@ -421,11 +499,16 @@ export default function PostHarvestAdvisorScreen({ navigation }) {
 
       {/* Header */}
       <LinearGradient colors={['#064e3b', '#022c22']} style={styles.header}>
+        <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
         <View style={styles.topBar}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <MaterialCommunityIcons name="arrow-left" size={26} color="#fff" />
           </TouchableOpacity>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.headerTitle}>Post-Harvest Guardian</Text>
             <Text style={styles.headerSub}>AI-Driven Research Advisory</Text>
           </View>
@@ -488,8 +571,12 @@ export default function PostHarvestAdvisorScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0f172a' },
-  header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 0 },
-  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  header: {
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 20) + 10 : 20,
+    paddingBottom: 10
+  },
+  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, minHeight: 60 },
   backBtn: { padding: 8, marginRight: 12, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12 },
   headerTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
   headerSub: { color: '#34d399', fontSize: 12 },
@@ -501,6 +588,13 @@ const styles = StyleSheet.create({
   activeIndicator: { position: 'absolute', bottom: 0, width: '40%', height: 3, backgroundColor: '#34d399', borderRadius: 2 },
 
   content: { flex: 1, padding: 20 },
+
+  // Context card
+  contextCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e293b', padding: 16, borderRadius: 20, marginBottom: 16, borderWidth: 1, borderColor: '#34d39940' },
+  contextLabel: { color: '#64748b', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
+  contextValue: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  contextBadge: { backgroundColor: '#34d39920', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  contextBadgeText: { color: '#34d399', fontSize: 9, fontWeight: '900' },
 
   // Form card
   formCard: {
@@ -560,6 +654,24 @@ const styles = StyleSheet.create({
   signalSub: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
 
   metricsGrid: { flexDirection: 'row', gap: 8, marginBottom: 12 },
+
+  // Price Forecast Card
+  priceForecastCard: { backgroundColor: '#1e293b', borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#334155' },
+  forecastHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 10 },
+  forecastTitle: { color: '#f1f5f9', fontSize: 16, fontWeight: '800' },
+  priceComparisonContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+  priceBox: { flex: 1, alignItems: 'center', backgroundColor: '#0f172a', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: '#334155' },
+  peakPriceBox: { borderColor: '#facc1540', backgroundColor: '#facc1505' },
+  priceMeta: { color: '#64748b', fontSize: 9, fontWeight: '800', marginBottom: 4 },
+  priceLarge: { color: '#fff', fontSize: 18, fontWeight: '900' },
+  priceUnit: { color: '#475569', fontSize: 10, marginTop: 2 },
+  priceArrowBox: { alignItems: 'center', paddingHorizontal: 4 },
+  gainPercent: { color: '#34d399', fontSize: 11, fontWeight: '800', marginTop: 4 },
+  profitHighlight: { padding: 16, borderRadius: 16, borderLeftWidth: 4, borderLeftColor: '#3b82f6' },
+  profitLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 },
+  profitMeta: { color: '#94a3b8', fontSize: 10, fontWeight: '800' },
+  profitMain: { color: '#fff', fontSize: 20, fontWeight: '900' },
+  profitDesc: { color: '#64748b', fontSize: 11, lineHeight: 16 },
   metricCard: { flex: 1, backgroundColor: '#1e293b', borderRadius: 20, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: '#334155' },
   metricValue: { color: '#fff', fontSize: 18, fontWeight: '900', marginTop: 4 },
   metricLabel: { color: '#64748b', fontSize: 10, fontWeight: '700', marginTop: 2 },

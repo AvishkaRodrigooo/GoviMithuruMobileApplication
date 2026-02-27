@@ -10,6 +10,7 @@ import SignUpScreen from './src/screens/signupScreen';
 import HomeScreen from './src/screens/homeScreen';
 import ProfileScreen from './src/screens/profileScreen';
 import WeatherForecastScreen from './src/screens/weatherForecastScreen';
+import WelcomeScreen from './src/screens/WelcomeScreen';
 
 // Admin Dashboard
 import adminDashboardScreen from './src/screens/adminDashboard/adminDashboardScreen';
@@ -33,12 +34,14 @@ import CropRecommenderScreen from './src/screens/cropEstablishment/CropRecommend
 // Post Harvest Features
 import KnowledgeSelectionScreen from './src/screens/PostHarvest/KnowledgeSelectionScreen';
 import KnowledgeQuizScreen from './src/screens/PostHarvest/KnowledgeQuizScreen';
+import WarehouseAnalysisScreen from './src/screens/PostHarvest/WarehouseAnalysisScreen';
 import StorageDashboardScreen from './src/screens/PostHarvest/StorageDashboardScreen';
 import RegisterHarvestScreen from './src/screens/PostHarvest/RegisterHarvestScreen';
 import SensorConnectionScreen from './src/screens/PostHarvest/SensorConnectionScreen';
 import MarketTrackingScreen from './src/screens/PostHarvest/MarketTrackingScreen';
 import InventoryListScreen from './src/screens/PostHarvest/InventoryListScreen';
 import PostHarvestAdvisorScreen from './src/screens/PostHarvest/PostHarvestAdvisorScreen';
+import DealerDashboardScreen from './src/screens/PostHarvest/DealerDashboardScreen';
 
 // Pricing Placeholder
 function PricingForecastScreen() {
@@ -119,6 +122,7 @@ export default function App() {
             {/* Post Harvest Analysis Flow */}
             <Stack.Screen name="PostHarvestOnboarding" component={KnowledgeSelectionScreen} options={{ headerShown: false }} />
             <Stack.Screen name="KnowledgeQuiz" component={KnowledgeQuizScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="WarehouseAnalysis" component={WarehouseAnalysisScreen} options={{ headerShown: false }} />
 
             <Stack.Screen name="Stage" component={StorageDashboardScreen} options={{ title: 'Storage Analysis' }} />
             <Stack.Screen name="RegisterHarvest" component={RegisterHarvestScreen} options={{ title: 'Register Harvest' }} />
@@ -127,6 +131,7 @@ export default function App() {
             <Stack.Screen name="InventoryList" component={InventoryListScreen} options={{ title: 'Stock Inventory' }} />
             <Stack.Screen name="PostHarvestAdvisor" component={PostHarvestAdvisorScreen}
               options={{ headerShown: false }} />
+            <Stack.Screen name="DealerDashboard" component={DealerDashboardScreen} options={{ headerShown: false }} />
 
             {/* weeds detection */}
             <Stack.Screen name="Stages" component={StageIdentificationScreen} options={{ title: 'Stage Identification' }} />
@@ -157,6 +162,11 @@ export default function App() {
         ) : (
           // User is NOT signed in - show auth screens
           <>
+            <Stack.Screen
+              name="Welcome"
+              component={WelcomeScreen}
+              options={{ headerShown: false }}
+            />
             <Stack.Screen
               name="SignIn"
               component={SignInScreen}

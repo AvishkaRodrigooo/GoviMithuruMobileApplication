@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { 
-  View, 
-  Text, 
-  TextInput, 
-  TouchableOpacity, 
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
   Alert,
   StyleSheet,
   KeyboardAvoidingView,
@@ -50,13 +50,15 @@ const SignInScreen = ({ navigation }) => {
       // 🧭 Navigate based on role
       if (role === 'admin') {
         navigation.replace('AdminDashboard');
+      } else if (role === 'dealer') {
+        navigation.replace('DealerDashboard');
       } else {
         navigation.replace('Home');
       }
 
     } catch (error) {
       console.error('Login error:', error);
-      
+
       let errorMessage = 'Login failed. Please try again.';
       if (error.code === 'auth/user-not-found') {
         errorMessage = 'User not found. Please check your email.';
@@ -67,7 +69,7 @@ const SignInScreen = ({ navigation }) => {
       } else if (error.code === 'auth/network-request-failed') {
         errorMessage = 'Network error. Please check your internet connection.';
       }
-      
+
       Alert.alert('Login Failed', errorMessage);
     } finally {
       setLoading(false);
@@ -75,20 +77,20 @@ const SignInScreen = ({ navigation }) => {
   };
 
   return (
-    <KeyboardAvoidingView 
+    <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.innerContainer}>
-          
+
           {/* Logo/Header Section */}
           <View style={styles.header}>
             <Text style={styles.appName}>GoviMithuru</Text>
             <Text style={styles.welcomeText}>Welcome Back!</Text>
             <Text style={styles.subtitle}>Sign in to continue</Text>
           </View>
-          
+
           {/* Input Section */}
           <View style={styles.formContainer}>
             <TextInput
@@ -101,7 +103,7 @@ const SignInScreen = ({ navigation }) => {
               autoCorrect={false}
               placeholderTextColor="#999"
             />
-            
+
             <TextInput
               style={styles.input}
               placeholder="Password"
@@ -110,15 +112,15 @@ const SignInScreen = ({ navigation }) => {
               secureTextEntry
               placeholderTextColor="#999"
             />
-            
+
             {/* Forgot Password */}
             <TouchableOpacity style={styles.forgotPasswordContainer}>
               <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
             </TouchableOpacity>
-            
+
             {/* Sign In Button */}
-            <TouchableOpacity 
-              style={[styles.signInButton, loading && styles.disabledButton]} 
+            <TouchableOpacity
+              style={[styles.signInButton, loading && styles.disabledButton]}
               onPress={handleSignIn}
               disabled={loading}
             >
@@ -126,22 +128,22 @@ const SignInScreen = ({ navigation }) => {
                 {loading ? 'Signing In...' : 'Sign In'}
               </Text>
             </TouchableOpacity>
-            
+
             {/* Divider */}
             <View style={styles.dividerContainer}>
               <View style={styles.divider} />
               <Text style={styles.dividerText}>OR</Text>
               <View style={styles.divider} />
             </View>
-            
+
             {/* Create Account Button */}
-            <TouchableOpacity 
-              style={styles.createAccountButton} 
+            <TouchableOpacity
+              style={styles.createAccountButton}
               onPress={() => navigation.navigate('SignUp')}
             >
               <Text style={styles.createAccountButtonText}>Create New Account</Text>
             </TouchableOpacity>
-            
+
             {/* Footer */}
             <View style={styles.footer}>
               <Text style={styles.footerText}>Don't have an account? </Text>
@@ -150,7 +152,7 @@ const SignInScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
           </View>
-          
+
           {/* App Info */}
           <View style={styles.appInfo}>
             <Text style={styles.appInfoText}>GoviMithuru App</Text>
