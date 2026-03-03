@@ -6,15 +6,31 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
+  ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 
-export default function WeedsClassificationScreen() {
-  const [image, setImage] = useState(null);
+/*Reusable Category Card */
+const CategoryCard = ({ title, icon, children }) => (
+  <View style={styles.categoryCard}>
+    <Text style={styles.categoryTitle}>
+      {icon} {title}
+    </Text>
+    {children}
+  </View>
+);
 
-  // 📷 Open Camera
+export default function WeedsClassificationScreen() {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [image, setImage] = useState(null);
+  const [predictedWeed, setPredictedWeed] = useState(null);
+  const [confidence, setConfidence] = useState(null);
+  const [weedDetails, setWeedDetails] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  /*Camera */
   const openCamera = async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
@@ -29,13 +45,13 @@ export default function WeedsClassificationScreen() {
 
     if (!result.canceled) {
       setImage(result.assets[0].uri);
+      resetResult();
     }
   };
 
-  // 🖼 Open Gallery
+  /*  Gallery */
   const openGallery = async () => {
-    const permission =
-      await ImagePicker.requestMediaLibraryPermissionsAsync();
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       Alert.alert("Permission Required", "Gallery access is needed");
       return;
@@ -48,282 +64,608 @@ export default function WeedsClassificationScreen() {
 
     if (!result.canceled) {
       setImage(result.assets[0].uri);
+      resetResult();
     }
   };
 
+  const resetResult = () => {
+    setPredictedWeed(null);
+    setConfidence(null);
+    setWeedDetails(null);
+    setCurrentPage(1);
+  };
+
+  /* Predict Weed */
+  const identifyWeeds = async () => {
+    if (!image) {
+      Alert.alert("No image", "Please select or take a photo first");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("image", {
+        uri: image,
+        name: "photo.jpg",
+        type: "image/jpeg",
+      });
+
+      const response = await fetch("http://192.168.8.156:5000/weed_predict", {
+        method: "POST",
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setPredictedWeed(data.predicted_weed);
+        setConfidence(data.confidence);
+        setWeedDetails(data.details);
+        setCurrentPage(2); // Move to results page
+      } else {
+        Alert.alert("Prediction Error", data.error);
+      }
+    } catch (error) {
+      Alert.alert("Network Error", error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleNext = () => {
+    if (currentPage < 6 && predictedWeed) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToScan = () => {
+    setCurrentPage(1);
+    resetResult();
+  };
+
   return (
-    <ScrollView style={styles.container}>
-      {/* 🌱 Header */}
-      <Text style={styles.header}>🌱 Weeds Scanner</Text>
-      <Text style={styles.subHeader}>
-        Take or upload a photo to identify weeds
-      </Text>
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.headerSection}>
+        <Text style={styles.header}>🌱 Weeds Identification</Text>
+        <Text style={styles.subHeader}>
+          Take or upload a photo to identify weeds
+        </Text>
+      </View>
 
-      {/* 📸 Scan Card */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Scan Weeds</Text>
-
-        <View style={styles.imageBox}>
-          {image ? (
-            <Image source={{ uri: image }} style={styles.image} />
-          ) : (
-            <Pressable onPress={openCamera}>
-              <View style={styles.placeholder}>
-                <Ionicons name="camera" size={50} color="#166534" />
-                <Text style={styles.placeholderText}>Tap to Scan Weeds</Text>
+      {/* Progress Indicator */}
+      {predictedWeed && (
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${((currentPage - 1) / 5) * 100}%` },
+              ]}
+            />
+          </View>
+          <View style={styles.stepIndicators}>
+            {[
+              { num: 1, label: "Scan" },
+              { num: 2, label: "Result" },
+              { num: 3, label: "Info" },
+              { num: 4, label: "Impact" },
+              { num: 5, label: "Manage" },
+              { num: 6, label: "Details" },
+            ].map((step) => (
+              <View key={step.num} style={styles.stepContainer}>
+                <View
+                  style={[
+                    styles.stepCircle,
+                    currentPage >= step.num && styles.stepCircleActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.stepNumber,
+                      currentPage >= step.num && styles.stepNumberActive,
+                    ]}
+                  >
+                    {step.num}
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.stepLabel,
+                    currentPage === step.num && styles.stepLabelActive,
+                  ]}
+                >
+                  {step.label}
+                </Text>
               </View>
-            </Pressable>
-          )}
-
-          {/* Icons */}
-          <View style={styles.iconRow}>
-            <Pressable onPress={openCamera}>
-              <Ionicons name="camera-outline" size={22} />
-            </Pressable>
-            <Pressable onPress={openGallery}>
-              <Ionicons name="image-outline" size={22} />
-            </Pressable>
+            ))}
           </View>
         </View>
+      )}
 
-        <Pressable style={styles.scanBtn}>
-          <Text style={styles.scanText}>Identify Weeds</Text>
-        </Pressable>
-      </View>
+      {/* Content Area */}
+      <ScrollView style={styles.contentArea} showsVerticalScrollIndicator={false}>
+        {/* PAGE 1: SCAN */}
+        {currentPage === 1 && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Scan Weeds</Text>
 
-      {/* 🌾 Detection Results */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Detection Result</Text>
+            <View style={styles.imageBox}>
+              {image ? (
+                <Image source={{ uri: image }} style={styles.image} />
+              ) : (
+                <Pressable onPress={openCamera}>
+                  <View style={styles.placeholder}>
+                    <Ionicons name="camera" size={60} color="#166534" />
+                    <Text style={styles.placeholderText}>Tap to Scan Weeds</Text>
+                  </View>
+                </Pressable>
+              )}
 
-        <View style={styles.resultHeader}>
-          <View style={styles.thumb} />
-          <View>
-            <Text style={styles.weedName}>Common Ragweed</Text>
-            <Text style={styles.confidence}>Accuracy: 92%</Text>
+              <View style={styles.iconRow}>
+                <Pressable onPress={openCamera} style={styles.iconButton}>
+                  <Ionicons name="camera-outline" size={24} color="#166534" />
+                </Pressable>
+                <Pressable onPress={openGallery} style={styles.iconButton}>
+                  <Ionicons name="image-outline" size={24} color="#166534" />
+                </Pressable>
+              </View>
+            </View>
+
+            <Pressable
+              style={[styles.scanBtn, loading && { opacity: 0.7 }]}
+              onPress={identifyWeeds}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.scanText}>Identify Weeds</Text>
+              )}
+            </Pressable>
           </View>
-        </View>
+        )}
 
-        {/* Growth Stage */}
-        <View style={styles.stageRow}>
-          <Text style={styles.stage}>Stage 1</Text>
-          <Text style={styles.stage}>Stage 2</Text>
-          <Text style={[styles.stage, styles.activeStage]}>
-            Stage 3
-          </Text>
-          <Text style={styles.stage}>Stage 4</Text>
-        </View>
+        {/* PAGE 2: DETECTION RESULT */}
+        {currentPage === 2 && predictedWeed && (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>✅ Detection Result</Text>
 
-        {/* Recommendation */}
-        <View style={styles.recommendBox}>
-          <Text style={styles.recommendText}>
-            ✅ Recommended Action:
-          </Text>
-          <Text style={styles.recommendText}>
-            Apply selective herbicide during early growth stage.
-          </Text>
-          <Text style={styles.recommendText}>
-            Scientific Name: Ambrosia artemisiifolia
-          </Text>
-          <Text style={styles.recommendText}>
-            Weed Type: Broadleaf
-          </Text>
-          <Text style={styles.recommendText}>
-            Severity Level: High
-          </Text>
-        </View>
-      </View>
+            <View style={styles.resultHeader}>
+              <View style={styles.thumb}>
+                {image && <Image source={{ uri: image }} style={styles.thumbImage} />}
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.weedName}>{predictedWeed}</Text>
+                <Text style={styles.confidence}>
+                  🎯 Accuracy: {confidence.toFixed(2)}%
+                </Text>
+              </View>
+            </View>
 
-      {/* 🕒 Recent Scans */}
-      <View style={styles.card}>
-        <View style={styles.recentHeader}>
-          <Text style={styles.cardTitle}>Recent Scans</Text>
-          <Ionicons name="refresh" size={18} />
-        </View>
-
-        <View style={styles.recentItem}>
-          <View style={styles.thumbSmall} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.weedName}>Wild Oat</Text>
-            <Text style={styles.confidence}>Today - 10:30 AM</Text>
+            <View style={styles.infoBox}>
+              <Ionicons name="checkmark-circle" size={32} color="#16a34a" />
+              <Text style={styles.infoText}>
+                Weed successfully identified! Navigate through the pages to see detailed
+                information.
+              </Text>
+            </View>
           </View>
-          <Text style={styles.riskHigh}>High Risk</Text>
-        </View>
+        )}
+
+        {/* PAGE 3: BASIC INFORMATION */}
+        {currentPage === 3 && weedDetails && (
+          <View style={styles.card}>
+            <CategoryCard title="Basic Information" icon="🌿">
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Sinhala Name:</Text>
+                <Text style={styles.detailValue}>{weedDetails.sinhala_name}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>English Name:</Text>
+                <Text style={styles.detailValue}>{weedDetails.english_name}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Scientific Name:</Text>
+                <Text style={styles.detailValue}>{weedDetails.scientific_name}</Text>
+              </View>
+              <View style={styles.detailRow}>
+                <Text style={styles.detailLabel}>Type:</Text>
+                <Text style={styles.detailValue}>{weedDetails.type}</Text>
+              </View>
+            </CategoryCard>
+
+            <CategoryCard title="Distribution" icon="📍">
+              {weedDetails.distribution?.map((item, idx) => (
+                <Text key={idx} style={styles.listItem}>
+                  • {item}
+                </Text>
+              ))}
+            </CategoryCard>
+
+            <CategoryCard title="Morphology" icon="🌱">
+              {weedDetails.morphology?.map((item, idx) => (
+                <Text key={idx} style={styles.listItem}>
+                  • {item}
+                </Text>
+              ))}
+            </CategoryCard>
+          </View>
+        )}
+
+        {/* PAGE 4: REPRODUCTION */}
+        {currentPage === 4 && weedDetails && (
+          <View style={styles.card}>
+            <CategoryCard title="Reproduction" icon="🌾">
+              {weedDetails.reproduction?.map((item, idx) => (
+                <Text key={idx} style={styles.listItem}>
+                  • {item}
+                </Text>
+              ))}
+            </CategoryCard>
+          </View>
+        )}
+
+        {/* PAGE 5: IMPACT ON PADDY */}
+        {currentPage === 5 && weedDetails && (
+          <View style={styles.card}>
+            <CategoryCard title="Impact on Paddy" icon="⚠️">
+              {weedDetails.impact_on_paddy?.map((item, idx) => (
+                <View key={idx} style={styles.impactItem}>
+                  <Ionicons name="warning" size={16} color="#dc2626" />
+                  <Text style={styles.listItem}>{item}</Text>
+                </View>
+              ))}
+            </CategoryCard>
+          </View>
+        )}
+
+        {/* PAGE 6: WEED MANAGEMENT */}
+        {currentPage === 6 && weedDetails && (
+          <View style={styles.card}>
+            <CategoryCard title="Weed Management" icon="🛠️">
+              {weedDetails.management?.mechanical && (
+                <View style={styles.managementSection}>
+                  <Text style={styles.managementTitle}>🔧 Mechanical</Text>
+                  <Text style={styles.detailText}>{weedDetails.management.mechanical}</Text>
+                </View>
+              )}
+
+              {weedDetails.management?.cultural && (
+                <View style={styles.managementSection}>
+                  <Text style={styles.managementTitle}>🌱 Cultural</Text>
+                  {weedDetails.management.cultural.map((item, idx) => (
+                    <Text key={idx} style={styles.listItem}>
+                      • {item}
+                    </Text>
+                  ))}
+                </View>
+              )}
+
+              {weedDetails.management?.chemical && (
+                <View style={styles.managementSection}>
+                  <Text style={styles.managementTitle}>🧪 Chemical</Text>
+                  <Text style={styles.detailText}>{weedDetails.management.chemical}</Text>
+                </View>
+              )}
+            </CategoryCard>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Navigation Buttons */}
+      <View style={styles.navigationContainer}>
+        {currentPage > 1 ? (
+          <>
+            <Pressable style={styles.navButton} onPress={handlePrevious}>
+              <Ionicons name="arrow-back" size={20} color="#fff" />
+              <Text style={styles.navButtonText}>Previous</Text>
+            </Pressable>
+
+            {currentPage < 6 ? (
+              <Pressable style={styles.navButton} onPress={handleNext}>
+                <Text style={styles.navButtonText}>Next</Text>
+                <Ionicons name="arrow-forward" size={20} color="#fff" />
+              </Pressable>
+            ) : (
+              <Pressable style={styles.scanAgainButton} onPress={goToScan}>
+                <Ionicons name="camera" size={20} color="#fff" />
+                <Text style={styles.navButtonText}>Scan Again</Text>
+              </Pressable>
+            )}
+          </>
+        ) : null}
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
+/* 🎨 Styles */
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#f0fdf4",
-    padding: 16,
   },
-
+  headerSection: {
+    backgroundColor: "#fff",
+    padding: 16,
+    paddingTop: 50,
+    elevation: 2,
+  },
   header: {
     fontSize: 26,
     fontWeight: "bold",
     color: "#14532d",
   },
-
   subHeader: {
     fontSize: 14,
     color: "#166534",
-    marginBottom: 14,
+    marginTop: 4,
   },
-
+  progressContainer: {
+    backgroundColor: "#fff",
+    padding: 16,
+    elevation: 1,
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: "#dcfce7",
+    borderRadius: 2,
+    marginBottom: 16,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: "#16a34a",
+    borderRadius: 2,
+  },
+  stepIndicators: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  stepContainer: {
+    alignItems: "center",
+    flex: 1,
+  },
+  stepCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#dcfce7",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  stepCircleActive: {
+    backgroundColor: "#16a34a",
+  },
+  stepNumber: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "#166534",
+  },
+  stepNumberActive: {
+    color: "#fff",
+  },
+  stepLabel: {
+    fontSize: 10,
+    color: "#166534",
+  },
+  stepLabelActive: {
+    fontWeight: "bold",
+    color: "#14532d",
+  },
+  contentArea: {
+    flex: 1,
+    padding: 16,
+  },
   card: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#fff",
     borderRadius: 14,
     padding: 16,
-    marginBottom: 18,
     elevation: 4,
   },
-
   cardTitle: {
-    fontSize: 18,
-    fontWeight: "600",
+    fontSize: 20,
+    fontWeight: "700",
     color: "#14532d",
-    marginBottom: 12,
+    marginBottom: 16,
   },
-
   imageBox: {
-    height: 200,
+    height: 280,
     borderRadius: 12,
     backgroundColor: "#dcfce7",
     justifyContent: "center",
     alignItems: "center",
     position: "relative",
+    marginBottom: 16,
   },
-
   placeholder: {
-    justifyContent: "center",
     alignItems: "center",
   },
-
   placeholderText: {
-    marginTop: 10,
+    marginTop: 12,
     fontSize: 16,
     color: "#166534",
     fontWeight: "500",
   },
-
   image: {
     width: "100%",
     height: "100%",
     borderRadius: 12,
   },
-
   iconRow: {
     position: "absolute",
-    bottom: 10,
-    right: 10,
+    bottom: 12,
+    right: 12,
     flexDirection: "row",
-    gap: 16,
-    backgroundColor: "#ffffffcc",
-    padding: 8,
-    borderRadius: 20,
+    gap: 12,
   },
-
+  iconButton: {
+    backgroundColor: "#fff",
+    padding: 10,
+    borderRadius: 25,
+    elevation: 4,
+  },
   scanBtn: {
-    marginTop: 18,
     backgroundColor: "#15803d",
-    paddingVertical: 14,
+    paddingVertical: 16,
     borderRadius: 10,
     alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
+    gap: 8,
   },
-
   scanText: {
     color: "#fff",
     fontSize: 16,
     fontWeight: "bold",
   },
-
   resultHeader: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 16,
+    marginBottom: 16,
   },
-
   thumb: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
-    backgroundColor: "#bbf7d0",
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: "#dcfce7",
+    overflow: "hidden",
   },
-
+  thumbImage: {
+    width: "100%",
+    height: "100%",
+  },
   weedName: {
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#14532d",
+    marginBottom: 4,
+  },
+  confidence: {
+    fontSize: 14,
+    color: "#166534",
     fontWeight: "600",
+  },
+  infoBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "#f0fdf4",
+    padding: 16,
+    borderRadius: 10,
+    borderLeftWidth: 4,
+    borderLeftColor: "#16a34a",
+  },
+  infoText: {
+    flex: 1,
+    fontSize: 14,
+    color: "#166534",
+    lineHeight: 20,
+  },
+  categoryCard: {
+    backgroundColor: "#f0fdf4",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: "#16a34a",
+  },
+  categoryTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#14532d",
+    marginBottom: 10,
+  },
+  detailRow: {
+    flexDirection: "row",
+    marginBottom: 8,
+  },
+  detailLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#166534",
+    width: 120,
+  },
+  detailValue: {
+    flex: 1,
+    fontSize: 14,
     color: "#14532d",
   },
-
-  confidence: {
-    fontSize: 13,
-    color: "#166534",
-  },
-
-  stageRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginVertical: 14,
-  },
-
-  stage: {
-    backgroundColor: "#dcfce7",
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    fontSize: 12,
-    color: "#166534",
-  },
-
-  activeStage: {
-    backgroundColor: "#15803d",
-    color: "#fff",
-  },
-
-  recommendBox: {
-    backgroundColor: "#fef9c3",
-    borderLeftWidth: 5,
-    borderLeftColor: "#ca8a04",
-    padding: 12,
-    borderRadius: 8,
-  },
-
-  recommendText: {
+  detailText: {
     fontSize: 14,
+    color: "#14532d",
     marginBottom: 6,
-    color: "#713f12",
+    lineHeight: 20,
   },
-
-  recentHeader: {
+  listItem: {
+    fontSize: 14,
+    color: "#166534",
+    marginLeft: 8,
+    marginBottom: 6,
+    lineHeight: 20,
+  },
+  impactItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    marginBottom: 8,
+  },
+  managementSection: {
+    marginBottom: 16,
+  },
+  managementTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#14532d",
+    marginBottom: 8,
+  },
+  navigationContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-  },
-
-  recentItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 12,
+    padding: 16,
+    backgroundColor: "#fff",
+    elevation: 8,
     gap: 12,
   },
-
-  thumbSmall: {
-    width: 45,
-    height: 45,
+  navButton: {
+    flex: 1,
+    backgroundColor: "#15803d",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     borderRadius: 10,
-    backgroundColor: "#bbf7d0",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
   },
-
-  riskHigh: {
-    backgroundColor: "#fee2e2",
-    color: "#b91c1c",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    fontSize: 12,
-    fontWeight: "600",
+  scanAgainButton: {
+    flex: 1,
+    backgroundColor: "#2563eb",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  navButtonText: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "bold",
   },
 });

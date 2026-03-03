@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, FlatList, TouchableOpacity, 
-  TextInput, ActivityIndicator, Alert, SafeAreaView, Dimensions 
+import {
+  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  TextInput, ActivityIndicator, Alert, SafeAreaView, Dimensions, StatusBar
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient'; // Ensure this is installed
-import { db, auth } from '../../firebase/firebaseConfig'; 
+import { LinearGradient } from 'expo-linear-gradient';
+import { db, auth } from '../../firebase/firebaseConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -17,8 +17,7 @@ export default function InventoryListScreen({ navigation }) {
 
   useEffect(() => {
     const unsubscribe = db.collection('harvests')
-      .where('userId', '==', auth.currentUser?.uid) 
-      .orderBy('createdAt', 'desc')
+      .where('userId', '==', auth.currentUser?.uid)
       .onSnapshot(snapshot => {
         const data = snapshot.docs.map(doc => ({
           id: doc.id,
@@ -57,57 +56,57 @@ export default function InventoryListScreen({ navigation }) {
   };
 
   const renderItem = ({ item }) => (
-    <TouchableOpacity 
+    <TouchableOpacity
       activeOpacity={0.9}
       onLongPress={() => confirmDelete(item.id)}
+      style={styles.cardContainer}
     >
-      <LinearGradient 
-        colors={['#064e3b', '#065f46']} 
-        style={styles.headerCard}
+      <LinearGradient
+        colors={['#1e293b', '#0f172a']}
+        style={styles.inventoryCard}
       >
-        {/* Top Row: Variety and Grade */}
-        <View style={styles.cardHeaderRow}>
-          <View style={styles.iconBadge}>
-            <MaterialCommunityIcons name="rice" size={22} color="#fff" />
+        <View style={styles.cardTop}>
+          <View style={[styles.iconBox, { backgroundColor: '#064e3b30' }]}>
+            <MaterialCommunityIcons name="rice" size={24} color="#34d399" />
           </View>
-          <View style={styles.gradeIndicator}>
-            <Text style={styles.gradeText}>Grade {item.grade}</Text>
-          </View>
-        </View>
-
-        {/* Center Section: Variety & Quantity */}
-        <Text style={styles.cardLabel}>{item.variety}</Text>
-        <Text style={styles.cardValue}>{item.quantityKg} <Text style={styles.unitText}>KG</Text></Text>
-
-        {/* Footer Section: Metadata */}
-        <View style={styles.metadataRow}>
-          <View style={styles.metaItem}>
-            <MaterialCommunityIcons name="map-marker" size={14} color="rgba(255,255,255,0.6)" />
-            <Text style={styles.metaText}>{item.location}</Text>
-          </View>
-          <View style={styles.vDivider} />
-          <View style={styles.metaItem}>
-            <MaterialCommunityIcons name="calendar-range" size={14} color="rgba(255,255,255,0.6)" />
-            <Text style={styles.metaText}>{item.season}</Text>
+          <View style={styles.gradeBadge}>
+            <Text style={styles.gradeText}>GRADE {item.grade || 'A'}</Text>
           </View>
         </View>
 
-        <View style={styles.cardFooter}>
-          <Text style={styles.footerDate}>Harvested: {item.harvestDate}</Text>
-          
-          {/* Action Row */}
-          <View style={styles.actionRow}>
-            <TouchableOpacity 
+        <View style={styles.cardMain}>
+          <Text style={styles.varietyName}>{item.variety}</Text>
+          <View style={styles.qtyRow}>
+            <Text style={styles.qtyValue}>{item.quantityKg}</Text>
+            <Text style={styles.qtyUnit}>KG</Text>
+          </View>
+        </View>
+
+        <View style={styles.cardMeta}>
+          <View style={styles.metaCol}>
+            <MaterialCommunityIcons name="map-marker-outline" size={14} color="#64748b" />
+            <Text style={styles.metaValue}>{item.location}</Text>
+          </View>
+          <View style={styles.metaCol}>
+            <MaterialCommunityIcons name="calendar-month-outline" size={14} color="#64748b" />
+            <Text style={styles.metaValue}>{item.season}</Text>
+          </View>
+        </View>
+
+        <View style={styles.cardActions}>
+          <Text style={styles.dateText}>Added: {item.harvestDate}</Text>
+          <View style={styles.actionButtons}>
+            <TouchableOpacity
               onPress={() => navigation.navigate('RegisterHarvest', { editData: item, docId: item.id })}
-              style={styles.circleActionBtn}
+              style={styles.miniBtn}
             >
-              <MaterialCommunityIcons name="pencil" size={18} color="#fff" />
+              <MaterialCommunityIcons name="pencil" size={16} color="#34d399" />
             </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => confirmDelete(item.id)} 
-              style={[styles.circleActionBtn, { backgroundColor: 'rgba(225, 29, 72, 0.3)' }]}
+            <TouchableOpacity
+              onPress={() => confirmDelete(item.id)}
+              style={[styles.miniBtn, { borderColor: '#ef4444' }]}
             >
-              <MaterialCommunityIcons name="trash-can" size={18} color="#fff" />
+              <MaterialCommunityIcons name="trash-can" size={16} color="#ef4444" />
             </TouchableOpacity>
           </View>
         </View>
@@ -116,13 +115,22 @@ export default function InventoryListScreen({ navigation }) {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.searchHeader}>
-        <Text style={styles.screenTitle}>Stock Inventory</Text>
-        <View style={styles.searchBar}>
-          <MaterialCommunityIcons name="magnify" size={22} color="#64748b" />
+    <SafeAreaView style={styles.root}>
+      <StatusBar barStyle="light-content" />
+
+      <View style={styles.header}>
+        <View style={styles.topRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Inventory List</Text>
+        </View>
+
+        <View style={styles.searchBox}>
+          <MaterialCommunityIcons name="magnify" size={20} color="#64748b" />
           <TextInput
             placeholder="Search variety..."
+            placeholderTextColor="#475569"
             style={styles.searchInput}
             value={search}
             onChangeText={handleSearch}
@@ -132,7 +140,7 @@ export default function InventoryListScreen({ navigation }) {
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#16a34a" />
+          <ActivityIndicator size="large" color="#34d399" />
         </View>
       ) : (
         <FlatList
@@ -142,96 +150,75 @@ export default function InventoryListScreen({ navigation }) {
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="database-off" size={60} color="#cbd5e1" />
+            <View style={styles.empty}>
+              <MaterialCommunityIcons name="database-off" size={60} color="#334155" />
               <Text style={styles.emptyText}>No stocks found.</Text>
+              <Text style={styles.emptySub}>Register your first harvest to see it here.</Text>
             </View>
           }
         />
       )}
-      
-      <TouchableOpacity 
-        style={styles.fab} 
+
+      <TouchableOpacity
+        style={styles.fab}
         onPress={() => navigation.navigate('RegisterHarvest')}
       >
-        <MaterialCommunityIcons name="plus" size={32} color="#fff" />
+        <LinearGradient colors={['#059669', '#16a34a']} style={styles.fabGrad}>
+          <MaterialCommunityIcons name="plus" size={30} color="#fff" />
+        </LinearGradient>
       </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fcfcfc' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  searchHeader: { padding: 20, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  screenTitle: { fontSize: 22, fontWeight: 'bold', color: '#1e293b', marginBottom: 15 },
-  searchBar: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: '#f1f5f9', 
-    paddingHorizontal: 15, 
-    borderRadius: 15, 
-    height: 50 
+  root: { flex: 1, backgroundColor: '#0f172a' },
+  header: { padding: 20 },
+  topRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  backBtn: { backgroundColor: 'rgba(255,255,255,0.08)', padding: 10, borderRadius: 14, marginRight: 16 },
+  title: { color: '#fff', fontSize: 22, fontWeight: '800' },
+
+  searchBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1e293b',
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    height: 52,
+    borderWidth: 1,
+    borderColor: '#334155'
   },
-  searchInput: { flex: 1, marginLeft: 10, fontSize: 16, color: '#1e293b' },
+  searchInput: { flex: 1, marginLeft: 12, fontSize: 15, color: '#fff' },
+
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { padding: 20, paddingBottom: 100 },
 
-  // Updated Premium Card Style (Matching Dashboard Header)
-  headerCard: { 
-    width: '100%', 
-    borderRadius: 24, 
-    padding: 20, 
-    marginBottom: 20,
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-  },
-  cardHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  iconBadge: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  gradeIndicator: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10 },
-  gradeText: { color: '#fff', fontWeight: 'bold', fontSize: 12 },
-  
-  cardLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 14, fontWeight: '600', textTransform: 'uppercase' },
-  cardValue: { color: '#fff', fontSize: 32, fontWeight: 'bold', marginTop: 2 },
-  unitText: { fontSize: 16, fontWeight: '400', color: 'rgba(255,255,255,0.7)' },
+  cardContainer: { marginBottom: 16, borderRadius: 24, overflow: 'hidden' },
+  inventoryCard: { padding: 20, borderWidth: 1, borderColor: '#334155' },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  iconBox: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  gradeBadge: { backgroundColor: '#334155', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  gradeText: { color: '#94a3b8', fontSize: 10, fontWeight: '800' },
 
-  metadataRow: { flexDirection: 'row', alignItems: 'center', marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
-  metaItem: { flexDirection: 'row', alignItems: 'center' },
-  metaText: { color: '#fff', fontSize: 13, marginLeft: 5, fontWeight: '500' },
-  vDivider: { width: 1, height: 15, backgroundColor: 'rgba(255,255,255,0.2)', marginHorizontal: 15 },
+  cardMain: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 },
+  varietyName: { color: '#fff', fontSize: 20, fontWeight: '800', flex: 1 },
+  qtyRow: { flexDirection: 'row', alignItems: 'baseline' },
+  qtyValue: { color: '#34d399', fontSize: 28, fontWeight: '900' },
+  qtyUnit: { color: '#34d399', fontSize: 14, fontWeight: '600', marginLeft: 4 },
 
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15 },
-  footerDate: { color: 'rgba(255,255,255,0.5)', fontSize: 11 },
-  
-  actionRow: { flexDirection: 'row' },
-  circleActionBtn: { 
-    width: 38, 
-    height: 38, 
-    borderRadius: 19, 
-    backgroundColor: 'rgba(255,255,255,0.15)', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    marginLeft: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)'
-  },
+  cardMeta: { flexDirection: 'row', gap: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#334155', marginBottom: 16 },
+  metaCol: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  metaValue: { color: '#64748b', fontSize: 12, fontWeight: '600' },
 
-  fab: { 
-    position: 'absolute', 
-    bottom: 30, 
-    right: 25, 
-    backgroundColor: '#16a34a', 
-    width: 65, 
-    height: 65, 
-    borderRadius: 32.5, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    elevation: 10,
-    shadowColor: '#16a34a',
-    shadowOpacity: 0.4,
-    shadowRadius: 10 
-  },
-  emptyContainer: { alignItems: 'center', marginTop: 100 },
-  emptyText: { color: '#94a3b8', marginTop: 15, fontSize: 16 }
+  cardActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  dateText: { color: '#475569', fontSize: 11 },
+  actionButtons: { flexDirection: 'row', gap: 10 },
+  miniBtn: { width: 36, height: 36, borderRadius: 10, borderWidth: 1.5, borderColor: '#334155', justifyContent: 'center', alignItems: 'center' },
+
+  fab: { position: 'absolute', bottom: 30, right: 25, borderRadius: 20, overflow: 'hidden', elevation: 8, shadowColor: '#16a34a', shadowOpacity: 0.3, shadowRadius: 10 },
+  fabGrad: { width: 60, height: 60, justifyContent: 'center', alignItems: 'center' },
+
+  empty: { flex: 1, alignItems: 'center', marginTop: 100 },
+  emptyText: { color: '#94a3b8', fontSize: 18, fontWeight: '700', marginTop: 20 },
+  emptySub: { color: '#475569', fontSize: 13, marginTop: 6 },
 });

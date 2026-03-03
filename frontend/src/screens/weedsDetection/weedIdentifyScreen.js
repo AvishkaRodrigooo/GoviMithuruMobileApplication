@@ -103,7 +103,7 @@ export default function WeedIdentifyScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>🌱 Weed Scanner</Text>
+        <Text style={styles.title}>🌱 Weeds Scanner</Text>
         <Text style={styles.subtitle}>Take a photo to identify weeds in your field</Text>
       </View>
 
@@ -125,7 +125,7 @@ export default function WeedIdentifyScreen() {
           ) : (
             <Pressable onPress={openCamera} style={styles.placeholder}>
               <Ionicons name="camera" size={60} color="#166534" />
-              <Text style={styles.placeholderText}>Tap to Scan Weed</Text>
+              <Text style={styles.placeholderText}>Upload your field image</Text>
             </Pressable>
           )}
         </View>
@@ -144,7 +144,7 @@ export default function WeedIdentifyScreen() {
 
         {showResults && (
           <View style={styles.resultBox}>
-            <Text style={styles.resultTitle}>✅ Weed Detection Complete</Text>
+            <Text style={styles.resultTitle}>✅ Weeds Detection Complete</Text>
 
             <View style={styles.summaryCards}>
               <View style={styles.summaryCard}>
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f0fdf4' },
 
   header: {
-    backgroundColor: '#14532d',
+    backgroundColor: '#06602aff',
     padding: 24,
     paddingTop: 60,
     borderBottomLeftRadius: 24,

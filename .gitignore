@@ -1,1 +1,18 @@
 node_modules
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pkl
+*.h5
+*.onnx
+
+# Environment files
+.env
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
