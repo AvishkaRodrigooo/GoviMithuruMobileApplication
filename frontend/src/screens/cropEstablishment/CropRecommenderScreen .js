@@ -1049,10 +1049,10 @@ const predictSoilTypeFromLocation = async (district, city) => {
   {formData.predictedSoil && 
    !soilTypes.some(s => s.toLowerCase().includes(formData.predictedSoil.type.toLowerCase())) && (
     <View style={styles.suggestionBox}>
-      <Text style={styles.suggestionTitle}>Predicted soil not in list:</Text>
+      <Text style={styles.suggestionTitle}>Predicted soil:</Text>
       <Text style={styles.suggestionText}>{formData.predictedSoil.type}</Text>
       <Text style={styles.suggestionHelp}>
-        Please select the closest matching soil type above.
+        
       </Text>
     </View>
   )}
