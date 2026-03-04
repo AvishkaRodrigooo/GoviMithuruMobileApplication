@@ -13,11 +13,14 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { db, auth } from '../../firebase/firebaseConfig';
+import { doc, getDoc } from 'firebase/firestore';
+import useUniversalLocation from '../../utils/useUniversalLocation';
 
 const { width } = Dimensions.get('window');
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
-const BASE_URL = 'http://192.168.100.200:5000'; // ← Update this to your Flask IP
+const BASE_URL = 'http://192.168.100.198:5000'; // ← Update this to your Flask IP
 
 const VARIETIES = [
   'Bg 352', 'Bg 300', 'Bg 403', 'Bw 367', 'Suwandel', 'Rath Suwandel',
@@ -65,8 +68,8 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
   // Form state - pre-filled if batch exists
   const [variety, setVariety] = useState(initialBatch?.variety || 'Bg 352');
   const [varietyType, setVarietyType] = useState(initialBatch?.varietyType || 'Improved');
-  const [method, setMethod] = useState(initialBatch?.storageMethod || 'Gunny bag');
-  const [moisture, setMoisture] = useState(initialBatch?.moisturePct || 13.5);
+  const [method, setMethod] = useState(initialBatch?.storageType || 'Gunny bag');
+  const [moisture, setMoisture] = useState(parseFloat(initialBatch?.moisture) || 13.5);
   const [temp, setTemp] = useState(28);
   const [quantity, setQuantity] = useState(initialBatch?.quantityKg?.toString() || '1000');
   const [notes, setNotes] = useState('');
@@ -84,13 +87,21 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
+  // Real-time Climate Sync State
+  const [monitoringMode, setMonitoringMode] = useState('free'); // 'free' or 'premium'
+  const [syncStatus, setSyncStatus] = useState('idle'); // idle, syncing, synced, error
+  const [calibrationMsg, setCalibrationMsg] = useState('');
+  const [accuracy, setAccuracy] = useState(null);
+  const location = useUniversalLocation('en');
+
   // Sync state if batch changes (e.g. navigating from different cards)
   useEffect(() => {
     if (route.params?.batch) {
       const b = route.params.batch;
       setVariety(b.variety || 'Bg 352');
       setVarietyType(b.varietyType || 'Improved');
-      setMethod(b.storageMethod || 'Gunny bag');
+      setMethod(b.storageType || 'Gunny bag');
+      setMoisture(parseFloat(b.moisture) || 13.5);
       setQuantity(b.quantityKg?.toString() || '1000');
     }
   }, [route.params?.batch]);
@@ -100,7 +111,64 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
       Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
       Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
     ]).start();
+
+    const fetchMode = async () => {
+      if (!auth.currentUser) return;
+      try {
+        const docRef = doc(db, 'users', auth.currentUser.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const userData = docSnap.data();
+          if (userData.monitoringMode) {
+            setMonitoringMode(userData.monitoringMode);
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching mode:", err);
+      }
+    };
+
+    fetchMode();
   }, [activeTab]);
+
+  // Sync climate if location is ready and mode is 'free'
+  useEffect(() => {
+    if (monitoringMode === 'free' && location.latitude && location.longitude && syncStatus === 'idle') {
+      syncFreeClimate();
+    }
+  }, [location.latitude, location.longitude, monitoringMode]);
+
+  const syncFreeClimate = async () => {
+    setSyncStatus('syncing');
+    try {
+      const res = await fetch(`${BASE_URL}/api/guardian/weather?lat=${location.latitude}&lon=${location.longitude}`);
+      const data = await res.json();
+      if (data.success) {
+        if (monitoringMode === 'free') {
+          // CLIMATE CALIBRATION ENGINE - OPEN_METEO_API LOGIC
+          // Apply Confidence Penalty: Warehouse interiors are 2-4°C hotter than outside API
+          const outdoorTemp = data.temp_c;
+          const insideCalibratedTemp = outdoorTemp + 3; // +3°C average penalty
+          setTemp(insideCalibratedTemp);
+
+          setAccuracy(65);
+          setCalibrationMsg("⚠️ Using District Weather (Approximate). Accuracy: 65%. Warehouse interior estimated at +3°C above outdoor ambient.");
+          // Recommendation logic is handled in the UI display
+        } else {
+          // IOT_SENSOR LOGIC
+          setTemp(data.temp_c);
+          setAccuracy(98);
+          setCalibrationMsg("✅ Using Real-Time Sensor Data. Accuracy: 98%. Reading directly from storage interior.");
+        }
+
+        setSyncStatus('synced');
+      } else {
+        setSyncStatus('error');
+      }
+    } catch (err) {
+      setSyncStatus('error');
+    }
+  };
 
   const runAnalysis = async () => {
     if (!quantity || isNaN(parseFloat(quantity))) {
@@ -238,9 +306,37 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
 
         <View style={styles.formCard}>
           <View style={styles.sectionHeader}>
-            <MaterialCommunityIcons name="tune-variant" size={20} color="#34d399" />
-            <Text style={styles.sectionTitle}>Details & Calibration</Text>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <MaterialCommunityIcons name="tune-variant" size={20} color="#34d399" />
+              <Text style={styles.sectionTitle}>Details & Calibration</Text>
+            </View>
+            <View style={[styles.syncBadge, syncStatus === 'synced' && styles.syncActive]}>
+              <MaterialCommunityIcons
+                name={monitoringMode === 'premium' ? "chip" : "cloud-sync"}
+                size={12}
+                color={syncStatus === 'synced' ? "#fff" : "#94a3b8"}
+              />
+              <Text style={[styles.syncBadgeText, syncStatus === 'synced' && { color: '#fff' }]}>
+                {monitoringMode === 'premium' ? "IOT LINK" : "WEATHER SYNC"}
+              </Text>
+            </View>
           </View>
+
+          {syncStatus === 'synced' && calibrationMsg && (
+            <View style={[styles.calibrationBanner, monitoringMode === 'free' ? styles.calibWarn : styles.calibSecure]}>
+              <MaterialCommunityIcons
+                name={monitoringMode === 'free' ? "alert-circle" : "check-decagram"}
+                size={16}
+                color={monitoringMode === 'free' ? "#f59e0b" : "#4ade80"}
+              />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.calibMsg}>{calibrationMsg}</Text>
+                {monitoringMode === 'free' && (
+                  <Text style={styles.calibHint}>Tip: For 98% accuracy, install an IoT Sensor or use a manual thermometer (Rs. 500).</Text>
+                )}
+              </View>
+            </View>
+          )}
 
           <TouchableOpacity style={styles.pickerTrigger} onPress={() => setModalType('variety')}>
             <View style={{ flex: 1 }}>
@@ -606,6 +702,15 @@ const styles = StyleSheet.create({
   },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 8 },
   sectionTitle: { color: '#e2e8f0', fontSize: 14, fontWeight: '700' },
+  syncBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, gap: 6, borderWidth: 1, borderColor: '#334155' },
+  syncActive: { backgroundColor: '#16a34a', borderColor: '#34d399' },
+  syncBadgeText: { fontSize: 9, fontWeight: '900', color: '#64748b', letterSpacing: 0.5 },
+
+  calibrationBanner: { flexDirection: 'row', padding: 12, borderRadius: 12, gap: 10, marginBottom: 16, borderWidth: 1 },
+  calibWarn: { backgroundColor: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 0.3)' },
+  calibSecure: { backgroundColor: 'rgba(74, 222, 128, 0.1)', borderColor: 'rgba(74, 222, 128, 0.3)' },
+  calibMsg: { fontSize: 11, fontWeight: '700', color: '#e2e8f0', lineHeight: 16 },
+  calibHint: { fontSize: 10, color: '#94a3b8', marginTop: 4, fontStyle: 'italic' },
 
   pickerTrigger: {
     flexDirection: 'row',

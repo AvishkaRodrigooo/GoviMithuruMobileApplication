@@ -261,6 +261,41 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                             </LinearGradient>
                         </TouchableOpacity>
 
+                        {/* STORAGE PROTOCOL WIZARD */}
+                        <TouchableOpacity
+                            style={s.protocolBtn}
+                            onPress={() => navigation.navigate('StorageStepGuide')}
+                        >
+                            <LinearGradient colors={['#064e3b', '#065f46']} style={s.protocolGrad}>
+                                <View style={s.protocolIcon}>
+                                    <MaterialCommunityIcons name="clipboard-check-multiple" size={22} color="#34d399" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={s.protocolTitle}>SAFE STORAGE PROTOCOL</Text>
+                                    <Text style={s.protocolSub}>Step-by-step specialist guide</Text>
+                                </View>
+                                <View style={s.protocolAction}>
+                                    <Text style={s.protocolActionText}>START</Text>
+                                </View>
+                            </LinearGradient>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={s.expertHacksBtn}
+                            onPress={() => navigation.navigate('StorageExpertGuide')}
+                        >
+                            <View style={s.expertHacksBody}>
+                                <View style={s.expertHacksIcon}>
+                                    <MaterialCommunityIcons name="lightbulb-on-outline" size={24} color="#fca5a5" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={s.expertHacksTitle}>LOW-COST MASTERY</Text>
+                                    <Text style={s.expertHacksSub}>View traditional hacks to optimize XGBoost variables</Text>
+                                </View>
+                                <MaterialCommunityIcons name="chevron-right" size={20} color="#4b6b8a" />
+                            </View>
+                        </TouchableOpacity>
+
                         {/* PEST MANAGEMENT */}
                         <View style={s.pestCard}>
                             <View style={s.pestHeader}>
@@ -291,11 +326,14 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
 
                         {/* ENVIRONMENTAL MONITORING */}
                         <View style={s.sectionHeader}>
-                            <Text style={s.sectionTitle}>ENVIRONMENTAL SENSORS</Text>
-                            <View style={s.liveTag}>
-                                <View style={s.liveDot} />
-                                <Text style={s.liveText}>LIVE</Text>
-                            </View>
+                            <Text style={s.sectionTitle}>MONITORING SENSORS</Text>
+                            <TouchableOpacity
+                                style={s.configLink}
+                                onPress={() => navigation.navigate('ConnectSensors')}
+                            >
+                                <Text style={s.configLinkText}>CONFIGURE</Text>
+                                <MaterialCommunityIcons name="cog" size={12} color="#10b981" />
+                            </TouchableOpacity>
                         </View>
                         <View style={s.envGrid}>
                             <View style={s.envCard}>
@@ -331,7 +369,11 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                                 </View>
                             ) : (
                                 harvests.map((item, idx) => (
-                                    <View key={item.id} style={s.stockItem}>
+                                    <TouchableOpacity
+                                        key={item.id}
+                                        style={s.stockItem}
+                                        onPress={() => navigation.navigate('PostHarvestAdvisor', { batch: item })}
+                                    >
                                         <View style={[s.stockMarker, { backgroundColor: idx % 2 === 0 ? '#10b981' : '#3b82f6' }]} />
                                         <View style={{ flex: 1 }}>
                                             <Text style={s.stockVariety}>{item.riceVariety || 'Paddy'}</Text>
@@ -341,7 +383,7 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                                             <Text style={s.stockWeight}>{item.quantityKg?.toLocaleString()} KG</Text>
                                             <Text style={s.stockBags}>~{(item.quantityKg / 50).toFixed(0)} bags</Text>
                                         </View>
-                                    </View>
+                                    </TouchableOpacity>
                                 ))
                             )}
                         </View>
@@ -491,4 +533,21 @@ const s = StyleSheet.create({
     pestRiskValue: { fontSize: 14, fontWeight: '800' },
     reportBtn: { backgroundColor: '#dc2626', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, gap: 8 },
     reportBtnText: { color: '#fff', fontSize: 11, fontWeight: '900' },
+
+    protocolBtn: { marginHorizontal: 16, marginBottom: 25, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#065f46' },
+    protocolGrad: { flexDirection: 'row', alignItems: 'center', padding: 15, gap: 15 },
+    protocolIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(52,211,153,0.1)', justifyContent: 'center', alignItems: 'center' },
+    protocolTitle: { color: '#fff', fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
+    protocolSub: { color: '#34d399', fontSize: 11, fontWeight: '600', marginTop: 2 },
+    protocolAction: { backgroundColor: '#34d399', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+    protocolActionText: { color: '#064e3b', fontSize: 10, fontWeight: '900' },
+
+    configLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    configLinkText: { color: '#10b981', fontSize: 10, fontWeight: '800' },
+
+    expertHacksBtn: { marginHorizontal: 16, backgroundColor: '#0a1a2f', borderRadius: 20, padding: 16, marginBottom: 25, borderWidth: 1, borderColor: '#1a2e46' },
+    expertHacksBody: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    expertHacksIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(252,165,165,0.1)', justifyContent: 'center', alignItems: 'center' },
+    expertHacksTitle: { color: '#fca5a5', fontSize: 11, fontWeight: '900', letterSpacing: 1 },
+    expertHacksSub: { color: '#8fa8c0', fontSize: 11, fontWeight: '600', marginTop: 2 },
 });

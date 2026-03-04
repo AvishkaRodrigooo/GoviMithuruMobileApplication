@@ -742,3 +742,142 @@ def evaluate_level():
         "description": desc,
         "redirect": "Dashboard"
     }), 200
+
+
+@postharvest_bp.route('/knowledge', methods=['GET'])
+def get_storage_knowledge():
+    """
+    GET /api/guardian/knowledge
+    Returns a structured guide for storage intervention strategies.
+    Maps XGBoost variables to actionable industrial vs traditional hacks.
+    """
+    knowledge = [
+        {
+            "id": "v-temp",
+            "title": "Ventilation & Temperature Control",
+            "icon": "fan",
+            "goal": "Reduce Warehouse_Temp to inhibit fungal growth.",
+            "xgb_var": "Warehouse_Temp",
+            "items": [
+                {
+                    "name": "Cooling System",
+                    "industrial": "Electric Exhaust Fan / AC",
+                    "traditional": "PVC Pipe Breathers / Roof Whitewash",
+                    "logic": "Passive aeration uses cross-ventilation. Inserting drilled PVC pipes in paddy piles allows heat to rise naturally."
+                },
+                {
+                    "name": "Dehumidification",
+                    "industrial": "Industrial Dehumidifier",
+                    "traditional": "Salt & Charcoal Trays",
+                    "logic": "Rock salt and charcoal naturally absorb airborne moisture in storage corners."
+                }
+            ]
+        },
+        {
+            "id": "m-control",
+            "title": "Moisture Management",
+            "icon": "water-percent",
+            "goal": "Maintain Moisture_Content below 14% threshold.",
+            "xgb_var": "Moisture_Content",
+            "items": [
+                {
+                    "name": "Verification",
+                    "industrial": "Digital Moisture Meter (Rs. 15k+)",
+                    "traditional": "The 'Salt Bottle' Test",
+                    "logic": "Mixing paddy with dry salt in a bottle; sticking salt indicates >14% moisture (biological danger zone)."
+                },
+                {
+                    "name": "Drying Method",
+                    "industrial": "Mechanical Flatbed Dryer",
+                    "traditional": "Black Polythene on Raised Ground",
+                    "logic": "Black tarps absorb max heat. Raised platforms prevent 'ground sweat' condensation."
+                }
+            ]
+        },
+        {
+            "id": "p-protect",
+            "title": "Pest & Insect Protection",
+            "icon": "bug-stop",
+            "goal": "Reduce Pest_Presence binary risk variable.",
+            "xgb_var": "Pest_Presence",
+            "items": [
+                {
+                    "name": "Repellents",
+                    "industrial": "Chemical Fumigation (Phostoxin)",
+                    "traditional": "Dried Neem (Kohomba) Leaves",
+                    "logic": "Azadirachtin in Neem leaves acts as a natural deterrent for weevils (ghun)."
+                },
+                {
+                    "name": "Rodent Guard",
+                    "industrial": "Glue Traps / Ultrasonic Repellers",
+                    "traditional": "Tin Plate Legs (Rat Guards)",
+                    "logic": "Slippery tin overhangs on pallet legs physically block rats from climbing."
+                }
+            ]
+        },
+        {
+            "id": "s-method",
+            "title": "Storage Structure",
+            "icon": "home-modern",
+            "goal": "Optimize Storage_Method efficiency.",
+            "xgb_var": "Storage_Method",
+            "items": [
+                {
+                    "name": "Floor Strategy",
+                    "industrial": "Standard Wooden Pallets",
+                    "traditional": "Coconut Husk Layer / Logs",
+                    "logic": "Laying husks creates a thermal break. Never place bags on cement as it transfers moisture."
+                },
+                {
+                    "name": "Bin Type",
+                    "industrial": "Galvanized Metal Silo",
+                    "traditional": "Wooden Box (Atuwa) / Mud Bin",
+                    "logic": "Raised traditional Atuwa protects from ground moisture and improves airflow."
+                }
+            ]
+        }
+    ]
+    
+    return jsonify({
+        "success": True,
+        "knowledge": knowledge,
+        "disclaimer": "Traditional methods are recommended based on research papers for small-scale preservation."
+    }), 200
+
+@postharvest_bp.route('/weather', methods=['GET'])
+def get_realtime_weather():
+    """
+    Fetches real-time weather data for Free Mode monitoring.
+    Uses Open-Meteo (No API key required).
+    """
+    lat = request.args.get('lat', default=6.9271, type=float) # Default Colombo
+    lon = request.args.get('lon', default=79.8612, type=float)
+
+    try:
+        # Open-Meteo current weather endpoint
+        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m&timezone=Asia/Colombo"
+        
+        print(f"[Weather] 🌡️ Syncing climate for {lat}, {lon}")
+        response = requests.get(url, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        current = data.get('current', {})
+        
+        return jsonify({
+            "success": True,
+            "temp_c": current.get('temperature_2m'),
+            "humidity_pct": current.get('relative_humidity_2m'),
+            "source": "Open-Meteo Realtime Sync",
+            "timestamp": datetime.now().isoformat()
+        }), 200
+        
+    except Exception as e:
+        print(f"[Weather] ❌ Error syncing: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": "Failed to sync realtime weather data",
+            "fallback": True,
+            "temp_c": 28.5, # Realistic Sri Lankan average
+            "humidity_pct": 72
+        }), 200

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
   Dimensions, ActivityIndicator, Alert, SafeAreaView, KeyboardAvoidingView,
-  Platform, StatusBar, Modal
+  Platform, StatusBar, Modal, Image
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -49,7 +49,16 @@ export default function RegisterHarvestScreen({ navigation, route }) {
     moisture: '',
     pestCheck: 'No',
     prodCost: '',
+    storageMethod: 'Gunny bag',
   });
+
+  // Inspector State
+  const [inspectorMsg, setInspectorMsg] = useState(null);
+  const [chatVisible, setChatVisible] = useState(false);
+  const [inspectorChat, setInspectorChat] = useState([
+    { id: 1, text: "Ayubowan! I am Inspector GoviMithuru. I'll help you secure your harvest correctly.", isBot: true }
+  ]);
+  const [isTyping, setIsTyping] = useState(false);
 
   useEffect(() => {
     checkAuth();
@@ -82,6 +91,50 @@ export default function RegisterHarvestScreen({ navigation, route }) {
       setStorageMode('existing');
     }
   }, [editData]);
+
+  // Real-time Inspector Logic
+  useEffect(() => {
+    const m = parseFloat(formData.moisture);
+    if (m > 14) {
+      triggerInspector(`⚠️ Warning: You entered ${m}% moisture. This is too wet for storage! SLR 603 standards require <14%. Fungus will grow in 2 weeks. Dry it to 13.5% immediately!`);
+    }
+
+    if (formData.storageMethod === 'Polythene bag' && m > 13) {
+      triggerInspector("🛑 Note: Poly-sacks (Polythene) trap heat. Since your moisture is above 13%, this is risky. Do you have Gunny (Jute) bags available for better aeration?");
+    }
+  }, [formData.moisture, formData.storageMethod]);
+
+  const triggerInspector = (text) => {
+    setInspectorMsg(text);
+    // Also add to chat history if not already there
+    if (!inspectorChat.find(m => m.text === text)) {
+      setInspectorChat(prev => [...prev, { id: Date.now(), text, isBot: true }]);
+    }
+  };
+
+  const handleGradeCheck = (grade) => {
+    setFormData({ ...formData, grade });
+    setChatVisible(true);
+    let q = "Check a handful of your paddy. Do you see many empty grains (Bol) or black/discolored spots?";
+    setInspectorChat(prev => [...prev, { id: Date.now(), text: q, isBot: true, isQuestion: true }]);
+  };
+
+  const handleChatResponse = (response) => {
+    const userMsg = { id: Date.now(), text: response, isBot: false };
+    setInspectorChat(prev => [...prev, userMsg]);
+    setIsTyping(true);
+
+    setTimeout(() => {
+      let reply = "";
+      if (response.toLowerCase().includes('yes') || response.toLowerCase().includes('discolor')) {
+        reply = "Understood. That indicates impurities. Please select Grade B or C. I also recommend using a winnowing fan (Kulla) to remove 'Bol' before finalizing storage.";
+      } else {
+        reply = "Excellent. Clean, golden paddy with no Bol is perfect for Grade A. This will have the highest storage life and market value.";
+      }
+      setInspectorChat(prev => [...prev, { id: Date.now() + 1, text: reply, isBot: true }]);
+      setIsTyping(false);
+    }, 1000);
+  };
 
   const handleQuantityChange = (val) => {
     const cleanVal = val.replace(/[^0-9.]/g, '');
@@ -293,12 +346,16 @@ export default function RegisterHarvestScreen({ navigation, route }) {
                 {['A', 'B', 'C'].map(g => (
                   <TouchableOpacity
                     key={g} style={[styles.pill, formData.grade === g && styles.pillActive]}
-                    onPress={() => setFormData({ ...formData, grade: g })}
+                    onPress={() => handleGradeCheck(g)}
                   >
                     <Text style={[styles.pillText, formData.grade === g && styles.pillTextActive]}>Grade {g}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
+              <TouchableOpacity onPress={() => setChatVisible(true)} style={styles.inspectorMiniBtn}>
+                <MaterialCommunityIcons name="account-search-outline" size={16} color="#34d399" />
+                <Text style={styles.inspectorMiniText}>Ask Inspector about Grading</Text>
+              </TouchableOpacity>
             </View>
           )}
 
@@ -321,6 +378,19 @@ export default function RegisterHarvestScreen({ navigation, route }) {
                     <Text style={[styles.pillText, formData.ventilation === v && styles.pillTextActive]}>{v}</Text>
                   </TouchableOpacity>
                 ))}
+              </View>
+
+              <Text style={styles.label}>Storage Container Method</Text>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={formData.storageMethod}
+                  onValueChange={(v) => setFormData({ ...formData, storageMethod: v })}
+                  style={{ color: '#fff' }} dropdownIconColor="#34d399"
+                >
+                  {['Gunny bag', 'Polythene bag', 'Hermetic', 'Bulk Storage'].map(m => (
+                    <Picker.Item key={m} label={m} value={m} color={Platform.OS === 'ios' ? '#fff' : '#000'} />
+                  ))}
+                </Picker>
               </View>
 
               <Text style={styles.label}>Production Cost (LKR/KG)</Text>
@@ -363,6 +433,62 @@ export default function RegisterHarvestScreen({ navigation, route }) {
               <Text style={{ color: '#fff', fontWeight: 'bold' }}>CANCEL</Text>
             </TouchableOpacity>
           </CameraView>
+        </View>
+      </Modal>
+
+      {/* Inspector Floating Alert */}
+      {inspectorMsg && !chatVisible && (
+        <TouchableOpacity style={styles.floatingInspector} onPress={() => setChatVisible(true)}>
+          <LinearGradient colors={['#dc2626', '#991b1b']} style={styles.inspectorAlertGrad}>
+            <MaterialCommunityIcons name="alert-decagram" size={24} color="#fff" />
+            <Text style={styles.inspectorAlertText} numberOfLines={2}>{inspectorMsg}</Text>
+            <MaterialCommunityIcons name="chevron-right" size={20} color="#fff" />
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
+
+      {/* Inspector Chat Modal */}
+      <Modal visible={chatVisible} animationType="slide" transparent>
+        <View style={styles.chatOverlay}>
+          <View style={styles.chatContent}>
+            <View style={styles.chatHeader}>
+              <View style={styles.inspectorAvatar}>
+                <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/1904/1904425.png' }} style={styles.avatarImg} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.chatTitle}>Department Inspector</Text>
+                <Text style={styles.chatSub}>Quality Assurance (SLR 603)</Text>
+              </View>
+              <TouchableOpacity onPress={() => setChatVisible(false)} style={styles.closeChat}>
+                <MaterialCommunityIcons name="close" size={24} color="#94a3b8" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.chatBody} contentContainerStyle={{ paddingBottom: 20 }}>
+              {inspectorChat.map(m => (
+                <View key={m.id} style={[styles.msgContainer, m.isBot ? styles.msgBot : styles.msgUser]}>
+                  <Text style={[styles.msgText, m.isBot ? styles.msgTextBot : styles.msgTextUser]}>{m.text}</Text>
+                </View>
+              ))}
+              {isTyping && <ActivityIndicator color="#34d399" style={{ alignSelf: 'flex-start', marginLeft: 20 }} />}
+            </ScrollView>
+
+            <View style={styles.chatFooter}>
+              <View style={styles.responseRow}>
+                <TouchableOpacity style={styles.optBtn} onPress={() => handleChatResponse("Yes, it is clean")}>
+                  <Text style={styles.optBtnText}>Clean & Uniform</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.optBtn} onPress={() => handleChatResponse("Yes, seen many empty grains")}>
+                  <Text style={styles.optBtnText}>Has Bol / Spots</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={[styles.responseRow, { marginTop: 10 }]}>
+                <TouchableOpacity style={[styles.optBtn, { backgroundColor: '#1e293b' }]} onPress={() => handleChatResponse("How to dry paddy?")}>
+                  <Text style={styles.optBtnText}>Drying Advice?</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
@@ -414,6 +540,34 @@ const styles = StyleSheet.create({
   fNext: { flex: 1.5, borderRadius: 16, overflow: 'hidden' },
   fNextGrad: { flexDirection: 'row', height: 56, alignItems: 'center', justifyContent: 'center', gap: 8 },
   fNextText: { color: '#fff', fontWeight: '900', fontSize: 15 },
+
+  // Inspector Styles
+  floatingInspector: { position: 'absolute', bottom: 100, left: 15, right: 15, borderRadius: 18, overflow: 'hidden', elevation: 12 },
+  inspectorAlertGrad: { flexDirection: 'row', alignItems: 'center', padding: 15, gap: 12 },
+  inspectorAlertText: { flex: 1, color: '#fff', fontSize: 13, fontWeight: '700' },
+
+  inspectorMiniBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10, alignSelf: 'flex-end' },
+  inspectorMiniText: { color: '#34d399', fontSize: 11, fontWeight: '700' },
+
+  chatOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  chatContent: { backgroundColor: '#0f172a', borderTopLeftRadius: 32, borderTopRightRadius: 32, height: '70%', padding: 20 },
+  chatHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderBottomColor: '#1e293b', paddingBottom: 15, marginBottom: 15 },
+  inspectorAvatar: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#1e293b', padding: 5 },
+  avatarImg: { width: '100%', height: '100%' },
+  chatTitle: { color: '#fff', fontSize: 16, fontWeight: '900' },
+  chatSub: { color: '#34d399', fontSize: 11, fontWeight: '700' },
+  closeChat: { padding: 5 },
+  chatBody: { flex: 1 },
+  msgContainer: { maxWidth: '85%', padding: 15, borderRadius: 20, marginBottom: 12 },
+  msgBot: { alignSelf: 'flex-start', backgroundColor: '#1e293b', borderTopLeftRadius: 4 },
+  msgUser: { alignSelf: 'flex-end', backgroundColor: '#34d399', borderTopRightRadius: 4 },
+  msgText: { fontSize: 14, lineHeight: 20 },
+  msgTextBot: { color: '#cbd5e1' },
+  msgTextUser: { color: '#064e3b', fontWeight: '700' },
+  chatFooter: { borderTopWidth: 1, borderTopColor: '#1e293b', paddingTop: 15 },
+  responseRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
+  optBtn: { backgroundColor: '#064e3b', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#34d39944' },
+  optBtnText: { color: '#34d399', fontSize: 12, fontWeight: '800' },
 
   camRoot: { flex: 1, backgroundColor: '#000' },
   camClose: { position: 'absolute', bottom: 40, alignSelf: 'center', padding: 20, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 16 },
