@@ -270,6 +270,7 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                                     onPress={() => navigation.navigate('StorageStepGuide', {
                                         temp: 28.5,
                                         humidity: 62,
+                                        storageType: locData?.storageType || 'Home',
                                         subCategory: locData?.subCategory
                                     })}
                                 >
@@ -285,6 +286,7 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                             onPress={() => navigation.navigate('StorageStepGuide', {
                                 temp: 28.5,
                                 humidity: 62,
+                                storageType: locData?.storageType || 'Home',
                                 subCategory: locData?.subCategory
                             })}
                         >

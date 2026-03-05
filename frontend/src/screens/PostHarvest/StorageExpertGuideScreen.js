@@ -8,7 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width: SW } = Dimensions.get('window');
-const BASE_URL = 'http://192.168.100.199:5000'; // Flask Backend
+const BASE_URL = 'http://192.168.100.198:5000'; // Flask Backend
 
 // Asset mapping (using local requires for React Native stability)
 const IMAGE_MAP = {

@@ -61,7 +61,7 @@ const MAP_HTML = (lat, lon) => `
 `;
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
-const BASE_URL = 'http://192.168.100.199:5000'; // ← Update this to your Flask IP
+const BASE_URL = 'http://192.168.100.198:5000'; // ← Update this to your Flask IP
 
 const VARIETIES = [
   'Bg 352', 'Bg 300', 'Bg 403', 'Bw 367', 'Suwandel', 'Rath Suwandel',

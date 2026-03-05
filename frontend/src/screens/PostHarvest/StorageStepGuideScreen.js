@@ -8,169 +8,17 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width: SW } = Dimensions.get('window');
-const BASE_URL = 'http://192.168.100.199:5000'; // Flask Backend
+const BASE_URL = 'http://192.168.100.198:5000'; // Flask Backend
 
-const HOME_STORAGE_GUIDE = {
-    'Kitchen/Room Storage': {
-        steps: [
-            {
-                id: 1,
-                title: 'Room Preparation',
-                duration: 'Day 1',
-                materials: ['Broom & cleaning cloth', 'Phenyle/Dettol', 'Neem leaves', 'Old newspapers', 'Wooden boards/bricks'],
-                process: [
-                    'Empty the room completely',
-                    'Sweep all corners thoroughly',
-                    'Wipe walls/floor with phenyle solution (2 caps per liter)',
-                    'Check and seal cracks with cement/clay',
-                    'Dry for 4-6 hours',
-                    'Spread neem leaves in corners',
-                    'Place wooden boards (15cm height)'
-                ],
-                icon: 'home-edit-outline'
-            },
-            {
-                id: 2,
-                title: 'Container Selection',
-                options: [
-                    { name: 'Gunny Bags', cost: 'Rs. 100', pros: 'Breathable, cheap', cons: 'Poor pest protection (Max 3m)' },
-                    { name: 'Polythene inside Gunny', cost: 'Rs. 150', pros: 'Better moisture control', cons: 'No ventilation' },
-                    { name: 'Hermetic Bags', cost: 'Rs. 250', pros: '6-12m storage, best pest control', cons: 'Higher cost' }
-                ],
-                icon: 'package-variant-closed'
-            },
-            {
-                id: 3,
-                title: 'Rice Preparation',
-                checklist: [
-                    'Check Moisture (<14%)',
-                    'Cleaning (Remove chaff/stones)',
-                    'Cooling (2-3 hours)',
-                    'Natural Preservatives (Neem/Ash)'
-                ],
-                icon: 'water-percent'
-            },
-            {
-                id: 4,
-                title: 'Stacking & Organization',
-                rules: [
-                    'Platform 15cm from floor',
-                    'Newspaper layer first',
-                    'Max 4 bags high',
-                    'Cardboard between layers',
-                    '15cm wall gap'
-                ],
-                icon: 'layers-triple'
-            },
-            {
-                id: 5,
-                title: 'Monitoring Schedule',
-                routines: {
-                    weekly: ['Insect/moth check', 'Holes/odors', 'Temperature feel'],
-                    monthly: ['Open and inspect', 'Smell test', 'Moisture re-test', 'Rotate bags']
-                },
-                icon: 'eye-check-outline'
-            }
-        ]
-    },
-    'Dedicated Storage Room': {
-        steps: [
-            {
-                id: 1,
-                title: 'Infrastructure Preparation',
-                cost: 'Approx Rs. 9,600',
-                process: [
-                    'Seal all wall cracks',
-                    'Fix roof leaks',
-                    'Install window wire mesh',
-                    'Level and paint floor',
-                    'Install exhaust fan',
-                    'Install monitoring tools'
-                ],
-                icon: 'office-building-cog'
-            },
-            {
-                id: 2,
-                title: 'Storage Container Setup',
-                options: [
-                    { name: 'Multiple Bags', desc: 'Hermetic or Poly-lined (Max 5 high)' },
-                    { name: 'Metal Drum', desc: 'Long-term, pest-proof (200kg)' },
-                    { name: 'Traditional Bisso', desc: 'Clay bin, sustainable, lasts 10y' }
-                ],
-                icon: 'dolly'
-            },
-            {
-                id: 3,
-                title: 'Stacking System',
-                layout: 'Zoning Concept',
-                rules: [
-                    '80cm aisles between stacks',
-                    'FIFO organization',
-                    'Labeling with color tags',
-                    '15cm wall distance'
-                ],
-                icon: 'format-list-bulleted-type'
-            },
-            {
-                id: 4,
-                title: 'Advanced Monitoring',
-                tools: ['Digital Hygrometer', 'Wall Chart', 'Pest Traps'],
-                logic: [
-                    'Green Zone: 25-28°C',
-                    'Yellow Zone: 28-30°C',
-                    'Red Zone: >30°C (Action Required)'
-                ],
-                icon: 'chart-bell-curve-cumulative'
-            },
-            {
-                id: 5,
-                title: 'Maintenance Schedule',
-                routines: {
-                    daily: ['Temp/Pest quick check'],
-                    weekly: ['Detailed inspection', 'Sweep floor', 'Log results'],
-                    monthly: ['Full inventory', 'Deep clean']
-                },
-                icon: 'calendar-check'
-            }
-        ]
-    },
-    'Small Shed Storage': {
-        steps: [
-            {
-                id: 1,
-                title: 'Structural Reinforcement',
-                items: [
-                    'Fix roof and cracks',
-                    'Install rat guards (12 inch metal)',
-                    'Insecticide wall spray',
-                    'Install pallet system'
-                ],
-                icon: 'warehouse'
-            },
-            {
-                id: 2,
-                title: 'Zone Configuration',
-                zones: ['Zone A: Variety 1', 'Zone B: Variety 2', 'Zone C: Future Stock'],
-                icon: 'view-quilt'
-            },
-            {
-                id: 3,
-                title: 'Digital Records & Traps',
-                logic: [
-                    'Excel/Logbook logging',
-                    'Pheromone traps installation',
-                    'Weekly trap analysis'
-                ],
-                icon: 'cellphone-check'
-            }
-        ]
-    }
-};
+import { getStorageGuide } from './storagePrompts';
 
 export default function StorageStepGuideScreen({ navigation, route }) {
+    const storageType = route.params?.storageType || 'Home';
     const subCategory = route.params?.subCategory || 'Kitchen/Room Storage';
-    const guideData = HOME_STORAGE_GUIDE[subCategory] || HOME_STORAGE_GUIDE['Kitchen/Room Storage'];
-    const steps = guideData.steps;
+
+    // Dynamically fetch guide based on storage type and subcategory
+    const guideData = getStorageGuide(storageType, subCategory);
+    const steps = guideData.guideContent.steps;
 
     const [currentStep, setCurrentStep] = useState(0);
     const [completedSteps, setCompletedSteps] = useState({});
@@ -227,7 +75,9 @@ export default function StorageStepGuideScreen({ navigation, route }) {
                     context: {
                         interaction_type: 'grading_consult',
                         step_title: steps[currentStep].title,
-                        sub_category: subCategory
+                        storage_type: storageType,
+                        sub_category: subCategory,
+                        custom_system_prompt: guideData.systemPrompt
                     }
                 })
             });
@@ -256,7 +106,7 @@ export default function StorageStepGuideScreen({ navigation, route }) {
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
                     <Text style={styles.headerTitle}>{subCategory}</Text>
-                    <Text style={styles.headerSub}>SOP Guide</Text>
+                    <Text style={styles.headerSub}>{storageType} Protocol</Text>
                 </View>
                 <TouchableOpacity onPress={() => setShowCalendar(true)} style={styles.calBtn}>
                     <MaterialCommunityIcons name="calendar-clock" size={24} color="#10b981" />
@@ -280,10 +130,14 @@ export default function StorageStepGuideScreen({ navigation, route }) {
 
             <ScrollView contentContainerStyle={styles.scroll}>
                 <View style={styles.card}>
-                    <View style={styles.iconCircle}>
-                        <MaterialCommunityIcons name={step.icon} size={40} color="#10b981" />
-                    </View>
                     <Text style={styles.stepTitle}>{step.title}</Text>
+
+                    {step.cost && (
+                        <View style={styles.costBadge}>
+                            <MaterialCommunityIcons name="currency-lkr" size={16} color="#10b981" />
+                            <Text style={styles.costText}>{step.cost}</Text>
+                        </View>
+                    )}
 
                     {step.process && (
                         <View style={styles.section}>
@@ -292,6 +146,30 @@ export default function StorageStepGuideScreen({ navigation, route }) {
                                 <View key={i} style={styles.listItem}>
                                     <View style={styles.bullet} />
                                     <Text style={styles.listText}>{item}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+
+                    {step.items && (
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>REQUIRED INFRASTRUCTURE</Text>
+                            {step.items.map((item, i) => (
+                                <View key={i} style={styles.checkRow}>
+                                    <MaterialCommunityIcons name="tools" size={18} color="#10b981" />
+                                    <Text style={styles.listText}>{item}</Text>
+                                </View>
+                            ))}
+                        </View>
+                    )}
+
+                    {step.logic && (
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>MONITORING LOGIC & RULES</Text>
+                            {step.logic.map((rule, i) => (
+                                <View key={i} style={styles.logicRow}>
+                                    <MaterialCommunityIcons name="brain" size={18} color="#34d399" />
+                                    <Text style={styles.listText}>{rule}</Text>
                                 </View>
                             ))}
                         </View>
@@ -339,14 +217,39 @@ export default function StorageStepGuideScreen({ navigation, route }) {
 
                     {step.routines && (
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>WEEKLY ROUTINE</Text>
-                            {step.routines.weekly.map((r, i) => (
-                                <View key={i} style={styles.listItem}><View style={styles.bullet} /><Text style={styles.listText}>{r}</Text></View>
-                            ))}
-                            <Text style={[styles.sectionTitle, { marginTop: 15 }]}>MONTHLY ROUTINE</Text>
-                            {step.routines.monthly.map((r, i) => (
-                                <View key={i} style={styles.listItem}><View style={styles.bullet} /><Text style={styles.listText}>{r}</Text></View>
-                            ))}
+                            <Text style={styles.sectionTitle}>MAINTENANCE CALENDAR</Text>
+                            {step.routines.daily && (
+                                <View style={styles.routineBlock}>
+                                    <Text style={styles.routineHeader}>DAILY</Text>
+                                    {step.routines.daily.map((r, i) => (
+                                        <View key={i} style={styles.listItem}><View style={styles.bullet} /><Text style={styles.listText}>{r}</Text></View>
+                                    ))}
+                                </View>
+                            )}
+                            {step.routines.weekly && (
+                                <View style={styles.routineBlock}>
+                                    <Text style={styles.routineHeader}>WEEKLY</Text>
+                                    {step.routines.weekly.map((r, i) => (
+                                        <View key={i} style={styles.listItem}><View style={styles.bullet} /><Text style={styles.listText}>{r}</Text></View>
+                                    ))}
+                                </View>
+                            )}
+                            {step.routines.monthly && (
+                                <View style={styles.routineBlock}>
+                                    <Text style={styles.routineHeader}>MONTHLY</Text>
+                                    {step.routines.monthly.map((r, i) => (
+                                        <View key={i} style={styles.listItem}><View style={styles.bullet} /><Text style={styles.listText}>{r}</Text></View>
+                                    ))}
+                                </View>
+                            )}
+                            {step.routines.quarterly && (
+                                <View style={styles.routineBlock}>
+                                    <Text style={styles.routineHeader}>QUARTERLY</Text>
+                                    {step.routines.quarterly.map((r, i) => (
+                                        <View key={i} style={styles.listItem}><View style={styles.bullet} /><Text style={styles.listText}>{r}</Text></View>
+                                    ))}
+                                </View>
+                            )}
                         </View>
                     )}
                 </View>
@@ -457,7 +360,14 @@ const styles = StyleSheet.create({
     optDesc: { color: '#94a3b8', fontSize: 13, marginTop: 4 },
 
     checkRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
-    ruleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12, backgroundColor: '#f59e0b10', padding: 10, borderRadius: 12 },
+    ruleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12, backgroundColor: '#f59e0b10', padding: 12, borderRadius: 16 },
+    logicRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12, backgroundColor: '#10b98110', padding: 12, borderRadius: 16 },
+
+    costBadge: { flexDirection: 'row', backgroundColor: '#064e3b', alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 10, alignItems: 'center', gap: 6, marginBottom: 20 },
+    costText: { color: '#10b981', fontSize: 13, fontWeight: '900' },
+
+    routineBlock: { marginBottom: 15, backgroundColor: '#0f172a', padding: 15, borderRadius: 18, borderWidth: 1, borderColor: '#334155' },
+    routineHeader: { color: '#10b981', fontSize: 10, fontWeight: '900', marginBottom: 10, letterSpacing: 1 },
 
     chatSection: { marginHorizontal: 20, marginBottom: 30 },
     chatHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },

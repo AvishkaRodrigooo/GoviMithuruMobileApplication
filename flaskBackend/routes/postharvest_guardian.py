@@ -613,6 +613,9 @@ def chat_ai():
         
         system_msg = "You are the PostHarvest Guardian, a helpful AI expert for Sri Lankan paddy farmers. Answer questions about rice storage, drying, market trends, and pest control. Keep answers concise, practical, and empathetic."
         
+        if context.get('custom_system_prompt'):
+            system_msg += "\n\n" + context.get('custom_system_prompt')
+            
         # Enhanced instructions for logistics consultation
         if context.get('interaction_type') == 'logistics_consult':
             system_msg += """\n\nLOGISTICS PROTOCOL: 
