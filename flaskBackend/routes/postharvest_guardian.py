@@ -38,28 +38,39 @@ from functools import lru_cache
 
 postharvest_bp = Blueprint('postharvest', __name__, url_prefix='/api/guardian')
 
-def _call_ollama_local(system_prompt, user_content):
+def _call_ollama_local(system_prompt, user_content, format_json=True):
     """
     Calls locally running Ollama. 
     Using 127.0.0.1 to avoid Windows localhost resolution lag.
     """
     url = "http://127.0.0.1:11434/api/chat"
     payload = {
-        "model": "qwen3:8b",
+        "model": "govimithuru-advisor",
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content}
         ],
         "stream": False,
-        "options": {"temperature": 0.1, "num_predict": 1024}
+        "options": {"temperature": 0.3, "num_predict": 1024}
     }
+    
+    if format_json:
+        payload["format"] = "json"
 
     try:
-        print(f"[Ollama] 🏠 Calling local model (qwen3:8b)...")
+        # PING check for Ollama service availability
+        requests.get("http://127.0.0.1:11434/", timeout=2)
+
+        print(f"[Ollama] 🏠 Calling project model (govimithuru-advisor)...")
         # 180s timeout - local models can be very slow on CPUs
         response = requests.post(url, json=payload, timeout=180)
         response.raise_for_status()
-        return response.json()['message']['content']
+        raw = response.json()['message']['content']
+        print(f"[Ollama] ✅ Raw response (first 300 chars): {raw[:300]}")
+        return raw
+    except requests.exceptions.ConnectionError:
+        print("[Ollama] ⚠️  Ollama.exe is NOT running. Please launch it from System Tray or CMD.")
+        return None
     except Exception as e:
         print(f"[Ollama] ❌ Error: {str(e)[:100]}")
         return None
@@ -325,23 +336,34 @@ def _get_price_forecast(variety_name: str) -> dict:
 
 def _calculate_risk_reward(storage_days, days_to_peak, current_price,
                             peak_price, quantity_kg) -> dict:
-    """The core Risk-Reward Bridge formula (research contribution)."""
+    """
+    The 'Post-Harvest Risk Analyst' Decision Matrix (Strict Research Logic).
+    Integrates XGBoost Spoilage (storage_days) vs LSTM Price Timing (days_to_peak).
+    """
     buffer = storage_days - days_to_peak
-    profit = round((peak_price - current_price) * quantity_kg, 2)
-    risk   = round(current_price * quantity_kg, 2)
+    current_total_value = current_price * quantity_kg
+    peak_total_value = peak_price * quantity_kg
+    profit_gap = peak_total_value - current_total_value
 
-    if buffer > 30:
-        signal, urgency = "GREEN",  "SAFE"
-        action = f"Store & wait. {buffer}-day safety buffer is comfortable."
-    elif buffer > 0:
-        signal, urgency = "YELLOW", "CAUTION"
-        action = f"Thin {buffer}-day buffer. Reduce moisture to 13% and monitor daily."
+    # 1. The "Red Zone" (Impossible / Spoilage before Peak)
+    if storage_days < days_to_peak:
+        signal = "RED"
+        urgency = "SELL NOW"
+        action = f"SELL NOW. Your rice will spoil in {storage_days} days, but the price won't rise for {days_to_peak} days. Do not wait."
+    
+    # 2. The "Green Zone" (Profitable / Safe Buffer)
+    elif storage_days > (days_to_peak + 15):
+        signal = "GREEN"
+        urgency = "STORE"
+        action = f"STORE. You have a safe buffer. You can wait {days_to_peak} days to gain an extra Rs. {profit_gap:,.0f}."
+    
+    # 3. The "Yellow Zone" (The Gap / High Risk)
     else:
-        signal, urgency = "RED",    "CRITICAL"
-        action = f"Rice will rot {abs(buffer)} days BEFORE price peaks. Intervene NOW."
+        signal = "YELLOW"
+        urgency = "RISK IS HIGH"
+        action = f"Risk is High. You can only reach the peak price if you extend storage life. You MUST dry the paddy to 13% immediately to gain the extra days."
 
-    # What happens if farmer dries to 13% + uses hermetic bags?
-    # Re-predict with improved conditions
+    # Simulation: What happens if farmer dries to 13%?
     improved_days = _predict_storage_days(
         "Bg 352", "Improved", "Hermetic", 13.0, 25.0
     )['storage_days']
@@ -353,10 +375,10 @@ def _calculate_risk_reward(storage_days, days_to_peak, current_price,
         "urgency":               urgency,
         "buffer_days":           buffer,
         "action":                action,
-        "potential_profit_lkr":  profit,
-        "at_risk_value_lkr":     risk,
-        "sell_now_value_lkr":    round(current_price * quantity_kg, 2),
-        "wait_value_lkr":        round(peak_price * quantity_kg, 2),
+        "potential_profit_lkr":  round(profit_gap, 2),
+        "at_risk_value_lkr":     round(current_total_value, 2),
+        "sell_now_value_lkr":    round(current_total_value, 2),
+        "wait_value_lkr":        round(peak_total_value, 2),
         "intervention_viable":   intervention_viable,
         "days_after_drying":     improved_days,
     }
@@ -389,6 +411,7 @@ def predict():
         storage_method = data.get('storage_method', 'Gunny bag')
         moisture_pct   = float(data.get('moisture_pct', 13.0))
         temp_c         = float(data.get('temp_c', 28.0))
+        humidity_pct   = float(data.get('humidity_pct', 65.0))
         quantity_kg    = float(data.get('quantity_kg', 1000.0))
 
         # ── Run both models ──────────────────────────────────────────────────
@@ -449,6 +472,7 @@ def get_ai_advice():
         variety        = data.get('variety', 'Bg 352')
         moisture_pct   = float(data.get('moisture_pct', 13.0))
         temp_c         = float(data.get('temp_c', 28.0))
+        humidity_pct   = float(data.get('humidity_pct', 65.0))
         storage_method = data.get('storage_method', 'Gunny bag')
         quantity_kg    = float(data.get('quantity_kg', 1000.0))
         storage_days   = int(data.get('storage_days', 90))
@@ -460,12 +484,14 @@ def get_ai_advice():
         potential_profit = float(data.get('potential_profit', 0))
         intervention_viable = data.get('intervention_viable', True)
         days_after_drying   = int(data.get('days_after_drying', 180))
-        user_notes          = data.get('notes', 'None provided.')
+        user_notes          = data.get('context') or data.get('notes') or 'None provided.'
+        mode                = data.get('mode', 'general') # 'general' or 'container'
 
         # ── Build LLM payload ────────────────────────────────────────────────
         llm_payload = {
             "Rice_Type":                variety,
             "Current_Moisture":         f"{moisture_pct}%",
+            "Warehouse_Humidity":       f"{humidity_pct}%",
             "Storage_Method":           storage_method,
             "Warehouse_Temp_C":         temp_c,
             "Quantity_kg":              quantity_kg,
@@ -481,18 +507,33 @@ def get_ai_advice():
             "Farmer_Context_Notes":     user_notes,
         }
 
-        system_prompt = """You are an Expert Post-Harvest Agriculture Advisor for the GoviMithuru App.
-Your goal: maximize farmer profit while ensuring ZERO food waste.
+        # ── Decision Logic: Select Prompt based on Mode ──────────────────────
+        if mode == 'container':
+            system_prompt = """You are the Senior Logistics Officer at the Department of Agriculture. 
+            Analyze the selected storage container method for the specific crop variety and quantity.
 
-RESPONSE FORMAT: You MUST return a VALID JSON object with exactly these keys:
-- signal: exactly "GREEN", "YELLOW", or "RED"
-- summary: one bold sentence summary
-- conflict: 2-3 sentences explaining the timeline conflict between spoilage (XGBoost) and peak price (LSTM)
-- option_sell: JSON object with {value_lkr: total, rationale: string}
-- option_wait: JSON object with {steps: list of 4 action strings, value_lkr: total profit if successful}
-- quick_tips: array of 3 short, urgent bullet points
+            STRICT RESPONSE SCHEMA (JSON):
+            {
+              "summary": "Direct verdict on the selected method",
+              "cost_analysis": "Detailed LKR breakdown",
+              "durability": "Expected life span and reusability",
+              "protection": "Evaluation of pest and moisture protection",
+              "verdict": "Exactly one: DEPLOYABLE / RISKY / NOT RECOMMENDED",
+              "quick_tips": ["Action 1", "Action 2", "Action 3"]
+            }"""
+        else:
+            system_prompt = """You are the Senior Agronomist at the Department of Agriculture, Sri Lanka. 
+            Analyze the following harvest data for risk and profit.
 
-Use the word "vee" (paddy) naturally. Tone: Professional, expert, and empathetic."""
+            STRICT RESPONSE SCHEMA:
+            {
+              "signal": "GREEN/YELLOW/RED",
+              "summary": "One sentence direct advice",
+              "conflict": "Explanation of timeline risk between spoilage and peak price",
+              "option_sell": {"value_lkr": "Rs. X", "rationale": "Why sell now?"},
+              "option_wait": {"steps": ["Step 1", "Step 2", "Step 3", "Step 1"], "value_lkr": "Rs. X Gain"},
+              "quick_tips": ["Tip 1", "Tip 2", "Tip 3"]
+            }"""
 
         # ── Call LLM APIs (Speed Optimized Priority) ───────────────────────
         api_key_google    = os.getenv('GOOGLE_API_KEY')
@@ -525,11 +566,7 @@ Use the word "vee" (paddy) naturally. Tone: Professional, expert, and empathetic
         # 3. Parse LLM JSON
         if raw_llm_response:
             try:
-                # Rigorous cleaning
-                clean_json = raw_llm_response.strip()
-                if "{" in clean_json:
-                    clean_json = clean_json[clean_json.find("{"):clean_json.rfind("}")+1]
-                
+                clean_json = _rigorous_json_cleaner(raw_llm_response)
                 advice_json = json.loads(clean_json)
                 return jsonify({
                     "success": True,
@@ -537,16 +574,28 @@ Use the word "vee" (paddy) naturally. Tone: Professional, expert, and empathetic
                     "source":  source,
                 }), 200
             except Exception as e:
-                print(f"[AI] ❌ Parse Error: {e}")
+                print(f"[AI] ❌ Parse Error: {e} at {source}")
 
         # 4. Final Fallback (The Scientist)
         print("[AI] 🛡️ Returning Rule-Based Advisor (Fallback)")
+        fallback_advice = _rule_based_advice_json(signal, storage_days, days_to_peak,
+                                            current_price, peak_price, quantity_kg,
+                                            potential_profit, buffer_days, variety)
+        
+        if mode == 'container':
+            fallback_advice = {
+                "summary": "Rule-based recommendation: Use Hermetic or Super Bags for moisture control.",
+                "cost_analysis": "Approx. 150-500 LKR per unit.",
+                "durability": "6-12 months typically.",
+                "protection": "High seal integrity ensures pest safety.",
+                "verdict": "DEPLOYABLE",
+                "quick_tips": ["Ensure airtight seal", "Stack on pallets", "Keep in shade"]
+            }
+
         return jsonify({
             "success": False,
             "source":  "rule_fallback",
-            "advice":  _rule_based_advice_json(signal, storage_days, days_to_peak,
-                                            current_price, peak_price, quantity_kg,
-                                            potential_profit, buffer_days, variety)
+            "advice":  fallback_advice
         }), 200
 
     except Exception as e:
@@ -563,6 +612,30 @@ def chat_ai():
         context = data.get('context', {})
         
         system_msg = "You are the PostHarvest Guardian, a helpful AI expert for Sri Lankan paddy farmers. Answer questions about rice storage, drying, market trends, and pest control. Keep answers concise, practical, and empathetic."
+        
+        # Enhanced instructions for logistics consultation
+        if context.get('interaction_type') == 'logistics_consult':
+            system_msg += """\n\nLOGISTICS PROTOCOL: 
+            1. Recommend the best storage method. 
+            2. List exactly 2 Pros and 2 Cons. 
+            3. Provide current LKR prices (e.g., Gunny: Rs. 100, Hermetic: Rs. 250).
+            4. Suggest the sub-category suitability for the farmer's specific facility."""
+        
+        # New SLR 603 Grading Protocol
+        elif context.get('interaction_type') == 'grading_consult':
+            system_msg += """\n\nQUALITY GRADING PROTOCOL (SLR 603:2013):
+            You are now the Technical Quality Auditor. 
+            STANDARDS:
+            - Grade A: <14% Moisture, <5% Broken, <1% Discolored, <0.1% Foreign. (Rs. 95/kg)
+            - Grade B: <14.5% Moisture, <10% Broken, <2% Discolored, <0.5% Foreign. (Rs. 80/kg)
+            - Grade C: <15.0% Moisture, <20% Broken, <5% Discolored, <1.0% Foreign. (Rs. 60/kg)
+
+            INSTRUCTIONS:
+            1. Systematic Discovery: Always check Moisture FIRST. If >15%, advise drying immediately.
+            2. Economic Analysis: Show the farmer the price difference (LKR) between their current suspected grade and a higher grade.
+            3. Visual Guidance: Provide quick 'hand tests' for parameters (e.g., Squeeze test for moisture).
+            4. Be supportive and translate quality into PROFIT."""
+
         user_msg = f"Context: {json.dumps(context)}\n\nQuestion: {question}"
 
         # 1. Try Gemini (Speed Priority)
@@ -587,8 +660,16 @@ def chat_ai():
             except: pass
 
         # 3. Try Ollama (Local Fallback)
-        ollama_res = _call_ollama_local(system_msg, user_msg)
+        # Chat should NOT be forced into JSON format for natural flow
+        ollama_res = _call_ollama_local(system_msg, user_msg, format_json=False)
         if ollama_res:
+            # Final safety strip in case model still outputs JSON structure
+            if ollama_res.strip().startswith('{'):
+                try:
+                    chat_data = json.loads(ollama_res)
+                    ollama_res = chat_data.get('answer') or chat_data.get('summary') or chat_data.get('price') or ollama_res
+                except: pass
+
             return jsonify({"success": True, "answer": ollama_res, "source": "local_ollama"}), 200
 
         return jsonify({"success": False, "error": "No LLM provider available"}), 400
@@ -878,6 +959,114 @@ def get_realtime_weather():
             "success": False,
             "error": "Failed to sync realtime weather data",
             "fallback": True,
-            "temp_c": 28.5, # Realistic Sri Lankan average
+            "temp_c": 28.5,
             "humidity_pct": 72
         }), 200
+
+@postharvest_bp.route('/inspect', methods=['POST'])
+def inspect_harvest_logic():
+    """
+    Analyzes harvest input for "Agronomic Impossibilities" based on SLR 603.
+    """
+    data = request.get_json() or {}
+    
+    variety = data.get('variety', 'Unknown')
+    quantity_kg = float(data.get('quantity_kg', 0))
+    acres = float(data.get('acres', 0))
+    moisture = float(data.get('moisture', 0))
+    grade = data.get('grade', 'A')
+    
+    is_valid = True
+    warning_message = None
+    suggested_correction = None
+
+    # 1. Yield Check (SL Standards: ~2000-3000kg/acre. Max logic: 4500kg)
+    if acres > 0:
+        yield_per_acre = quantity_kg / acres
+        if yield_per_acre > 4500:
+            is_valid = False
+            warning_message = f"Yield Discrepancy: You reported {int(yield_per_acre)}kg per acre."
+            suggested_correction = f"This yield is unusually high for Sri Lankan standards (Avg: 3000kg). Please verify the land area ({acres} acres) or total quantity ({quantity_kg}kg)."
+
+    # 2. Moisture vs. Grade Conflict (SLR 603: Grade A < 14%)
+    if is_valid and grade == "A" and moisture > 14:
+        is_valid = False
+        warning_message = f"SLR 603 Conflict: Grade A selected but moisture is {moisture}%."
+        suggested_correction = f"Grade A requires moisture below 14% for long-term safety. Either dry the paddy further or downgrade to Grade B/C."
+
+    # 3. Biological Reality (Over-drying risk)
+    if is_valid and moisture < 8:
+        is_valid = False
+        warning_message = "Milling Risk: Moisture is extremely low (<8%)."
+        suggested_correction = "Over-dried rice becomes brittle and breaks during milling, reducing selling price. Please verify your moisture meter calibration."
+
+    return jsonify({
+        "is_valid": is_valid,
+        "warning_message": warning_message,
+        "suggested_correction": suggested_correction
+    }), 200
+
+
+
+def _rigorous_json_cleaner(raw: str) -> str:
+    """
+    Bulletproof JSON extractor for messy LLM outputs.
+    Handles: <think> tags, markdown fences, preamble prose,
+    single quotes, Python booleans/None, trailing commas.
+    """
+    import re
+
+    cleaned = raw.strip()
+
+    # 0. Print raw for debug (first 500 chars)
+    print(f"[JSON Cleaner] Raw input (first 500 chars): {cleaned[:500]}")
+
+    # 1. Strip <think>...</think> reasoning tokens (Ollama/qwen/deepseek models)
+    cleaned = re.sub(r'<think>.*?</think>', '', cleaned, flags=re.DOTALL)
+    cleaned = cleaned.strip()
+
+    # 2. Strip markdown fences (```json ... ``` or ``` ... ```)
+    cleaned = re.sub(r'^```[a-zA-Z]*\s*', '', cleaned)
+    cleaned = re.sub(r'\s*```$', '', cleaned)
+    cleaned = cleaned.strip()
+
+    # 3. Extract the JSON object — find FIRST { and LAST }
+    #    This handles preamble text like "Here is the JSON:"
+    first_brace = cleaned.find('{')
+    last_brace = cleaned.rfind('}')
+    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+        cleaned = cleaned[first_brace:last_brace + 1]
+    else:
+        # No braces at all — try extracting a JSON array
+        first_bracket = cleaned.find('[')
+        last_bracket = cleaned.rfind(']')
+        if first_bracket != -1 and last_bracket != -1:
+            cleaned = cleaned[first_bracket:last_bracket + 1]
+
+    # 4. Replace Python-style booleans and None → JSON equivalents
+    cleaned = re.sub(r'\bTrue\b', 'true', cleaned)
+    cleaned = re.sub(r'\bFalse\b', 'false', cleaned)
+    cleaned = re.sub(r'\bNone\b', 'null', cleaned)
+
+    # 5. Fix missing commas between } and "key" or ] and "key"
+    cleaned = re.sub(r'}\s*"', '}, "', cleaned)
+    cleaned = re.sub(r']\s*"', '], "', cleaned)
+
+    # 6. Fix missing commas between string values and next key
+    cleaned = re.sub(r'"\s*\n\s*"', '",\n"', cleaned)
+
+    # 7. Remove trailing commas before } or ]
+    cleaned = re.sub(r',\s*}', '}', cleaned)
+    cleaned = re.sub(r',\s*]', ']', cleaned)
+
+    # 8. Safer single-quote replacement: Only replace at start/end of words or braces
+    #    This avoids breaking apostrophes like "Farmer's" while fixing "key": 'value'
+    cleaned = re.sub(r"':", '":', cleaned)
+    cleaned = re.sub(r": '", ': "', cleaned)
+    cleaned = re.sub(r"',", '",', cleaned)
+    cleaned = re.sub(r"'}", '"}', cleaned)
+    cleaned = re.sub(r"{'", '{"', cleaned)
+
+    print(f"[JSON Cleaner] Cleaned output (first 500 chars): {cleaned[:500]}")
+    return cleaned
+
