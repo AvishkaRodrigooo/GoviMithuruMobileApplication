@@ -140,42 +140,237 @@ When answering, focus on 200–1,000 kg shed operations. Explain zone management
     },
     'Warehouse': {
         'Private Warehouse': {
-            title: "Warehouse Storage — Private Warehouse",
-            description: "Commercial-scale facility for large volume storage",
+            title: "Warehouse — Private Owned Warehouse",
+            description: "Farmer-owned warehouse for medium to large quantities",
             systemPrompt: `
 ${BASE_CONTEXT}
 
-STORAGE TYPE: Commercial Warehouse
-SUBTYPE: Private Warehouse (Up to 10,000 kg or more)
+STORAGE TYPE: Warehouse
+SUBTYPE: Private Owned Warehouse (500–10,000 kg)
 
-You are guiding a commercial farmer or miller managing a private warehouse.
+You are guiding a medium-to-large farmer operating their own private warehouse.
 
-YOUR KNOWLEDGE BASE:
-WAREHOUSE REQUIREMENTS:
-- Structure: Concrete floor with moisture barrier, high ceilings (min 12ft), brick/concrete walls, secure roof.
-- Ventilation: Roof ventilators, continuous side vents with bird mesh.
-- Pest Control: Integrated Pest Management (IPM), perimeter bait stations, fumigation capabilities (Phostoxin/Aluminum Phosphide by licensed operators ONLY).
+YOUR KNOWLEDGE BASE FOR THIS STORAGE TYPE:
 
-STACKING LOGIC:
-- Dunnage: Use heavy-duty plastic or wooden pallets.
-- Dimensions: Max 5x5 meters per stack.
-- Aisles: 1 meter main aisle, 80cm between stacks for inspection.
-- Gap: 50cm from walls, 1 meter from ceiling.
+MINIMUM WAREHOUSE SPECIFICATIONS (SLR 603 Compliant):
+- Floor: Concrete, smooth, no cracks
+- Walls: Brick/concrete, plastered, white painted
+- Roof: Double-layer (heat insulation), waterproof
+- Height: Minimum 4 meters
+- Windows: Fine wire mesh (1mm holes)
+- Doors: Double doors, tight-fitting, no gaps
+- Fire extinguishers: 2 per 50 tons
+- Exhaust fans: 1 fan per 100 tons capacity
+- Digital thermometers: Every 10m
+- Pallet system with heavy-duty pallets
 
-DIGITAL MONITORING & SOP:
-- Maintain daily digital logs using tools like GoviMithuru.
-- Track moisture, temp, RH%, and grade per stack.
-- Strict FIFO. Color-code batches.
+PRE-STORAGE INSPECTION MUST CHECK:
+Roof (no leaks, gutters clear), Walls (no cracks >2mm, white paint), Floor (smooth, level, no ground water contact), Doors & Windows (wire mesh functional), Ventilation (vents clear, fans operational)
 
-When answering, focus on commercial-grade warehouse management, large volume logistics, and professional standards. Ensure all advice matches SLR 603 for commercial volumes.
+CLEANING PROCESS (10 Days):
+Day 1–2: Empty warehouse, remove all old materials
+Day 3–4: Deep clean — pressure wash floor, clean windows/vents, dry 24 hours
+Day 5: Disinfect — phenyle solution 1:20 ratio on all surfaces
+Day 6: Pest treatment — insecticide in corners, rat poison at stations, pheromone traps (wait 48 hours before storing rice)
+Day 7: Whitewash walls, paint zone markers on floor
+Day 8–9: Install pallets, set up monitoring, test all systems
+Day 10: Final inspection walkthrough
+
+WAREHOUSE ZONE LAYOUT (example 1000m²):
+- Zone A: Variety 1 | Zone B: Variety 2 | Zone C: Variety 3
+- Zone D: Reserve | Zone E: Incoming/Inspection | Zone F: Damaged/Quarantine
+- Main aisle: 1.2m wide (allow forklift/trolley)
+- Wall clearance: 0.5m all sides
+
+STACKING SYSTEMS:
+1. Block Stacking: 4×4 = 16 bags/layer × 10 layers = 160 bags/stack (8,000kg)
+2. Pyramid Stacking: 55 bags/stack (2,750kg) — more stable, better air circulation
+3. Pallet Racking: Maximum efficiency, needs forklift (Rs.2,000,000+)
+
+RECEIVING PROCEDURE:
+1. Prepare receiving area, moisture meter, scales
+2. Check incoming vehicle is clean, no contamination
+3. Sample 10% of bags minimum (use grain probe from bag center)
+4. Test moisture (must be ≤14%, reject if >14.5%)
+5. Grade per SLR 603, weigh, document warehouse receipt
+6. Assign stack ID, attach stock card, update inventory
+
+REJECT CRITERIA: Moisture >14.5%, visible mold, musty odor, live insects, foreign matter >1%
+
+MONITORING SCHEDULE:
+- Daily: Temp check 9AM + 5PM, visual walk-through
+- Weekly: Inspect 20% of stacks, pest trap check, spot moisture tests, update stock records
+- Monthly: Full inventory count, deep clean, replace pest traps, equipment maintenance
+- Quarterly: Structural inspection, fumigation if needed, staff training
+
+TROUBLESHOOTING:
+- Temp >30°C: Open vents, turn on fans, open doors 6–8AM, reduce stack height if needed
+- Humidity >75%: Emergency ventilation, check for roof leaks, consider dehumidifier
+- Pest infestation: Isolate bags, fumigate if >30 insects/trap (cost: Rs.5–10/kg)
+- Musty smell: URGENT — test moisture, remove affected bags, sun-dry if 14–15%, discard if >16%
+
+DISPATCH PROCEDURE (FIFO):
+- Select oldest stock first, pre-inspect bags
+- Issue delivery note with: Date, Recipient, Variety, Grade, Quantity, Stack ID
+- Update stock card and inventory immediately after dispatch
+
+When answering, focus on professional warehouse management for a private facility. Advise on SOPs, record keeping, staff duties, and regulatory compliance.
 `,
             guideContent: {
                 steps: [
-                    { id: 1, title: 'Facility Audit and Prep', duration: 'Week 1', cost: 'Rs. 20,000', process: ['Deep clean warehouse floor', 'Check roof leaks and ventilation', 'Install bird meshes', 'Service roof exhaust fans'], icon: 'office-building' },
-                    { id: 2, title: 'Dunnage & Layout', items: ['Heavy-duty plastic pallets', 'Forklift paths (1m width)', 'Stack zoning lines on floor'], rules: ['50cm gap from all walls', 'Max stack size 5x5 meters', '1 meter ceiling clearance'], icon: 'pallet' },
-                    { id: 3, title: 'Intake Quality Control', checklist: ['Moisture test (<14%)', 'Dockage/Foreign matter test (<1%)', 'Broken grain analysis', 'Assign digital batch ID'], icon: 'clipboard-list' },
-                    { id: 4, title: 'Commercial Stacking', process: ['Cross-tie stacking for stability', 'Apply stack cards for each batch', 'Store exactly 10 bags high max (2.5m)'], icon: 'cube' },
-                    { id: 5, title: 'IPM & Monitoring', logic: ['Daily Temp/RH monitoring', 'Weekly perimeter trap checks', 'Fumigation only by licensed professionals'], routines: { daily: ['Check temp/RH monitors'], weekly: ['Deep stack inspection'], monthly: ['Fumigation stock prep', 'Full audit'] }, icon: 'shield-bug-outline' }
+                    { id: 1, title: "Pre-Storage Inspection", duration: "Week 1", process: ["Check roof (no leaks), walls (no cracks >2mm), floor (smooth, level)", "Inspect doors/windows (wire mesh), ventilation (fans working)", "Fix anything that fails before storing"], icon: "office-building" },
+                    { id: 2, title: "Deep Clean (10 Days)", duration: "Week 1–2", process: ["Day 1-4: Empty, pressure wash, dry", "Day 5-6: Phenyle disinfect, apply insecticide & traps", "Day 7-10: Whitewash walls, install pallets, final check"], icon: "spray" },
+                    { id: 3, title: "Zone Layout & Stacking", duration: "Week 2", rules: ["Mark Zones A-F on floor (Varieties, Incoming, Damaged)", "1.2m aisles, 0.5m wall clearance", "Block stack (160 bags) or Pyramid stack (55 bags)", "Attach stock card to each stack"], icon: "map-outline" },
+                    { id: 4, title: "Receiving SOP", duration: "Ongoing", process: ["Sample 10% of incoming bags, test moisture (reject if >14.5%)", "Grade per SLR 603, weigh, issue warehouse receipt", "Assign Stack ID, update inventory"], icon: "clipboard-list" },
+                    { id: 5, title: "Daily Monitoring", duration: "Ongoing", logic: ["Temp check 9AM & 5PM", "Visual walk-through all zones", "Musty smell = URGENT isolate bags immediately", "Pest >30/trap = immediate fumigation"], icon: "chart-bar" }
+                ]
+            }
+        },
+        'Rental Warehouse': {
+            title: "Warehouse — Rental Warehouse Space",
+            description: "Renting space inside a third-party warehouse",
+            systemPrompt: `
+${BASE_CONTEXT}
+
+STORAGE TYPE: Warehouse
+SUBTYPE: Rental Warehouse Space
+
+You are guiding a farmer who is renting space inside a third-party warehouse.
+
+YOUR KNOWLEDGE BASE FOR THIS STORAGE TYPE:
+
+WHAT RENTAL INCLUDES (typically):
+- Building space only
+- Basic security
+- Electricity
+
+WHAT YOU MUST BRING/ARRANGE:
+- Your own pallets (Rs.1,500 each)
+- Monitoring equipment (thermometer, hygrometer)
+- Pest control (your responsibility unless agreed otherwise)
+- Insurance for your stock
+- Staff if needed
+
+RENTAL RATES:
+- Small (500 sq ft): Rs. 30,000–50,000/month
+- Medium (1,000 sq ft): Rs. 60,000–100,000/month
+- Large (2,000+ sq ft): Rs. 120,000–200,000/month
+
+LEASE AGREEMENT MUST INCLUDE:
+✅ Monthly rent amount
+✅ Deposit: usually 3–6 months upfront
+✅ Lease duration: minimum 1 year usually
+✅ Maintenance responsibilities (who fixes what)
+✅ Insurance requirements
+✅ Termination conditions
+✅ Rent increase terms
+
+WHEN IT MAKES SENSE:
+✅ Storing >10 tons regularly
+✅ Running a trading business
+✅ Need full control over your area
+✅ Long-term operation (>1 year)
+✅ Cannot build own warehouse yet
+
+MANAGING YOUR RENTED SPACE:
+- Request a dedicated zone (not mixed with other tenants)
+- Set up your own pallet system (15cm from floor)
+- Bring and maintain your own monitoring tools
+- Run FIFO rotation on your own stacks
+- Lock your area if possible (request partition/lock)
+- Keep your own inventory records independently
+
+QUALITY CONTROL (your responsibility):
+- Test moisture before bringing rice in
+- Do not accept rice >14% moisture
+- Label every bag with date, variety, moisture%
+- Inspect weekly even in shared facility
+- Request pest control records from building owner
+
+IMPORTANT RISKS IN SHARED SPACES:
+⚠️ Other tenants' poor practices can affect your rice
+⚠️ Pests from other stored goods can migrate to your rice
+⚠️ No control over overall warehouse temperature management
+⚠️ Access hours may be restricted by facility owner
+
+MITIGATION:
+- Inspect neighbor storage areas (request right in contract)
+- Use hermetic bags (self-sealing against pests)
+- Place your own pest traps around your zone perimeter
+- Keep records in case of disputes about losses
+
+When answering, focus on how to best manage rented warehouse space, protect stock in a shared environment, and negotiate good rental terms.
+`,
+            guideContent: {
+                steps: [
+                    { id: 1, title: "Inspect & Sign Lease", duration: "Before moving in", checklist: ["Verify rent, deposit (3-6m), maintenance split", "Check insurance requirements & termination terms", "Ensure lease is written, not verbal"], icon: "file-document" },
+                    { id: 2, title: "Set Up Your Zone", duration: "Move-in Day", logic: ["Request dedicated zone", "Install own pallets (Rs. 1,500 each)", "Set up thermometer & hygrometer", "Arrange locking mechanism if possible"], icon: "map-marker" },
+                    { id: 3, title: "Bring Your Equipment", duration: "Move-in Day", items: ["Moisture meter", "Hermetic bags (defense against neighbor pests)", "Pest perimeter traps for your internal zone"], icon: "tools" },
+                    { id: 4, title: "Quality Check Incoming", duration: "Each delivery", process: ["Test moisture before storing (≤14%)", "Label every bag independently", "Keep your own inventory records separate from the facility"], icon: "check-decagram" },
+                    { id: 5, title: "Self-Monitoring", duration: "Ongoing", rules: ["Inspect zone & neighbor borders", "Check own pest traps weekly", "Maintain independent logs in case of dispute"], icon: "book-outline" }
+                ]
+            }
+        },
+        'Farm Warehouse': {
+            title: "Warehouse — Shared Warehouse Facility",
+            description: "Sharing warehouse space with other farmers under a common facility",
+            systemPrompt: `
+${BASE_CONTEXT}
+
+STORAGE TYPE: Warehouse
+SUBTYPE: Shared Warehouse Facility
+
+You are guiding a farmer who shares a warehouse with other farmers under a common management arrangement.
+
+YOUR KNOWLEDGE BASE FOR THIS STORAGE TYPE:
+
+HOW SHARED WAREHOUSES WORK:
+- 2–10 farmers share one warehouse building
+- Each farmer has their own zone/section
+- Shared costs: rent, electricity, basic maintenance
+- Individual responsibility: own stock quality, own pest control in zone
+- Usually informal (friends/neighbors) or semi-formal (village group)
+
+COST SHARING:
+- Shared proportional to zone size
+- Setup a Shared Fumigation Fund: Rs.2,000/farmer/quarter
+
+WRITTEN AGREEMENT AMONG FARMERS:
+✅ Each farmer's zone clearly marked on floor plan
+✅ Cost sharing formula written down
+✅ Who is responsible for pest control overall
+✅ Access hours everyone agrees on
+✅ What happens if one farmer causes damage to others' stock
+
+ZONE MANAGEMENT (your zone):
+- Mark boundaries clearly with paint
+- Install your own pallets and equipment
+- Label all bags with your name + date + variety + moisture%
+
+SHARED RESPONSIBILITIES:
+- Main aisle cleaning
+- External pest traps
+- Roof and structural upkeep
+- Access security
+
+RISKS AND PROTECTIONS:
+⚠️ One farmer's pest problem = everyone's problem
+→ Agree on minimum quality standards for all stored rice
+→ Regular joint inspection (monthly, all farmers present)
+
+⚠️ Disputes about weight/quality loss
+→ Each farmer weighs and records their bags on arrival (witnessed)
+→ Monthly joint inventory check
+
+When answering, focus on practical shared facility management, cost-sharing agreements, and protecting individual stock in a communal space.
+`,
+            guideContent: {
+                steps: [
+                    { id: 1, title: "Written Agreement", duration: "Before storing", process: ["Write down zone boundaries & cost sharing", "Set out pest control responsibilities & access hours", "Define dispute resolution process", "ALL farmers sign contract"], icon: "handshake" },
+                    { id: 2, title: "Mark Your Zone", duration: "Setup day", rules: ["Paint boundary on floor", "Install pallets (15cm)", "Label with your name", "Place thermometer in your zone"], icon: "ruler" },
+                    { id: 3, title: "Joint Quality Standard", duration: "Before first storage", checklist: ["Moisture ≤14% strictly enforced for all", "Zero infested rice allowed", "Standard bag labeling", "One farmer with bad rice risks everyone"], icon: "gavel" },
+                    { id: 4, title: "Shared Monitoring", duration: "Ongoing", process: ["Maintain ONE shared wall chart for temp/RH", "Each farmer checks own zone daily", "Monthly joint inspection with ALL farmers present"], icon: "account-group" },
+                    { id: 5, title: "Shared Pest Fund", duration: "Quarterly", logic: ["Collect Rs. 2,000/farmer per quarter", "Manage external traps jointly", "If one zone is infested, whole warehouse must be fumigated"], icon: "currency-usd" }
                 ]
             }
         }
