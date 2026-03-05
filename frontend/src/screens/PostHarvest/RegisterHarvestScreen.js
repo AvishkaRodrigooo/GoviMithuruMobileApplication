@@ -13,7 +13,7 @@ import useUniversalLocation from '../../utils/useUniversalLocation';
 import { WebView } from 'react-native-webview';
 
 const { width } = Dimensions.get('window');
-const BASE_URL = 'http://192.168.100.199:5000'; // Flask Backend
+const BASE_URL = 'http://192.168.100.198:5000'; // Flask Backend
 
 const RICE_VARIETIES = [
   'Bg 250', 'Bg 300', 'Bg 352', 'Bg 366', 'Bg 379-2', 'Bg 403',
@@ -252,6 +252,10 @@ export default function RegisterHarvestScreen({ navigation, route }) {
     setIsTyping(true);
 
     try {
+      // detect intent: logistics vs grading
+      const lowerInput = currentInput.toLowerCase();
+      const isGradingIntent = lowerInput.includes('grade') || lowerInput.includes('quality') || lowerInput.includes('audit') || lowerInput.includes('moisture');
+
       const res = await fetch(`${BASE_URL}/api/guardian/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -260,19 +264,22 @@ export default function RegisterHarvestScreen({ navigation, route }) {
           context: {
             variety: formData.variety,
             quantity: formData.quantityKg,
+            moisture: formData.moisture,
+            current_grade: formData.grade,
             storage_type: formData.storageType,
             sub_category: formData.subCategory,
             container_category: formData.containerCategory,
             storage_method: formData.storageMethod,
-            interaction_type: 'logistics_consult'
+            interaction_type: isGradingIntent ? 'grading_consult' : 'logistics_consult'
           }
         })
       });
       const data = await res.json();
       if (data.success) {
-        setInspectorChat(prev => [...prev, { id: Date.now(), text: data.answer, isBot: true }]);
+        const prefix = isGradingIntent ? "📊 Quality Auditor:" : "📦 Logistics Advisor:";
+        setInspectorChat(prev => [...prev, { id: Date.now(), text: `${prefix} ${data.answer}`, isBot: true }]);
       } else {
-        triggerInspector("I am having trouble analyzing that. Can you try rephrasing? Pro-tip: Ask about 'prices' or 'pros and cons'.");
+        triggerInspector("I am having trouble analyzing that. Can you try rephrasing? Pro-tip: Ask about 'prices' or 'grading standards'.");
       }
     } catch (e) {
       triggerInspector("Network issue. Please check your connection to the GoviMithuru local server.");
