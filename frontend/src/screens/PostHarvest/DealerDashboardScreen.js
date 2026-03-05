@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import {
     View, Text, StyleSheet, ScrollView, TouchableOpacity,
-    TextInput, Alert, ActivityIndicator, SafeAreaView, StatusBar
+    TextInput, Alert, ActivityIndicator, SafeAreaView, StatusBar,
+    Switch
 } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { auth, db } from '../../firebase/firebaseConfig';
@@ -18,6 +20,14 @@ export default function DealerDashboardScreen({ navigation }) {
     const [selectedVariety, setSelectedVariety] = useState(RICE_VARIETIES[0]);
     const [selectedGrade, setSelectedGrade] = useState(GRADES[0]);
     const [price, setPrice] = useState('');
+
+    // Transport & Location
+    const [hasTransport, setHasTransport] = useState(false);
+    const [transportCost, setTransportCost] = useState('');
+    const [markerCoords, setMarkerCoords] = useState({
+        latitude: 6.9271, // Default to Colombo
+        longitude: 79.8612
+    });
 
     useEffect(() => {
         fetchDealerProfile();
@@ -50,6 +60,10 @@ export default function DealerDashboardScreen({ navigation }) {
                 dealerId: uid,
                 dealerName: dealerData?.fullName || 'Anonymous Dealer',
                 location: dealerData?.location || 'Unknown Location',
+                latitude: markerCoords.latitude,
+                longitude: markerCoords.longitude,
+                hasTransport,
+                transportCostPerKm: hasTransport ? parseFloat(transportCost) || 0 : 0,
                 variety: selectedVariety,
                 grade: selectedGrade,
                 price: parseFloat(price),
@@ -57,8 +71,6 @@ export default function DealerDashboardScreen({ navigation }) {
                 date: today
             };
 
-            // We use a specific ID to update only one entry per dealer/variety/grade per day or just add new records
-            // Let's just add as new records for historical tracking
             await db.collection('marketPrices').add(priceData);
 
             Alert.alert('Success', 'Market price updated successfully!');
@@ -149,6 +161,63 @@ export default function DealerDashboardScreen({ navigation }) {
                         </View>
                     </View>
 
+                    <View style={s.divider} />
+
+                    <Text style={s.cardTitle}>Transport & Location</Text>
+                    <Text style={s.cardSub}>Help farmers find you and calculate shipping</Text>
+
+                    <View style={s.transportRow}>
+                        <View>
+                            <Text style={s.transportLabel}>Offer Transport Service?</Text>
+                            <Text style={s.transportSub}>Switch on if you can pick up from farmer</Text>
+                        </View>
+                        <Switch
+                            value={hasTransport}
+                            onValueChange={setHasTransport}
+                            trackColor={{ false: '#cbd5e1', true: '#34d399' }}
+                            thumbColor={hasTransport ? '#059669' : '#f4f3f4'}
+                        />
+                    </View>
+
+                    {hasTransport && (
+                        <View style={s.field}>
+                            <Text style={s.label}>Transport Cost (Rs. per 1KM)</Text>
+                            <View style={s.inputBox}>
+                                <Text style={s.prefix}>Rs.</Text>
+                                <TextInput
+                                    style={s.input}
+                                    placeholder="50.00"
+                                    keyboardType="numeric"
+                                    value={transportCost}
+                                    onChangeText={setTransportCost}
+                                    placeholderTextColor="#94a3b8"
+                                />
+                            </View>
+                        </View>
+                    )}
+
+                    <View style={s.field}>
+                        <Text style={s.label}>Pickup Location (Tap Map to Pin)</Text>
+                        <View style={s.mapContainer}>
+                            <MapView
+                                style={s.map}
+                                initialRegion={{
+                                    latitude: 6.9271,
+                                    longitude: 79.8612,
+                                    latitudeDelta: 0.1,
+                                    longitudeDelta: 0.1,
+                                }}
+                                onPress={(e) => setMarkerCoords(e.nativeEvent.coordinate)}
+                            >
+                                <Marker
+                                    coordinate={markerCoords}
+                                    title="Pickup Point"
+                                    description="Pin your warehouse location"
+                                />
+                            </MapView>
+                        </View>
+                    </View>
+
                     <TouchableOpacity
                         style={[s.updateBtn, loading && s.disabledBtn]}
                         onPress={handleUpdatePrice}
@@ -208,6 +277,13 @@ const s = StyleSheet.create({
     inputBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', borderRadius: 12, borderWidth: 1, borderColor: '#e2e8f0', paddingHorizontal: 15 },
     prefix: { color: '#64748b', fontWeight: '700', fontSize: 16 },
     input: { flex: 1, height: 50, paddingLeft: 10, fontSize: 18, fontWeight: '700', color: '#1e293b' },
+
+    divider: { height: 1, backgroundColor: '#f1f5f9', marginVertical: 25 },
+    transportRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+    transportLabel: { color: '#1e293b', fontSize: 15, fontWeight: '700' },
+    transportSub: { color: '#64748b', fontSize: 12, marginTop: 2 },
+    mapContainer: { height: 200, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#e2e8f0', marginTop: 10 },
+    map: { flex: 1 },
 
     updateBtn: { backgroundColor: '#059669', height: 55, borderRadius: 16, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10, elevation: 3 },
     updateBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
