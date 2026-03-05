@@ -9,7 +9,7 @@ import tensorflow as tf
 weed_predict_bp = Blueprint('weed_predict', __name__)
 
 # Define your class labels in order matching model output
-CLASS_LABELS = ["Commelina_benghalensis", "Cyperus_rotundus", "no_weed"]
+CLASS_LABELS = ["Commelina_benghalensis", "Cyperus_rotundus", "Parthenium_hysterophorus", "no_weed"]
 
 # Weed Details Database----------------
 
@@ -104,9 +104,60 @@ WEED_DETAILS = {
             "chemical": "Sedge වර්ගයට අදාල herbicides (ගොවි උපදේශක උපදෙස් අනුව පමණක් භාවිතා කළ යුතුයි)",
             "integrated": "භෞතික + සංස්කෘතික + රසායනික ක්‍රම එකට භාවිතය"
         }
+    },
+    "Parthenium_hysterophorus": {
+
+         "sinhala_name": "ගජමාරා / කොංග්‍රස් තණ",
+        "english_name": "Parthenium weed / Congress weed / Carrot grass",
+        "type": "Broadleaf weed (පත්‍ර විශාල තණ නොවන වල් පැළෑටි)",
+        "scientific_name": "Parthenium hysterophorus",
+
+        "distribution": [
+        "උණුසුම් හා අර්ධ-වියළි කලාපවල වේගයෙන් පැතිරේ",
+        "මාර්ග අසල, හිස් බිම්, වගා බිම්, වතු බිම්වල බහුලව දක්නට ලැබේ",
+        "අඩු සාරවත් පස වලත් ඉතා හොඳින් වර්ධනය වෙයි"
+      ],
+
+        "morphology": [
+        "උස 1–1.5 මීටර් දක්වා වර්ධනය වේ",
+        "ගැඹුරු ලෙස කපරවූ (deeply lobed) කොළ",
+        "සුදු, කුඩා මල් ගොනු (flower heads)",
+        "සෘජු, ශාඛා සහිත කොළ පැහැති කඳ"
+      ],
+
+        "reproduction": [
+        "බීජ මඟින් ප්‍රධාන වශයෙන් ප්‍රජනනය වේ",
+        "එක පැළෑටියකින් බීජ දහස් ගණනක් නිපදවිය හැක",
+        "බීජ පස තුළ වසර කිහිපයක් ජීවත් විය හැක"
+    ],
+
+       "impact_on_paddy": [
+        "වී ශාකයට අවශ්‍ය පෝෂක, ජලය හා ආලෝකය සඳහා තරඟ කරයි",
+        "Allelopathic රසායනික ද්‍රව්‍ය නිපදවා අනෙකුත් ශාක වර්ධනය අඩු කරයි",
+        "අස්වැන්න සැලකිය යුතු ලෙස අඩු විය හැක",
+        "සත්වයන්ට හා මිනිසුන්ට අසාත්මිකතා (skin allergy, asthma) ඇති කළ හැක"
+    ],
+
+        "management": {
+        "mechanical": [
+            "මල් පිපීමට පෙර අතින් ඉවත් කිරීම",
+            "මුල් සමඟම ඉවත් කළ යුතුය",
+            "ඉවත් කළ පැළෑටි ආරක්ෂිත ලෙස විනාශ කිරීම"
+        ],
+        "cultural": [
+            "සාරවත් බෝග වගා කර ඉඩ තරඟය වැඩි කිරීම",
+            "බිම් නිරන්තරයෙන් නිරීක්ෂණය කිරීම",
+            "වගා පෙර බිම් පිරිසිදු කිරීම"
+        ],
+        "chemical": "Broadleaf weeds සඳහා අදාල herbicides (ගොවි උපදේශක උපදෙස් අනුව පමණක් භාවිතා කළ යුතුයි)",
+        "integrated": "භෞතික + සංස්කෘතික + රසායනික ක්‍රම එකට භාවිතය (Integrated Weed Management)"
+    }
+
+}
     
     }
-}
+
+
 
 
 # Load TFLite model once globally in this file
