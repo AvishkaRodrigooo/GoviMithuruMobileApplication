@@ -16,11 +16,14 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://10.11.204.131:5000';
 
+
 const CropRecommenderScreen = ({ navigation }) => {
   // State variables
   const [loading, setLoading] = useState(false);
   const [locationMethod, setLocationMethod] = useState('gps'); // 'gps' or 'manual'
   const [userLocation, setUserLocation] = useState(null);
+  const [weatherData, setWeatherData] = useState(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
   const [formData, setFormData] = useState({
     district: '',
     gnDivision: '',
@@ -92,6 +95,8 @@ const CropRecommenderScreen = ({ navigation }) => {
 
     // Try multiple geocoding methods for better accuracy
     const { latitude, longitude } = location.coords;
+
+    await getWeatherForecast(latitude, longitude);
 
     console.log('Getting location for:', latitude, longitude);
     
@@ -260,7 +265,7 @@ const CropRecommenderScreen = ({ navigation }) => {
 
       // METHOD 4: Try with OpenCage Data (free tier available)
       try {
-        const OPENCAGE_API_KEY = 'xxxx'; // Sign up at opencagedata.com
+        const OPENCAGE_API_KEY = 'b952fb1f73564c9aae7f908a1bfadf84'; // Sign up at opencagedata.com
         const opencageResponse = await axios.get(
           `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=${OPENCAGE_API_KEY}&language=en&countrycode=lk&no_annotations=1`
         );
@@ -436,43 +441,188 @@ const CropRecommenderScreen = ({ navigation }) => {
     return true;
   };
 
+const getWeatherForecast = async (lat, lon) => {
+  try {
+    setWeatherLoading(true);
+
+    const API_KEY = "975862a6d56da3d94749762933b338c5";
+
+    const response = await axios.get(
+      `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`
+    );
+
+    const forecastList = response.data.list;
+
+    // analyze next few days weather
+    let rainCount = 0;
+    let tempSum = 0;
+
+    forecastList.forEach(item => {
+      tempSum += item.main.temp;
+
+      if (item.weather[0].main === "Rain") {
+        rainCount++;
+      }
+    });
+
+    const avgTemp = tempSum / forecastList.length;
+
+    let climatePrediction = "Normal";
+
+    if (rainCount > 10) climatePrediction = "Rainy Season Expected";
+    else if (avgTemp > 30) climatePrediction = "Dry Hot Period";
+    else climatePrediction = "Moderate Climate";
+
+    setWeatherData({
+      temperature: avgTemp.toFixed(1),
+      rainProbability: rainCount,
+      climatePrediction: climatePrediction,
+    });
+
+  } catch (error) {
+    console.log("Weather error:", error);
+  } finally {
+    setWeatherLoading(false);
+  }
+};
+
+
+
   // 4. GET RECOMMENDATION (AI/Backend Integration)
 const getRecommendation = async () => {
-  console.log('Form Data:', formData);
 
   if (!validateForm()) return;
 
   setLoading(true);
-  
+
   try {
 
-    if (!formData || !formData.soilType || !formData.waterAvailability || !formData.fieldSize) {
-      Alert.alert('Error', 'Please fill in all required fields');
-      setLoading(false);
-      return;
-    }
+    // Use already fetched weather data
+    const weather = weatherData;
 
-    // Generate recommendation based on form data
-    const recommendationData = generateRecommendation(formData);
-    
-    console.log('Generated Recommendation:', recommendationData);
+    const recommendationData = generateRecommendation(formData, weather);
 
-    // Navigate to results screen with both form data and recommendation
+    const suitabilityScore = calculatePlantingSuitability(
+  weatherData,
+  formData.soilType,
+  formData.waterAvailability
+);
+
+const rainRisk = calculateRainRisk(weatherData);
+
+const climateVariety = recommendClimateVariety(weatherData);
+
     navigation.navigate('CropRecommendationResults', {
       formData: formData,
       recommendation: recommendationData,
+      suitabilityScore,
+      rainRisk,
+      climateVariety,
+      weather: weatherData
     });
-    
+
   } catch (error) {
-    console.error('Recommendation error:', error);
-    Alert.alert('Error', 'Failed to generate recommendation. Please try again.');
+
+    console.log(error);
+    Alert.alert("Error", "Failed to generate recommendation");
+
   } finally {
     setLoading(false);
   }
 };
 
+
+const calculatePlantingSuitability = (weather, soilType, waterAvailability) => {
+
+  if (!weather) return 50;
+
+  let score = 50;
+
+  const temp = parseFloat(weather.temperature);
+  const rain = weather.rainProbability;
+
+  // Temperature effect
+  if (temp >= 25 && temp <= 32) score += 20;
+  if (temp > 34) score -= 10;
+
+  // Rain effect
+  if (rain > 10) score += 15;
+  if (rain < 4) score -= 10;
+
+  // Water availability
+  if (waterAvailability === "High") score += 10;
+  if (waterAvailability === "Low") score -= 5;
+
+  // Soil bonus
+  if (soilType === "Clay") score += 10;
+
+  return Math.min(Math.max(score, 0), 100);
+};
+
+
+const calculateRainRisk = (weather) => {
+
+  if (!weather) return "Unknown";
+
+  const rain = weather.rainProbability;
+
+  if (rain > 12) return "High Rainfall Expected";
+  if (rain > 6) return "Moderate Rainfall";
+  return "Low Rainfall Risk";
+};
+
+const recommendClimateVariety = (weather) => {
+
+  if (!weather) return "BG 300";
+
+  if (weather.climatePrediction === "Rainy Season Expected") {
+    return "BG 352";
+  }
+
+  if (weather.climatePrediction === "Dry Hot Period") {
+    return "BG 366";
+  }
+
+  return "BG 300";
+};
+
+
+const calculateClimateScore = (weather) => {
+
+  if (!weather) return 50;
+
+  let score = 50;
+
+  if (weather.climatePrediction === "Rainy Season Expected") {
+    score += 20;
+  }
+
+  if (weather.climatePrediction === "Dry Hot Period") {
+    score -= 10;
+  }
+
+  if (weather.temperature >= 25 && weather.temperature <= 32) {
+    score += 10;
+  }
+
+  if (weather.rainProbability > 8) {
+    score += 10;
+  }
+
+  return score;
+};
+
+
+
+
+
+
+
+
 // Add this function to generate recommendations based on form data:
-const generateRecommendation = (formData) => {
+const generateRecommendation = (formData, weatherData) => {
+
+  const climateScore = weatherData ? calculateClimateScore(weatherData) : 50;
   
   const { soilType, waterAvailability, fieldSize, season, district } = formData;
   
@@ -578,49 +728,41 @@ const generateRecommendation = (formData) => {
 
   // Score varieties based on farmer's conditions
   const scoredVarieties = paddyVarieties.map(variety => {
-    let score = 0;
-    
-    // Soil match (30 points)
-    if (variety.soilPreference.includes(soilType)) {
-      score += 30;
-    }
-    
-    // Water availability match (25 points)
-    const waterLevels = {
-      'Excellent (Irrigation + Rainfall)': 'High',
-      'Good (Reliable Irrigation)': 'High',
-      'Moderate (Seasonal Irrigation)': 'Medium',
-      'Poor (Rain-fed Only)': 'Low'
-    };
-    
-    if (variety.waterNeed === waterLevels[waterAvailability]) {
-      score += 25;
-    } else if (
-      (waterLevels[waterAvailability] === 'High' && variety.waterNeed === 'Medium') ||
-      (waterLevels[waterAvailability] === 'Medium' && variety.waterNeed === 'Low') ||
-      (waterLevels[waterAvailability] === 'Low' && variety.waterNeed === 'Medium')
-    ) {
-      score += 15;
-    }
-    
-    // Season match (20 points)
-    if (variety.season === 'Both' || variety.season === season) {
-      score += 20;
-    }
-    
-    // Risk level (15 points) - Lower risk gets higher score
-    if (variety.riskLevel === 'Low') score += 15;
-    else if (variety.riskLevel === 'Medium') score += 10;
-    else score += 5;
-    
-    // Yield consideration (10 points) - Higher yield gets higher score
-    const avgYield = parseFloat(variety.yield.split('-')[0]);
-    if (avgYield > 5.0) score += 10;
-    else if (avgYield > 4.0) score += 7;
-    else score += 5;
-    
-    return { ...variety, score };
-  });
+
+  let score = 0;
+
+  // Soil match
+  if (variety.soilPreference.includes(soilType)) {
+    score += 30;
+  }
+
+  // Water match
+  const waterLevels = {
+    'Excellent (Irrigation + Rainfall)': 'High',
+    'Good (Reliable Irrigation)': 'High',
+    'Moderate (Seasonal Irrigation)': 'Medium',
+    'Poor (Rain-fed Only)': 'Low'
+  };
+
+  if (variety.waterNeed === waterLevels[waterAvailability]) {
+    score += 25;
+  }
+
+  // Season match
+  if (variety.season === 'Both' || variety.season === season) {
+    score += 20;
+  }
+
+  // Climate effect
+  if (climateScore > 75) score += 20;
+  else if (climateScore > 60) score += 15;
+  else score += 10;
+
+  return { ...variety, score };
+});
+
+
+
 
   // Sort by score and get top recommendations
   scoredVarieties.sort((a, b) => b.score - a.score);
@@ -739,6 +881,9 @@ const generateRecommendation = (formData) => {
       hectares: fieldSizeInHectares.toFixed(2)
     },
     calculatedYield: `${totalYield.toFixed(1)} tons`,
+
+    climateScore: climateScore,
+    weather: weatherData
   };
 };
 
@@ -956,6 +1101,80 @@ const predictSoilTypeFromLocation = async (district, city) => {
           </View>
         )}
         </View>
+
+        {weatherLoading && (
+  <ActivityIndicator size="small" color="#2E7D32" />
+)}
+
+{weatherData && (
+  <View style={styles.weatherDashboard}>
+
+    <View style={styles.weatherHeader}>
+      <MaterialCommunityIcons name="weather-partly-cloudy" size={30} color="#2E7D32"/>
+      <Text style={styles.weatherTitle}>Smart Climate Insight</Text>
+    </View>
+
+    <View style={styles.weatherMainRow}>
+
+      <View style={styles.weatherBox}>
+        <MaterialCommunityIcons name="thermometer" size={26} color="#FF7043"/>
+        <Text style={styles.weatherValue}>{weatherData.temperature}°C</Text>
+        <Text style={styles.weatherLabel}>Temperature</Text>
+      </View>
+
+      <View style={styles.weatherBox}>
+        <MaterialCommunityIcons name="weather-rainy" size={26} color="#42A5F5"/>
+        <Text style={styles.weatherValue}>{weatherData.rainProbability}</Text>
+        <Text style={styles.weatherLabel}>Rain Forecast</Text>
+      </View>
+
+      <View style={styles.weatherBox}>
+        <MaterialCommunityIcons name="weather-cloudy" size={26} color="#78909C"/>
+        <Text style={styles.weatherSmall}>{weatherData.climatePrediction}</Text>
+        <Text style={styles.weatherLabel}>Climate</Text>
+      </View>
+
+    </View>
+
+
+    {/* Rain probability bar */}
+    <View style={styles.rainSection}>
+      <Text style={styles.rainLabel}>Rain Probability Trend</Text>
+
+      <View style={styles.rainBarBackground}>
+        <View
+          style={[
+            styles.rainBarFill,
+            { width: `${Math.min(weatherData.rainProbability * 5, 100)}%` }
+          ]}
+        />
+      </View>
+    </View>
+
+
+    {/* Climate Risk Indicator */}
+    <View style={styles.riskSection}>
+      <MaterialCommunityIcons name="alert-circle" size={20} color="#FFA000"/>
+      <Text style={styles.riskText}>
+        Climate Risk Level: {weatherData.rainProbability > 12 ? "High" : "Low"}
+      </Text>
+    </View>
+
+
+    {/* Farming Advice */}
+    <View style={styles.adviceBox}>
+      <MaterialCommunityIcons name="leaf" size={22} color="#2E7D32"/>
+
+      <Text style={styles.adviceText}>
+        {weatherData.rainProbability > 10
+          ? "Good rainfall expected. Suitable period for paddy establishment."
+          : "Low rainfall expected. Ensure proper irrigation planning."}
+      </Text>
+
+    </View>
+
+  </View>
+)}
 
         {/* Field Characteristics */}
         <View style={styles.section}>
@@ -1453,6 +1672,105 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'transparent',
   },
+
+  weatherDashboard:{
+  backgroundColor:"#F1F8E9",
+  padding:18,
+  borderRadius:16,
+  marginVertical:15,
+  elevation:4
+},
+
+weatherHeader:{
+  flexDirection:"row",
+  alignItems:"center",
+  marginBottom:15
+},
+
+weatherTitle:{
+  fontSize:18,
+  fontWeight:"bold",
+  marginLeft:8,
+  color:"#2E7D32"
+},
+
+weatherMainRow:{
+  flexDirection:"row",
+  justifyContent:"space-between"
+},
+
+weatherBox:{
+  alignItems:"center",
+  flex:1
+},
+
+weatherValue:{
+  fontSize:20,
+  fontWeight:"bold",
+  marginTop:4
+},
+
+weatherSmall:{
+  fontSize:14,
+  textAlign:"center",
+  fontWeight:"600",
+  marginTop:4
+},
+
+weatherLabel:{
+  fontSize:12,
+  color:"#555",
+  marginTop:2
+},
+
+rainSection:{
+  marginTop:18
+},
+
+rainLabel:{
+  fontSize:13,
+  marginBottom:6,
+  color:"#444"
+},
+
+rainBarBackground:{
+  height:10,
+  backgroundColor:"#E0E0E0",
+  borderRadius:10,
+  overflow:"hidden"
+},
+
+rainBarFill:{
+  height:10,
+  backgroundColor:"#42A5F5"
+},
+
+riskSection:{
+  flexDirection:"row",
+  alignItems:"center",
+  marginTop:15
+},
+
+riskText:{
+  marginLeft:6,
+  fontSize:13,
+  color:"#555"
+},
+
+adviceBox:{
+  flexDirection:"row",
+  backgroundColor:"#E8F5E9",
+  padding:10,
+  borderRadius:10,
+  marginTop:12
+},
+
+adviceText:{
+  flex:1,
+  marginLeft:6,
+  fontSize:13,
+  color:"#2E7D32"
+}
 });
 
 export default CropRecommenderScreen;
