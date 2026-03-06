@@ -105,8 +105,8 @@ export default function StorageStepGuideScreen({ navigation, route }) {
                     <MaterialCommunityIcons name="chevron-left" size={28} color="#fff" />
                 </TouchableOpacity>
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.headerTitle}>{subCategory}</Text>
-                    <Text style={styles.headerSub}>{storageType} Protocol</Text>
+                    <Text style={styles.headerTitle} numberOfLines={1}>{guideData.title || subCategory}</Text>
+                    <Text style={styles.headerSub}>{storageType} Specialist Guide</Text>
                 </View>
                 <TouchableOpacity onPress={() => setShowCalendar(true)} style={styles.calBtn}>
                     <MaterialCommunityIcons name="calendar-clock" size={24} color="#10b981" />
@@ -130,12 +130,26 @@ export default function StorageStepGuideScreen({ navigation, route }) {
 
             <ScrollView contentContainerStyle={styles.scroll}>
                 <View style={styles.card}>
+                    <View style={styles.iconCircle}>
+                        {step.icon?.length <= 2 ? (
+                            <Text style={{ fontSize: 32 }}>{step.icon}</Text>
+                        ) : (
+                            <MaterialCommunityIcons name={step.icon || "bullseye-arrow"} size={35} color="#10b981" />
+                        )}
+                    </View>
                     <Text style={styles.stepTitle}>{step.title}</Text>
 
                     {step.cost && (
                         <View style={styles.costBadge}>
                             <MaterialCommunityIcons name="currency-lkr" size={16} color="#10b981" />
                             <Text style={styles.costText}>{step.cost}</Text>
+                        </View>
+                    )}
+
+                    {step.details && (
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>PROTOCOL DETAILS</Text>
+                            <Text style={styles.listText}>{step.details}</Text>
                         </View>
                     )}
 
@@ -250,6 +264,32 @@ export default function StorageStepGuideScreen({ navigation, route }) {
                                     ))}
                                 </View>
                             )}
+                        </View>
+                    )}
+
+                    {guideData.guideContent.quickStats && (
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>STORAGE QUICK STATS</Text>
+                            <View style={styles.statsRow}>
+                                {guideData.guideContent.quickStats.map((stat, i) => (
+                                    <View key={i} style={styles.statChip}>
+                                        <Text style={styles.statLabel}>{stat.label}</Text>
+                                        <Text style={styles.statValue}>{stat.value}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                    )}
+
+                    {guideData.guideContent.warnings && (
+                        <View style={styles.section}>
+                            <Text style={styles.sectionTitle}>MANDATORY WARNINGS</Text>
+                            {guideData.guideContent.warnings.map((w, i) => (
+                                <View key={i} style={styles.warningBox}>
+                                    <MaterialCommunityIcons name="alert-circle" size={18} color="#ef4444" />
+                                    <Text style={styles.warningText}>{w}</Text>
+                                </View>
+                            ))}
                         </View>
                     )}
                 </View>
@@ -396,5 +436,12 @@ const styles = StyleSheet.create({
     historyTitle: { color: '#fff', fontSize: 15, fontWeight: '800' },
     historyDate: { color: '#64748b', fontSize: 12, marginTop: 2 },
     closeBtn: { backgroundColor: '#10b981', padding: 18, borderRadius: 20, marginTop: 10, alignItems: 'center' },
-    closeBtnText: { color: '#fff', fontSize: 14, fontWeight: '900' }
+    closeBtnText: { color: '#fff', fontSize: 14, fontWeight: '900' },
+
+    statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    statChip: { backgroundColor: '#0f172a', padding: 12, borderRadius: 16, minWidth: '45%', flexGrow: 1, borderWidth: 1, borderColor: '#334155' },
+    statLabel: { color: '#10b981', fontSize: 10, fontWeight: '900', marginBottom: 4 },
+    statValue: { color: '#fff', fontSize: 13, fontWeight: '800' },
+    warningBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, backgroundColor: '#ef444410', padding: 15, borderRadius: 20, marginBottom: 12, borderWidth: 1, borderColor: '#ef444440' },
+    warningText: { color: '#ef4444', fontSize: 13, lineHeight: 20, flex: 1, fontWeight: '700' }
 });

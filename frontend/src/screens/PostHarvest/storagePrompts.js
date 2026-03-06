@@ -374,6 +374,232 @@ When answering, focus on practical shared facility management, cost-sharing agre
                 ]
             }
         }
+    },
+    'Cooperative': {
+        'farmer_cooperative': {
+            title: "Co-operative Storage — Farmer Co-operative Society",
+            description: "Village-level farmer co-op managed storage",
+            systemPrompt: `
+${BASE_CONTEXT}
+
+STORAGE TYPE: Co-operative Storage
+SUBTYPE: Farmer Co-operative Society
+
+You are guiding a farmer using a village-level farmer co-operative storage facility.
+
+YOUR KNOWLEDGE BASE FOR THIS STORAGE TYPE:
+
+OVERVIEW:
+- Managed by elected farmer committee
+- Annual membership fee: Rs. 500–2,000
+- Storage fee: Rs. 50–100 per bag per month
+- Typical capacity: 5,000–20,000 kg
+- Insurance: Usually included
+
+BECOMING A MEMBER:
+Requirements: Registered farmer, land ownership/cultivation proof, National ID, Bank details. Approval takes 1–2 weeks.
+
+BOOKING STORAGE:
+- Contact manager 2–3 weeks before harvest.
+- Pay 50% advance. Get written zone confirmation.
+
+WAREHOUSE RECEIPT:
+- Issued on delivery. Essential for withdrawal. Includes moisture%, weight, zone ID.
+
+WITHDRAWAL:
+- Give 7-14 days notice. Settle fees. Bring original receipt.
+
+When answering, focus on member rights, co-op responsibilities, and withdrawal protocols.
+`,
+            guideContent: {
+                steps: [
+                    { id: 1, title: "Join as Member", icon: "badge-account-outline", duration: "1–2 weeks", details: "Submit ID, land proof, bank details. Pay Rs.500–2,000 membership fee." },
+                    { id: 2, title: "Book Storage Space", icon: "calendar-clock", duration: "2–3 weeks before harvest", details: "Contact manager early. Pay 50% advance. Get zone confirmation." },
+                    { id: 3, title: "Deliver Rice", icon: "truck-delivery", duration: "Delivery day", details: "Moisture ≤14%, Grade B or better. Receive official Warehouse Receipt." },
+                    { id: 4, title: "Monitor & Pay", icon: "file-check", duration: "During storage", details: "Original receipt required for withdrawal. Pay monthly fees (Rs.50-100/bag)." },
+                    { id: 5, title: "Withdrawal", icon: "exit-run", duration: "7–14 days notice", details: "Settle fees. Bring original receipt. Co-op re-inspects and weighs." }
+                ],
+                quickStats: [
+                    { label: "Membership Fee", value: "Rs. 500–2,000" },
+                    { label: "Storage Fee", value: "Rs. 50–100/bag/month" },
+                    { label: "Withdrawal Notice", value: "7–14 days" }
+                ]
+            }
+        },
+        'samurdhi': {
+            title: "Co-operative Storage — Samurdhi Co-operative",
+            description: "Government-supported Samurdhi co-operative storage",
+            systemPrompt: `
+${BASE_CONTEXT}
+
+STORAGE TYPE: Co-operative Storage
+SUBTYPE: Samurdhi Co-operative
+
+You are guiding a farmer (likely small-scale) using a Samurdhi co-operative storage facility.
+
+YOUR KNOWLEDGE BASE:
+- Subsidized storage fee: Rs. 30–80 per bag per month.
+- Priority for Samurdhi beneficiaries and small farmers (< 1 acre).
+- Linked to government crop insurance and marketing support.
+
+PROCESS:
+1. Register at local Samurdhi office (2-4 weeks approval).
+2. Deliver rice (Strict ≤14% moisture).
+3. Access additional benefits like agricultural loans against stock.
+
+When answering, focus on subsidized eligibility and government-backed safety.
+`,
+            guideContent: {
+                steps: [
+                    { id: 1, title: "Check Eligibility", icon: "shield-account", duration: "Day 1", details: "Bring Samurdhi card or eligibility documents to Development Office." },
+                    { id: 2, title: "Register & Apply", icon: "file-edit-outline", duration: "2–4 weeks", details: "Submit ID, Samurdhi card, and land proof." },
+                    { id: 3, title: "Deliver Rice", icon: "truck-check", duration: "On approved date", details: "Strict ≤14% moisture. Receive Warehouse Receipt." },
+                    { id: 4, title: "Access Benefits", icon: "gift-outline", duration: "During storage", details: "Ask about crop insurance and low-interest loans against stock." },
+                    { id: 5, title: "Withdrawal", icon: "logout-variant", duration: "7–14 days notice", details: "Settle subsidized fees (Rs.30-80). Bring original receipt." }
+                ],
+                quickStats: [
+                    { label: "Storage Fee", value: "Rs. 30–80/bag/month" },
+                    { label: "Priority", value: "Small farmers" },
+                    { label: "Insurance", value: "Included" }
+                ]
+            }
+        },
+        'agricultural_cooperative': {
+            title: "Co-operative Storage — Agricultural Co-operative",
+            description: "District-level professional agricultural co-operative with milling and marketing services",
+            systemPrompt: `
+${BASE_CONTEXT}
+
+STORAGE TYPE: Co-operative Storage
+SUBTYPE: Agricultural Co-operative (District-Level)
+
+You are guiding a farmer using a professional district-level agricultural co-operative facility.
+
+YOUR KNOWLEDGE BASE:
+- Professional management at Agrarian Service Centers.
+- Storage fee: Rs. 80–150 per bag per month.
+- Services: Milling (Rs. 8-15/kg), Marketing (2-5% commission), official SLR 603 Grading.
+
+MARKETING:
+- Co-op finds bulk buyers/exporters. Negotiates better bulk prices than individual farmers.
+
+When answering, focus on maximizing value through grading certificates and co-op marketing links.
+`,
+            guideContent: {
+                steps: [
+                    { id: 1, title: "ASC Registration", icon: "office-building-marker", duration: "1 week", details: "Contact District Agrarian Service Center. Fee Rs.1,000–5,000." },
+                    { id: 2, title: "Book & Grade", icon: "certificate-outline", duration: "Before harvest", details: "Request official SLR 603 grading certificate (Rs.5-10/bag)." },
+                    { id: 3, title: "Professional Intake", icon: "warehouse", duration: "Delivery day", details: "Strict Grade A/B required. Receive official graded receipt." },
+                    { id: 4, title: "Marketing Strategy", icon: "finance", duration: "During storage", details: "Decide whether to sell through co-op buyers or mill first." },
+                    { id: 5, title: "Bulk Sale", icon: "cash-multiple", duration: "Market peak", details: "Co-op handles negotiations. Payment minus 2-5% commission." }
+                ],
+                quickStats: [
+                    { label: "Storage Fee", value: "Rs. 80–150/bag" },
+                    { label: "Marketing", value: "2-5% commission" },
+                    { label: "Grading Fee", value: "Rs. 5-10/bag" }
+                ]
+            }
+        }
+    },
+    'Government': {
+        'pmb': {
+            title: "Government Storage — PMB (Paddy Marketing Board)",
+            description: "Government guaranteed price purchase program",
+            systemPrompt: `
+${BASE_CONTEXT}
+
+STORAGE TYPE: Government Storage
+SUBTYPE: PMB buying program
+
+CRITICAL: PMB is NOT storage. It is a SALE program. Once delivered, they own it.
+
+HOW IT WORKS:
+- PMB buys at a guaranteed price (e.g., Rs.80/kg).
+- Use when market price is depressed (below PMB price).
+- Moisture must be strictly ≤14%, Grade A or B.
+- Payment: Cash or 7-day voucher.
+
+When answering, clarify that this is a SALE and advise on the price comparison.
+`,
+            guideContent: {
+                steps: [
+                    { id: 1, title: "Check PMB Price", icon: "bullhorn-variant", duration: "Harvest time", details: "Watch news for guaranteed buying price per kg." },
+                    { id: 2, title: "Price Comparison", icon: "scale-balance", duration: "Decision time", details: "If PMB Price > Market Price, sell to PMB. Else, store privately." },
+                    { id: 3, title: "Preparation", icon: "shimmer", duration: "Before delivery", details: "Moisture must be ≤14%. No foreign matter. Min 1,000 kg." },
+                    { id: 4, title: "Center Delivery", icon: "truck-fast", duration: "Delivery day", details: "Bring Farmer ID. PMB inspects and weighs. Immediate sale." },
+                    { id: 5, title: "Final Settlement", icon: "cash-check", duration: "Same day", details: "Cash or bank voucher. Once sold, PMB owns the stock." }
+                ],
+                quickStats: [
+                    { label: "Type", value: "Guaranteed Sale" },
+                    { label: "Min Quantity", value: "1,000 kg" },
+                    { label: "Payment", value: "7-day max" }
+                ]
+            }
+        },
+        'cwe': {
+            title: "Government Storage — CWE (Co-operative Wholesale Establishment)",
+            description: "Government-owned co-operative storage linked to Lak Sathosa",
+            systemPrompt: `
+${BASE_CONTEXT}
+
+STORAGE TYPE: Government Storage
+SUBTYPE: CWE Storage
+
+YOUR KNOWLEDGE BASE:
+- Subsidized storage (Rs. 30–60/bag).
+- Linked to Lak Sathosa retail network.
+- Official govt receipt can be used as bank collateral.
+- Insurance included.
+
+When answering, focus on subsidy advantages and marketing via Lak Sathosa.
+`,
+            guideContent: {
+                steps: [
+                    { id: 1, title: "CWE Registration", icon: "bank-outline", duration: "1–2 weeks", details: "Visit CWE district office with farmer ID and co-op proof." },
+                    { id: 2, title: "Submit Application", icon: "text-box-search-outline", duration: "Before harvest", details: "Apply early to avoid waiting lists." },
+                    { id: 3, title: "Govt Intake", icon: "warehouse-marker", duration: "Delivery day", details: "Moisture ≤14%. Receive govt receipt for bank loan collateral." },
+                    { id: 4, title: "Subsidized Fee", icon: "cash-minus", duration: "Monthly", details: "Pay Rs.30-60/bag. Insurance included at no extra cost." },
+                    { id: 5, title: "Sathosa Marketing", icon: "store-marker", duration: "Sale time", details: "Optional: Sell through Lak Sathosa retail chain directly." }
+                ],
+                quickStats: [
+                    { label: "Storage Fee", value: "Rs. 30–60/bag" },
+                    { label: "Market Link", value: "Lak Sathosa" },
+                    { label: "Security", value: "Govt Backed" }
+                ]
+            }
+        },
+        'district_agricultural': {
+            title: "Government Storage — District Agricultural Office",
+            description: "Small-scale storage through Department of Agriculture for selected farmers",
+            systemPrompt: `
+${BASE_CONTEXT}
+
+STORAGE TYPE: Government Storage
+SUBTYPE: DOA District Office (Training/Demo)
+
+YOUR KNOWLEDGE BASE:
+- Limited capacity (20-50 tons per facility).
+- Primarily for TRAINING and disaster-affected farmers.
+- Often FREE or heavily subsidized.
+- Entrance via local Farmer Organizations (FO) and DOA programs (GAP).
+
+When answering, clarify this is a training resource, not for large-scale commercial needs.
+`,
+            guideContent: {
+                steps: [
+                    { id: 1, title: "Officer Contact", icon: "human-male-board", duration: "First step", details: "Ask your village Agricultural Officer about DOA storage programs." },
+                    { id: 2, title: "FO Membership", icon: "handshake-outline", duration: "1–2 weeks", details: "Join your local village Farmer Organization to be eligible." },
+                    { id: 3, title: "Program Enrollment", icon: "school-outline", duration: "Ongoing", details: "Attend GAP (Good Agricultural Practices) training workshops." },
+                    { id: 4, title: "Storage Access", icon: "cube-send", duration: "Seasonally", details: "Quantity limited (1-5 tons). Focus on demonstration/learning." },
+                    { id: 5, title: "Transition Plan", icon: "trending-up", duration: "Exit phase", details: "Move to co-op or private storage once regular needs grow." }
+                ],
+                quickStats: [
+                    { label: "Cost", value: "Free/Subsidized" },
+                    { label: "Focus", value: "Training/Disaster" },
+                    { label: "Access", value: "Via Local FO" }
+                ]
+            }
+        }
     }
 };
 
