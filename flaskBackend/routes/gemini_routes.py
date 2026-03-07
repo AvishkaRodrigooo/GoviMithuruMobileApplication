@@ -8,7 +8,7 @@ import time
 gemini_bp = Blueprint('gemini', __name__, url_prefix='/api/gemini')
 
 # Configure Gemini API
-GEMINI_API_KEY = 'AIzaSyD3f0os2ci9v_zydmXuItLWYutbbnCDEVM'  # Your API key
+GEMINI_API_KEY = 'My_key'  # Your API key
 genai.configure(api_key=GEMINI_API_KEY)
 
 # Available models for reference
