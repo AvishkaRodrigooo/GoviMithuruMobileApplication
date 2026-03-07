@@ -43,8 +43,14 @@ import grassKillersScreen from './src/screens/weedsDetection/herbicides/grassKil
 import broadLeavesKillersScreen from './src/screens/weedsDetection/herbicides/broadleavesKillersScreen';
 import AgroShopsScreen from './src/screens/weedsDetection/shops/AgroShopsScreen';
 
+// Crop Establishment
 import InputPlannerScreen from './src/screens/cropEstablishment/InputPlannerScreen ';
 import CropRecommenderScreen from './src/screens/cropEstablishment/CropRecommenderScreen ';
+import CropRecommendationResults from './src/screens/cropEstablishment/CropRecommendationResultsScreen';
+import AdminPriceManagementScreen from './src/screens/adminDashboard/AdminPriceManagementScreen';
+import CropCalendarScreen from './src/screens/cropEstablishment/CropCalendarScreen';
+import ProfitabilitySimulationScreen from './src/screens/cropEstablishment/ProfitabilitySimulationScreen';
+
 
 // Post Harvest Features
 import KnowledgeSelectionScreen from './src/screens/PostHarvest/KnowledgeSelectionScreen';
@@ -73,6 +79,7 @@ function PricingForecastScreen() {
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "./src/firebase/firebaseConfig";
 import { StackScreen } from 'react-native-screens';
+import CropRecommendationResultsScreen from './src/screens/cropEstablishment/CropRecommendationResultsScreen';
 
 
 
@@ -207,15 +214,24 @@ export default function App() {
             <Stack.Screen name="BroadLeavesHerbicides" component={broadLeavesKillersScreen} options={{ title: 'Sedges & Broad Leaves Killers' }} />
 
 
+
+        {/* crop establishment planner */}
+
+        <Stack.Screen name="InputPlanner" component={InputPlannerScreen} options={{ title: 'Input Planner' }} />
+        <Stack.Screen name="CropRecommender" component={CropRecommenderScreen} options={{ title: 'Crop Recommender' }} />
+        <Stack.Screen name="CropRecommendationResults" component={CropRecommendationResultsScreen} options={{ title: 'Crop Recommendation Results' }} />
+        <Stack.Screen name="CropCalendar" component={CropCalendarScreen}options={{ title: 'Crop Calendar' }} />
+        <Stack.Screen name="ProfitabilitySimulation" component={ProfitabilitySimulationScreen}options={{ title: 'Profitability Simulation' }} />
+        <Stack.Screen name="AdminPriceManagement" component={AdminPriceManagementScreen} />
+
+
             <Stack.Screen name="Pest" component={PricingForecastScreen} options={{ title: 'Pest Forecast' }} />
             <Stack.Screen name="Pricing" component={PricingForecastScreen} options={{ title: 'Price Forecast' }} />
 
 
-            {/* crop establishment planner */}
-
-            <Stack.Screen name="InputPlanner" component={InputPlannerScreen} options={{ title: 'Input Planner' }} />
-            <Stack.Screen name="CropRecommender" component={CropRecommenderScreen} options={{ title: 'Crop Recommender' }} />
+           
           </>
+
 
 
 

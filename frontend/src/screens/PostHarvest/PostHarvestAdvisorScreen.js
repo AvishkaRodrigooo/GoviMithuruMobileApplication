@@ -16,8 +16,49 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { db, auth } from '../../firebase/firebaseConfig';
 import { doc, getDoc } from 'firebase/firestore';
 import useUniversalLocation from '../../utils/useUniversalLocation';
+import { WebView } from 'react-native-webview';
 
 const { width } = Dimensions.get('window');
+
+const MAP_HTML = (lat, lon) => `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { height: 100vh; width: 100vw; background: #0f172a; }
+        .leaflet-control-attribution { display: none; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        var map = L.map('map').setView([${lat || 7.8731}, ${lon || 80.7718}], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(map);
+
+        var marker = L.marker([${lat || 7.8731}, ${lon || 80.7718}], {draggable: true}).addTo(map);
+        
+        function updatePos(lat, lng) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ latitude: lat, longitude: lng }));
+        }
+
+        map.on('click', function(e) {
+            marker.setLatLng(e.latlng);
+            updatePos(e.latlng.lat, e.latlng.lng);
+        });
+
+        marker.on('dragend', function(e) {
+            updatePos(marker.getLatLng().lat, marker.getLatLng().lng);
+        });
+    </script>
+</body>
+</html>
+`;
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────────
 const BASE_URL = 'http://192.168.100.198:5000'; // ← Update this to your Flask IP
@@ -90,9 +131,18 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
   // Real-time Climate Sync State
   const [monitoringMode, setMonitoringMode] = useState('free'); // 'free' or 'premium'
   const [syncStatus, setSyncStatus] = useState('idle'); // idle, syncing, synced, error
-  const [calibrationMsg, setCalibrationMsg] = useState('');
   const [accuracy, setAccuracy] = useState(null);
+  const [humidity, setHumidity] = useState(65);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [customCoords, setCustomCoords] = useState(null);
+  const [tempMapCoords, setTempMapCoords] = useState(null);
   const location = useUniversalLocation('en');
+
+  // Specific storage warehouse coordinates from navigation
+  const storageCoords = route.params?.location ? {
+    latitude: route.params.location.latitude,
+    longitude: route.params.location.longitude
+  } : null;
 
   // Sync state if batch changes (e.g. navigating from different cards)
   useEffect(() => {
@@ -131,32 +181,39 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
     fetchMode();
   }, [activeTab]);
 
-  // Sync climate if location is ready and mode is 'free'
+  // Sync climate if coordinates are ready (either storage coordinates or GPS)
   useEffect(() => {
-    if (monitoringMode === 'free' && location.latitude && location.longitude && syncStatus === 'idle') {
-      syncFreeClimate();
-    }
-  }, [location.latitude, location.longitude, monitoringMode]);
+    const lat = customCoords?.latitude || storageCoords?.latitude || location.latitude;
+    const lon = customCoords?.longitude || storageCoords?.longitude || location.longitude;
 
-  const syncFreeClimate = async () => {
+    if (monitoringMode === 'free' && lat && lon && syncStatus === 'idle') {
+      syncFreeClimate(lat, lon);
+    }
+  }, [location.latitude, location.longitude, storageCoords, customCoords, monitoringMode]);
+
+  const syncFreeClimate = async (lat, lon) => {
     setSyncStatus('syncing');
     try {
-      const res = await fetch(`${BASE_URL}/api/guardian/weather?lat=${location.latitude}&lon=${location.longitude}`);
+      const targetLat = lat || location.latitude;
+      const targetLon = lon || location.longitude;
+
+      const res = await fetch(`${BASE_URL}/api/guardian/weather?lat=${targetLat}&lon=${targetLon}`);
       const data = await res.json();
       if (data.success) {
         if (monitoringMode === 'free') {
           // CLIMATE CALIBRATION ENGINE - OPEN_METEO_API LOGIC
-          // Apply Confidence Penalty: Warehouse interiors are 2-4°C hotter than outside API
           const outdoorTemp = data.temp_c;
           const insideCalibratedTemp = outdoorTemp + 3; // +3°C average penalty
           setTemp(insideCalibratedTemp);
+          setHumidity(data.humidity_pct || 65);
 
           setAccuracy(65);
-          setCalibrationMsg("⚠️ Using District Weather (Approximate). Accuracy: 65%. Warehouse interior estimated at +3°C above outdoor ambient.");
-          // Recommendation logic is handled in the UI display
+          const isCustom = !!customCoords;
+          setCalibrationMsg(`⚠️ Using ${isCustom ? 'Pinned' : (route.params?.location ? 'Warehouse' : 'District')} Weather. Accuracy: 65%. Warehouse interior estimated at +3°C above ambient.`);
         } else {
           // IOT_SENSOR LOGIC
           setTemp(data.temp_c);
+          setHumidity(data.humidity_pct || 65);
           setAccuracy(98);
           setCalibrationMsg("✅ Using Real-Time Sensor Data. Accuracy: 98%. Reading directly from storage interior.");
         }
@@ -167,6 +224,14 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
       }
     } catch (err) {
       setSyncStatus('error');
+    }
+  };
+
+  const confirmLocation = () => {
+    if (tempMapCoords) {
+      setCustomCoords(tempMapCoords);
+      setSyncStatus('idle'); // Trigger re-sync with new coords
+      setShowMapModal(false);
     }
   };
 
@@ -187,6 +252,7 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
           storage_method: method,
           moisture_pct: moisture,
           temp_c: temp,
+          humidity_pct: humidity,
           quantity_kg: parseFloat(quantity),
         }),
       });
@@ -216,6 +282,7 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
           variety,
           moisture_pct: moisture,
           temp_c: temp,
+          humidity_pct: humidity,
           storage_method: method,
           quantity_kg: parseFloat(quantity),
           storage_days: prediction.storage.storage_days,
@@ -234,7 +301,12 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
 
       // Safety: Use the 'advice' object if it exists (even on error/fallback)
       if (data.advice && typeof data.advice === 'object') {
-        setAdvice(data.advice);
+        const adv = data.advice;
+        // Fix for Sinhala/English hybrid persuasiveness
+        setAdvice({
+          ...adv,
+          summary: adv.summary || (prediction.risk_reward.signal === 'RED' ? "🚩 අවදානම: දැන්ම විකුණන්න! (Sell Now for Safety)" : "🟢 ගබඩා කර ලාභ ලබන්න! (Store for Profit)"),
+        });
       } else if (data.success) {
         setAdvice(data.advice);
       } else {
@@ -361,8 +433,34 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
 
-          <SliderRow label="Moisture Level" value={moisture} min={5} max={22} unit="%" danger={14} onChange={setMoisture} />
-          <SliderRow label="Warehouse Temp" value={temp} min={10} max={45} unit="°C" danger={30} onChange={setTemp} />
+          <SliderRow label="Grain Moisture Level" value={moisture} min={5} max={22} unit="%" danger={14} onChange={setMoisture} />
+
+          <View style={styles.climateMonitor}>
+            <View style={styles.monitorHeader}>
+              <MaterialCommunityIcons name="molecule" size={16} color="#34d399" />
+              <Text style={styles.monitorTitle}>LATEST CLIMATE SYNC</Text>
+            </View>
+            <View style={styles.monitorGrid}>
+              <View style={styles.monitorBox}>
+                <Text style={styles.monitorLabel}>WAREHOUSE TEMP</Text>
+                <Text style={styles.monitorValue}>{temp.toFixed(1)}°C</Text>
+              </View>
+              <View style={styles.monitorBox}>
+                <Text style={styles.monitorLabel}>HUMIDITY</Text>
+                <Text style={styles.monitorValue}>{humidity.toFixed(0)}%</Text>
+              </View>
+              <View style={[styles.monitorBox, { backgroundColor: syncStatus === 'synced' ? '#064e3b30' : '#450a0a30' }]}>
+                <Text style={styles.monitorLabel}>STATUS</Text>
+                <Text style={[styles.monitorValue, { fontSize: 10, color: syncStatus === 'synced' ? '#34d399' : '#f87171' }]}>
+                  {syncStatus === 'synced' ? 'REAL-TIME' : 'SYNCING...'}
+                </Text>
+              </View>
+              <TouchableOpacity style={styles.refineBtn} onPress={() => setShowMapModal(true)}>
+                <MaterialCommunityIcons name="map-marker-edit" size={16} color="#34d399" />
+                <Text style={styles.refineText}>REFINE</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Quantity (kg)</Text>
@@ -661,6 +759,44 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
           </View>
         </View>
       </Modal>
+
+      {/* Map Selection Modal */}
+      <Modal visible={showMapModal} animationType="slide">
+        <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
+          <WebView
+            source={{
+              html: MAP_HTML(
+                customCoords?.latitude || storageCoords?.latitude || location.latitude,
+                customCoords?.longitude || storageCoords?.longitude || location.longitude
+              )
+            }}
+            onMessage={(e) => {
+              const coords = JSON.parse(e.nativeEvent.data);
+              setTempMapCoords(coords);
+            }}
+            style={styles.mapFull}
+            scrollEnabled={false}
+          />
+
+          <View style={styles.mapPinHeader}>
+            <Text style={styles.mapPinTitle}>Refine Storage Location</Text>
+            <Text style={styles.mapPinSub}>Tap the map to pinpoint your exact warehouse</Text>
+          </View>
+
+          <View style={styles.mapPinFooter}>
+            <TouchableOpacity
+              style={styles.mapConfirmBtn}
+              onPress={confirmLocation}
+              disabled={!tempMapCoords}
+            >
+              <Text style={styles.mapConfirmText}>CONFIRM PIN LOCATION</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.mapCancelBtn} onPress={() => setShowMapModal(false)}>
+              <Text style={styles.mapCancelText}>CANCEL</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -741,6 +877,27 @@ const styles = StyleSheet.create({
 
   textInput: { backgroundColor: '#0f172a', borderRadius: 16, padding: 16, color: '#fff', fontSize: 16, borderWidth: 1, borderColor: '#334155' },
 
+  climateMonitor: { backgroundColor: '#0f172a', borderRadius: 20, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: '#334155' },
+  monitorHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  monitorTitle: { color: '#64748b', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  monitorGrid: { flexDirection: 'row', gap: 8 },
+  monitorBox: { flex: 1, backgroundColor: '#1e293b', borderRadius: 12, padding: 10, alignItems: 'center', borderWidth: 1, borderColor: '#334155' },
+  monitorLabel: { color: '#64748b', fontSize: 8, fontWeight: '800', marginBottom: 4 },
+  monitorValue: { color: '#fff', fontSize: 14, fontWeight: '900' },
+
+  refineBtn: { flex: 0.6, backgroundColor: '#064e3b30', borderRadius: 12, padding: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#34d39944', gap: 4 },
+  refineText: { color: '#34d399', fontSize: 8, fontWeight: '900' },
+
+  mapFull: { flex: 1 },
+  mapPinHeader: { position: 'absolute', top: 60, left: 20, right: 20, backgroundColor: 'rgba(15, 23, 42, 0.9)', padding: 16, borderRadius: 20, borderWidth: 1, borderColor: '#334155', alignItems: 'center' },
+  mapPinTitle: { color: '#fff', fontSize: 16, fontWeight: '900' },
+  mapPinSub: { color: '#34d399', fontSize: 11, fontWeight: '700', marginTop: 4 },
+  mapPinFooter: { position: 'absolute', bottom: 40, left: 20, right: 20, gap: 12 },
+  mapConfirmBtn: { backgroundColor: '#34d399', padding: 18, borderRadius: 16, alignItems: 'center' },
+  mapConfirmText: { color: '#064e3b', fontWeight: '900', fontSize: 16 },
+  mapCancelBtn: { backgroundColor: 'rgba(15, 23, 42, 0.8)', padding: 12, borderRadius: 16, alignItems: 'center' },
+  mapCancelText: { color: '#94a3b8', fontWeight: '700' },
+
   analyzeBtn: { marginTop: 10, borderRadius: 16, overflow: 'hidden' },
   btnGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, gap: 10 },
   btnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
@@ -795,12 +952,19 @@ const styles = StyleSheet.create({
   loadingText: { color: '#94a3b8', fontSize: 14, marginTop: 16 },
 
   adviceHeader: { marginBottom: 20 },
-  statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8, marginBottom: 12 },
-  adviceSummary: { color: '#fff', fontSize: 20, fontWeight: '800', lineHeight: 28 },
-
-  adviceCard: { backgroundColor: '#1e293b', borderRadius: 24, padding: 20, marginBottom: 12, borderWidth: 1, borderColor: '#334155' },
-  cardInfoLabel: { color: '#34d399', fontSize: 12, fontWeight: '800', marginBottom: 10, textTransform: 'uppercase' },
-  adviceText: { color: '#cbd5e1', fontSize: 14, lineHeight: 22 },
+  statusBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)'
+  },
+  adviceSummary: { color: '#fff', fontSize: 22, fontWeight: '900', lineHeight: 30, marginBottom: 12 },
+  adviceCard: { backgroundColor: '#1e293b', borderRadius: 24, padding: 22, marginBottom: 16, borderWidth: 1, borderColor: '#334155', elevation: 4 },
+  cardInfoLabel: { color: '#34d399', fontSize: 13, fontWeight: '900', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
+  adviceText: { color: '#cbd5e1', fontSize: 15, lineHeight: 24 },
 
   compareCard: { backgroundColor: '#111827', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#334155' },
   compareLabel: { color: '#64748b', fontSize: 10, fontWeight: '800', marginBottom: 6 },

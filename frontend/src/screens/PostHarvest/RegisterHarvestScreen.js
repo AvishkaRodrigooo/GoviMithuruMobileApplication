@@ -9,8 +9,11 @@ import { Picker } from '@react-native-picker/picker';
 import { db, auth } from '../../firebase/firebaseConfig';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
+import useUniversalLocation from '../../utils/useUniversalLocation';
+import { WebView } from 'react-native-webview';
 
 const { width } = Dimensions.get('window');
+const BASE_URL = 'http://192.168.100.198:5000'; // Flask Backend
 
 const RICE_VARIETIES = [
   'Bg 250', 'Bg 300', 'Bg 352', 'Bg 366', 'Bg 379-2', 'Bg 403',
@@ -19,8 +22,77 @@ const RICE_VARIETIES = [
   'Kaluheenati', 'Madathawalu', 'H 4', 'H 10'
 ];
 
-const STORAGE_TYPES = ['Home', 'Warehouse', 'Co-op', 'Government Store', 'Private Store'];
+const STORAGE_HIERARCHY = {
+  'Home': {
+    limit: 500,
+    sub: ['Kitchen/Room Storage', 'Dedicated Storage Room', 'Small Shed']
+  },
+  'Warehouse': {
+    limit: 10000,
+    sub: ['Private Warehouse', 'Rental Warehouse', 'Farm Warehouse']
+  },
+  'Co-op': {
+    limit: 50000,
+    sub: ['Farmer Co-op Centers', 'Samurdhi Co-ops', 'Agricultural Co-ops']
+  },
+  'Government Store': {
+    limit: 9999999, // 50,000+
+    sub: ['PMB (Paddy Marketing Board) Stores', 'District Agricultural Offices', 'CWE']
+  },
+  'Private Store': {
+    limit: 9999999, // 1,000+
+    sub: ['Rice Mills with Storage', 'Commercial Warehouses', 'Export-Grade Facilities']
+  }
+};
+
+const CONTAINER_HIERARCHY = {
+  'Traditional': ['Gunny bags (Jute Sacks)', 'Woven Polypropylene Bags', 'Clay Bins (Bisso)', 'Bamboo Baskets (Kattaya)'],
+  'Modern': ['Polythene bags (LDPE)', 'Hermetic Bags (Airtight)', 'Super Bags (PICS/GrainPro)', 'Metal Silos'],
+  'Commercial': ['Bulk Storage', 'Silo Storage (Industrial)', 'Cold Storage', 'Vacuum Storage']
+};
+
+const STORAGE_TYPES = Object.keys(STORAGE_HIERARCHY);
 const MEASUREMENT_UNITS = ['Square Feet', 'Square Meters'];
+
+const MAP_HTML = (lat, lon) => `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { height: 100vh; width: 100vw; background: #0f172a; }
+        .leaflet-control-attribution { display: none; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        var map = L.map('map').setView([${lat || 7.8731}, ${lon || 80.7718}], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(map);
+
+        var marker = L.marker([${lat || 7.8731}, ${lon || 80.7718}], {draggable: true}).addTo(map);
+        
+        function updatePos(lat, lng) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ latitude: lat, longitude: lng }));
+        }
+
+        map.on('click', function(e) {
+            marker.setLatLng(e.latlng);
+            updatePos(e.latlng.lat, e.latlng.lng);
+        });
+
+        marker.on('dragend', function(e) {
+            updatePos(marker.getLatLng().lat, marker.getLatLng().lng);
+        });
+    </script>
+</body>
+</html>
+`;
 
 export default function RegisterHarvestScreen({ navigation, route }) {
   const [step, setStep] = useState(0);
@@ -33,6 +105,7 @@ export default function RegisterHarvestScreen({ navigation, route }) {
 
   const editData = route.params?.editData;
   const docId = route.params?.docId;
+  const location = useUniversalLocation('en');
 
   const [formData, setFormData] = useState({
     locationId: '',
@@ -40,6 +113,7 @@ export default function RegisterHarvestScreen({ navigation, route }) {
     locationName: '',
     storageArea: '',
     areaUnit: 'Square Feet',
+    acres: '',
     variety: 'Bg 300',
     quantityKg: '',
     bags: '0',
@@ -49,8 +123,14 @@ export default function RegisterHarvestScreen({ navigation, route }) {
     moisture: '',
     pestCheck: 'No',
     prodCost: '',
-    storageMethod: 'Gunny bag',
+    storageMethod: CONTAINER_HIERARCHY['Traditional'][0],
+    disfiguredChecked: 'No', // New check for smudged/deformed paddy
+    subCategory: STORAGE_HIERARCHY['Home'].sub[0],
+    containerCategory: 'Traditional',
   });
+
+  // Map State
+  const [mapCoords, setMapCoords] = useState(null);
 
   // Inspector State
   const [inspectorMsg, setInspectorMsg] = useState(null);
@@ -59,6 +139,7 @@ export default function RegisterHarvestScreen({ navigation, route }) {
     { id: 1, text: "Ayubowan! I am Inspector GoviMithuru. I'll help you secure your harvest correctly.", isBot: true }
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  const [chatInput, setChatInput] = useState('');
 
   useEffect(() => {
     checkAuth();
@@ -104,6 +185,16 @@ export default function RegisterHarvestScreen({ navigation, route }) {
     }
   }, [formData.moisture, formData.storageMethod]);
 
+  // Sync map center to current GPS initially
+  useEffect(() => {
+    if (location.latitude && !mapCoords && storageMode === 'new') {
+      setMapCoords({
+        latitude: location.latitude,
+        longitude: location.longitude,
+      });
+    }
+  }, [location.latitude, storageMode]);
+
   const triggerInspector = (text) => {
     setInspectorMsg(text);
     // Also add to chat history if not already there
@@ -115,7 +206,7 @@ export default function RegisterHarvestScreen({ navigation, route }) {
   const handleGradeCheck = (grade) => {
     setFormData({ ...formData, grade });
     setChatVisible(true);
-    let q = "Check a handful of your paddy. Do you see many empty grains (Bol) or black/discolored spots?";
+    let q = "Quality Check: Hand-inspect a sample. Do you see any 'Disfigured Paddy' (smut, blackened grains, or deformed shapes)?";
     setInspectorChat(prev => [...prev, { id: Date.now(), text: q, isBot: true, isQuestion: true }]);
   };
 
@@ -126,14 +217,75 @@ export default function RegisterHarvestScreen({ navigation, route }) {
 
     setTimeout(() => {
       let reply = "";
-      if (response.toLowerCase().includes('yes') || response.toLowerCase().includes('discolor')) {
-        reply = "Understood. That indicates impurities. Please select Grade B or C. I also recommend using a winnowing fan (Kulla) to remove 'Bol' before finalizing storage.";
+      const lower = response.toLowerCase();
+      const isDisfigured = lower.includes('yes') || lower.includes('smut') || lower.includes('disfigure');
+
+      if (isDisfigured) {
+        setFormData(prev => ({ ...prev, disfiguredChecked: 'Yes' }));
+        reply = "⚠️ Stop: Disfigured paddy can ruin the entire batch! This often contains fungal smut or insect damage. I strongly recommend REMOVING these grains before storage.";
+
+        setInspectorChat(prev => [...prev,
+        { id: Date.now() + 1, text: reply, isBot: true },
+        {
+          id: Date.now() + 2,
+          text: "Would you like to see the Expert Guide on how to remove disfigured paddy?",
+          isBot: true,
+          isAction: true,
+          action: () => navigation.navigate('StorageExpertGuide', { showDisfigured: true })
+        }
+        ]);
       } else {
-        reply = "Excellent. Clean, golden paddy with no Bol is perfect for Grade A. This will have the highest storage life and market value.";
+        setFormData(prev => ({ ...prev, disfiguredChecked: 'Cleared' }));
+        reply = "Excellent. Clean, golden paddy with no disfigurement is perfect for Grade A. This will have the highest storage life.";
+        setInspectorChat(prev => [...prev, { id: Date.now() + 1, text: reply, isBot: true }]);
       }
-      setInspectorChat(prev => [...prev, { id: Date.now() + 1, text: reply, isBot: true }]);
       setIsTyping(false);
     }, 1000);
+  };
+
+  const handleManualChat = async () => {
+    if (!chatInput.trim()) return;
+    const userMsg = { id: Date.now(), text: chatInput, isBot: false };
+    setInspectorChat(prev => [...prev, userMsg]);
+    const currentInput = chatInput;
+    setChatInput('');
+    setIsTyping(true);
+
+    try {
+      // detect intent: logistics vs grading
+      const lowerInput = currentInput.toLowerCase();
+      const isGradingIntent = lowerInput.includes('grade') || lowerInput.includes('quality') || lowerInput.includes('audit') || lowerInput.includes('moisture');
+
+      const res = await fetch(`${BASE_URL}/api/guardian/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: currentInput,
+          context: {
+            variety: formData.variety,
+            quantity: formData.quantityKg,
+            moisture: formData.moisture,
+            current_grade: formData.grade,
+            storage_type: formData.storageType,
+            sub_category: formData.subCategory,
+            container_category: formData.containerCategory,
+            storage_method: formData.storageMethod,
+            interaction_type: isGradingIntent ? 'grading_consult' : 'logistics_consult'
+          }
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        const prefix = isGradingIntent ? "📊 Quality Auditor:" : "📦 Logistics Advisor:";
+        setInspectorChat(prev => [...prev, { id: Date.now(), text: `${prefix} ${data.answer}`, isBot: true }]);
+      } else {
+        triggerInspector("I am having trouble analyzing that. Can you try rephrasing? Pro-tip: Ask about 'prices' or 'grading standards'.");
+      }
+    } catch (e) {
+      triggerInspector("Network issue. Please check your connection to the GoviMithuru local server.");
+    } finally {
+      setIsTyping(false);
+    }
   };
 
   const handleQuantityChange = (val) => {
@@ -156,13 +308,205 @@ export default function RegisterHarvestScreen({ navigation, route }) {
     }));
   };
 
+  const analyzeCurrentMethod = async () => {
+    setChatVisible(true);
+    setLoading(true);
+    try {
+      const prompt = `LOGISTICS AUDIT: Analyze the SPECIFIC method "${formData.storageMethod}" in category "${formData.containerCategory}".
+      Context: ${formData.quantityKg}kg of ${formData.variety} in a ${formData.storageType} facility.
+      
+      TASK: 
+      1. Review this specific choice.
+      2. Detail Pros and Cons.
+      3. Show current estimated LKR unit price for this container.
+      4. Give a final technical verdict.`;
+
+      const res = await fetch(`${BASE_URL}/api/guardian/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: prompt,
+          context: {
+            variety: formData.variety,
+            quantity: formData.quantityKg,
+            storage_type: formData.storageType,
+            sub_category: formData.subCategory,
+            container_category: formData.containerCategory,
+            storage_method: formData.storageMethod,
+            interaction_type: 'logistics_consult'
+          }
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessages(prev => [
+          ...prev,
+          { id: Date.now(), text: `🔎 Technical Audit: ${data.answer}`, isBot: true }
+        ]);
+      }
+    } catch (e) {
+      triggerInspector("Technical audit service is slow. Tip: Gunny bags (Rs. 100-120) are the budget choice but lack hermetic protection.");
+    } finally {
+      setLoading(false);
+    }
+  };
   const handleComplete = async () => {
     if (!formData.quantityKg || formData.quantityKg === '0') {
       Alert.alert("Required", "Please enter quantity in KG.");
       return;
     }
+
+    // Capacity Limit Validation
+    const qty = parseFloat(formData.quantityKg);
+    const cat = formData.storageType;
+    const limit = STORAGE_HIERARCHY[cat].limit;
+
+    if (cat === 'Home' && qty >= limit) {
+      Alert.alert("Capacity Overload", `Home storage is restricted to under ${limit}kg. Please select a Warehouse or Co-op.`);
+      return;
+    }
+    if (cat === 'Warehouse' && qty > limit) {
+      Alert.alert("Capacity Overload", `Warehouse capacity limit is ${limit}kg. For higher amounts, use Co-operative or Government stores.`);
+      return;
+    }
+    if (cat === 'Co-op' && qty > limit) {
+      Alert.alert("Capacity Overload", `Co-operative storage limit is ${limit}kg.`);
+      return;
+    }
+    if (!formData.acres || isNaN(parseFloat(formData.acres))) {
+      Alert.alert("Required", "Please enter land area in acres for yield validation.");
+      return;
+    }
+
+    if (formData.disfiguredChecked === 'Yes') {
+      Alert.alert(
+        "Quality Warning",
+        "You reported disfigured paddy. It is NOT recommended to store this harvest without cleaning. Do you want to view the removal guide first?",
+        [
+          { text: "View Guide", onPress: () => navigation.navigate('StorageExpertGuide', { showDisfigured: true }) },
+          { text: "Store Anyway", style: "destructive", onPress: () => finalizePayload() }
+        ]
+      );
+      setLoading(false);
+      return;
+    }
+
+    finalizePayload();
+  };
+
+  const handleContainerCategoryChange = async (category) => {
+    setFormData({
+      ...formData,
+      containerCategory: category,
+      storageMethod: CONTAINER_HIERARCHY[category][0]
+    });
+
+    // Automatically trigger AI consultation when category is chosen
+    setChatVisible(true);
     setLoading(true);
     try {
+      const prompt = `LOGISTICS EXPERT CONSULTATION:
+      Facility: ${formData.storageType} (${formData.subCategory})
+      Variety: ${formData.variety}
+      Quantity: ${formData.quantityKg}kg
+      Logistics Interest: ${category} Methods
+
+      TASK:
+      1. Recomment the best method from: ${CONTAINER_HIERARCHY[category].join(', ')}.
+      2. Show Pros and Cons for the recommended method.
+      3. Provide estimated current market Prices in Sri Lankan Rupees (LKR).
+      4. Invite the farmer to ask any follow-up questions about this setup.`;
+
+      const res = await fetch(`${BASE_URL}/api/guardian/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: prompt,
+          context: {
+            variety: formData.variety,
+            quantity: formData.quantityKg,
+            storage_type: formData.storageType,
+            sub_category: formData.subCategory,
+            container_category: category,
+            interaction_type: 'logistics_consult'
+          }
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessages(prev => [
+          ...prev,
+          { id: Date.now(), text: `📦 Logistics Advisor:\n\n${data.answer}`, isBot: true }
+        ]);
+      }
+    } catch (e) {
+      triggerInspector("Logistics advisor is currently busy. General Tip: Use Hermetic bags (Rs. 250) for best moisture protection.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGradingConsult = async () => {
+    setChatVisible(true);
+    setLoading(true);
+    try {
+      const prompt = `QUALITY AUDIT: I want to determine the correct Grade for my ${formData.variety} (${formData.quantityKg}kg). 
+      Can you guide me through the SLR 603:2013 standards? 
+      My current moisture is ${formData.moisture || 'Not tested'}.
+      I select Grade ${formData.grade} but I want to know if I can improve to Grade A.
+      Please explain the systematic grading (Moisture, Broken, Discolored, Foreign).`;
+
+      const res = await fetch(`${BASE_URL}/api/guardian/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: prompt,
+          context: {
+            variety: formData.variety,
+            quantity: formData.quantityKg,
+            moisture: formData.moisture,
+            current_grade: formData.grade,
+            interaction_type: 'grading_consult'
+          }
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setMessages(prev => [
+          ...prev,
+          { id: Date.now(), text: `📊 Quality Auditor: ${data.answer}`, isBot: true }
+        ]);
+      }
+    } catch (e) {
+      triggerInspector("Grading auditor is offline. Pro-tip: For Grade A, moisture must be below 14% and broken grains below 5%.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const finalizePayload = async () => {
+    setLoading(true);
+    try {
+      // GoviMithuru Inspector: Validation Check
+      const inspectRes = await fetch(`${BASE_URL}/api/guardian/inspect`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          variety: formData.variety,
+          quantity_kg: parseFloat(formData.quantityKg),
+          acres: parseFloat(formData.acres),
+          moisture: parseFloat(formData.moisture) || 0,
+          grade: formData.grade
+        })
+      });
+      const inspectData = await inspectRes.json();
+
+      if (!inspectData.is_valid) {
+        setLoading(false);
+        triggerInspector(`🚩 Inspector Alert: ${inspectData.warning_message}\n\n${inspectData.suggested_correction}`);
+        setChatVisible(true);
+        return; // Stop saving until farmer acknowledges/fixes
+      }
+
       let locationId = formData.locationId;
       if (storageMode === 'new' && !locationId) {
         const docRef = await db.collection('storageLocations').add({
@@ -171,6 +515,8 @@ export default function RegisterHarvestScreen({ navigation, route }) {
           locationName: formData.locationName,
           storageArea: parseFloat(formData.storageArea) || 0,
           areaUnit: formData.areaUnit,
+          latitude: mapCoords?.latitude || location.latitude,
+          longitude: mapCoords?.longitude || location.longitude,
           createdAt: new Date(),
         });
         locationId = docRef.id;
@@ -278,10 +624,27 @@ export default function RegisterHarvestScreen({ navigation, route }) {
               <View style={styles.pickerWrapper}>
                 <Picker
                   selectedValue={formData.storageType}
-                  onValueChange={(v) => setFormData({ ...formData, storageType: v })}
+                  onValueChange={(v) => setFormData({
+                    ...formData,
+                    storageType: v,
+                    subCategory: STORAGE_HIERARCHY[v].sub[0]
+                  })}
                   style={{ color: '#fff' }} dropdownIconColor="#34d399"
                 >
                   {STORAGE_TYPES.map(t => <Picker.Item key={t} label={t} value={t} color={Platform.OS === 'ios' ? '#fff' : '#000'} />)}
+                </Picker>
+              </View>
+
+              <Text style={styles.label}>Facility Sub-Category</Text>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={formData.subCategory}
+                  onValueChange={(v) => setFormData({ ...formData, subCategory: v })}
+                  style={{ color: '#fff' }} dropdownIconColor="#34d399"
+                >
+                  {(STORAGE_HIERARCHY[formData.storageType]?.sub || []).map(s => (
+                    <Picker.Item key={s} label={s} value={s} color={Platform.OS === 'ios' ? '#fff' : '#000'} />
+                  ))}
                 </Picker>
               </View>
 
@@ -291,6 +654,22 @@ export default function RegisterHarvestScreen({ navigation, route }) {
                 placeholderTextColor="#475569" value={formData.locationName}
                 onChangeText={(v) => setFormData({ ...formData, locationName: v })}
               />
+
+              <Text style={[styles.label, { marginTop: 10 }]}>Pin Storage Location on Map</Text>
+              <View style={styles.mapContainer}>
+                <WebView
+                  scrollEnabled={false}
+                  source={{ html: MAP_HTML(location.latitude, location.longitude) }}
+                  onMessage={(event) => {
+                    const coords = JSON.parse(event.nativeEvent.data);
+                    setMapCoords(coords);
+                  }}
+                  style={styles.map}
+                />
+                <View style={styles.mapOverlay}>
+                  <Text style={styles.mapHint}>Tap on the map to pin warehouse location</Text>
+                </View>
+              </View>
 
               <Text style={styles.label}>Area Dimension (Optional)</Text>
               <View style={styles.row}>
@@ -334,12 +713,25 @@ export default function RegisterHarvestScreen({ navigation, route }) {
                     placeholder="0.0" value={formData.quantityKg}
                     onChangeText={handleQuantityChange}
                   />
+                  <View style={styles.limitInfo}>
+                    <MaterialCommunityIcons name="information" size={12} color="#94a3b8" />
+                    <Text style={styles.limitText}>
+                      Max Capacity: {STORAGE_HIERARCHY[formData.storageType].limit >= 999999 ? 'Unlimited' : `${STORAGE_HIERARCHY[formData.storageType].limit} kg`}
+                    </Text>
+                  </View>
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.label}>Est. Bags (50kg)</Text>
                   <View style={styles.readOnlyInput}><Text style={styles.readOnlyText}>{formData.bags}</Text></View>
                 </View>
               </View>
+
+              <Text style={styles.label}>Harvested Land Area (Acres)</Text>
+              <TextInput
+                style={styles.input} keyboardType="numeric"
+                placeholder="e.g. 2.5" value={formData.acres}
+                onChangeText={(v) => setFormData({ ...formData, acres: v })}
+              />
 
               <Text style={styles.label}>Quality Grading</Text>
               <View style={styles.btnRow}>
@@ -352,7 +744,7 @@ export default function RegisterHarvestScreen({ navigation, route }) {
                   </TouchableOpacity>
                 ))}
               </View>
-              <TouchableOpacity onPress={() => setChatVisible(true)} style={styles.inspectorMiniBtn}>
+              <TouchableOpacity onPress={handleGradingConsult} style={styles.inspectorMiniBtn}>
                 <MaterialCommunityIcons name="account-search-outline" size={16} color="#34d399" />
                 <Text style={styles.inspectorMiniText}>Ask Inspector about Grading</Text>
               </TouchableOpacity>
@@ -380,18 +772,34 @@ export default function RegisterHarvestScreen({ navigation, route }) {
                 ))}
               </View>
 
-              <Text style={styles.label}>Storage Container Method</Text>
+              <Text style={styles.label}>Logistics Category</Text>
+              <View style={styles.pickerWrapper}>
+                <Picker
+                  selectedValue={formData.containerCategory}
+                  onValueChange={handleContainerCategoryChange}
+                  style={{ color: '#fff' }} dropdownIconColor="#34d399"
+                >
+                  {Object.keys(CONTAINER_HIERARCHY).map(c => <Picker.Item key={c} label={c} value={c} color={Platform.OS === 'ios' ? '#fff' : '#000'} />)}
+                </Picker>
+              </View>
+
+              <Text style={styles.label}>Storage Container Method (AI Recommended)</Text>
               <View style={styles.pickerWrapper}>
                 <Picker
                   selectedValue={formData.storageMethod}
                   onValueChange={(v) => setFormData({ ...formData, storageMethod: v })}
                   style={{ color: '#fff' }} dropdownIconColor="#34d399"
                 >
-                  {['Gunny bag', 'Polythene bag', 'Hermetic', 'Bulk Storage'].map(m => (
+                  {CONTAINER_HIERARCHY[formData.containerCategory].map(m => (
                     <Picker.Item key={m} label={m} value={m} color={Platform.OS === 'ios' ? '#fff' : '#000'} />
                   ))}
                 </Picker>
               </View>
+
+              <TouchableOpacity onPress={analyzeCurrentMethod} style={styles.inspectorMiniBtn}>
+                <MaterialCommunityIcons name="brain" size={16} color="#34d399" />
+                <Text style={styles.inspectorMiniText}>Analyze with AI</Text>
+              </TouchableOpacity>
 
               <Text style={styles.label}>Production Cost (LKR/KG)</Text>
               <TextInput
@@ -437,15 +845,17 @@ export default function RegisterHarvestScreen({ navigation, route }) {
       </Modal>
 
       {/* Inspector Floating Alert */}
-      {inspectorMsg && !chatVisible && (
-        <TouchableOpacity style={styles.floatingInspector} onPress={() => setChatVisible(true)}>
-          <LinearGradient colors={['#dc2626', '#991b1b']} style={styles.inspectorAlertGrad}>
-            <MaterialCommunityIcons name="alert-decagram" size={24} color="#fff" />
-            <Text style={styles.inspectorAlertText} numberOfLines={2}>{inspectorMsg}</Text>
-            <MaterialCommunityIcons name="chevron-right" size={20} color="#fff" />
-          </LinearGradient>
-        </TouchableOpacity>
-      )}
+      {
+        inspectorMsg && !chatVisible && (
+          <TouchableOpacity style={styles.floatingInspector} onPress={() => setChatVisible(true)}>
+            <LinearGradient colors={['#dc2626', '#991b1b']} style={styles.inspectorAlertGrad}>
+              <MaterialCommunityIcons name="alert-decagram" size={24} color="#fff" />
+              <Text style={styles.inspectorAlertText} numberOfLines={2}>{inspectorMsg}</Text>
+              <MaterialCommunityIcons name="chevron-right" size={20} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+        )
+      }
 
       {/* Inspector Chat Modal */}
       <Modal visible={chatVisible} animationType="slide" transparent>
@@ -468,12 +878,30 @@ export default function RegisterHarvestScreen({ navigation, route }) {
               {inspectorChat.map(m => (
                 <View key={m.id} style={[styles.msgContainer, m.isBot ? styles.msgBot : styles.msgUser]}>
                   <Text style={[styles.msgText, m.isBot ? styles.msgTextBot : styles.msgTextUser]}>{m.text}</Text>
+                  {m.isAction && (
+                    <TouchableOpacity style={styles.chatActionBtn} onPress={m.action}>
+                      <MaterialCommunityIcons name="book-open-variant" size={16} color="#fff" />
+                      <Text style={styles.chatActionText}>Open Removal Guide</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
               ))}
               {isTyping && <ActivityIndicator color="#34d399" style={{ alignSelf: 'flex-start', marginLeft: 20 }} />}
             </ScrollView>
 
             <View style={styles.chatFooter}>
+              <View style={styles.inputRow}>
+                <TextInput
+                  style={styles.chatTextInput}
+                  placeholder="Ask Inspector about storage..."
+                  placeholderTextColor="#64748b"
+                  value={chatInput}
+                  onChangeText={setChatInput}
+                />
+                <TouchableOpacity onPress={handleManualChat} style={styles.sendBtn}>
+                  <MaterialCommunityIcons name="send" size={20} color="#fff" />
+                </TouchableOpacity>
+              </View>
               <View style={styles.responseRow}>
                 <TouchableOpacity style={styles.optBtn} onPress={() => handleChatResponse("Yes, it is clean")}>
                   <Text style={styles.optBtnText}>Clean & Uniform</Text>
@@ -482,21 +910,18 @@ export default function RegisterHarvestScreen({ navigation, route }) {
                   <Text style={styles.optBtnText}>Has Bol / Spots</Text>
                 </TouchableOpacity>
               </View>
-              <View style={[styles.responseRow, { marginTop: 10 }]}>
-                <TouchableOpacity style={[styles.optBtn, { backgroundColor: '#1e293b' }]} onPress={() => handleChatResponse("How to dry paddy?")}>
-                  <Text style={styles.optBtnText}>Drying Advice?</Text>
-                </TouchableOpacity>
-              </View>
             </View>
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </SafeAreaView >
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0f172a' },
+  limitInfo: { flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 4 },
+  limitText: { color: '#64748b', fontSize: 10, fontWeight: '700', fontStyle: 'italic' },
   header: { padding: 20, borderBottomWidth: 1, borderBottomColor: '#334155' },
   backBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#1e293b', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
   mainTitle: { color: '#fff', fontSize: 22, fontWeight: '900' },
@@ -564,6 +989,9 @@ const styles = StyleSheet.create({
   msgText: { fontSize: 14, lineHeight: 20 },
   msgTextBot: { color: '#cbd5e1' },
   msgTextUser: { color: '#064e3b', fontWeight: '700' },
+  chatActionBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#10b981', padding: 8, borderRadius: 8, marginTop: 10, gap: 6 },
+  chatActionText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+
   chatFooter: { borderTopWidth: 1, borderTopColor: '#1e293b', paddingTop: 15 },
   responseRow: { flexDirection: 'row', gap: 10, flexWrap: 'wrap' },
   optBtn: { backgroundColor: '#064e3b', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: '#34d39944' },
@@ -571,4 +999,32 @@ const styles = StyleSheet.create({
 
   camRoot: { flex: 1, backgroundColor: '#000' },
   camClose: { position: 'absolute', bottom: 40, alignSelf: 'center', padding: 20, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 16 },
+
+  mapContainer: {
+    height: 180,
+    borderRadius: 16,
+    overflow: 'hidden',
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  map: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  mapOverlay: {
+    position: 'absolute',
+    bottom: 8,
+    left: 8,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    padding: 6,
+    borderRadius: 8,
+  },
+  mapHint: {
+    color: '#34d399',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  inputRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e293b', borderRadius: 16, paddingHorizontal: 15, marginBottom: 15, height: 50, marginTop: 10 },
+  chatTextInput: { flex: 1, color: '#fff', fontSize: 14 },
+  sendBtn: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#34d399', justifyContent: 'center', alignItems: 'center' },
 });

@@ -8,6 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width: SW } = Dimensions.get('window');
+const BASE_URL = 'http://192.168.100.198:5000'; // Flask Backend
 
 // Asset mapping (using local requires for React Native stability)
 const IMAGE_MAP = {
@@ -15,12 +16,17 @@ const IMAGE_MAP = {
     'm-control': require('../../assets/expert_guide/moisture.png'),
     'p-protect': require('../../assets/expert_guide/pest.png'),
     's-method': require('../../assets/expert_guide/structure.png'),
+    'q-sorting': require('../../assets/expert_guide/ventilation.png'), // Reusing similar asset or dummy
 };
 
-export default function StorageExpertGuideScreen({ navigation }) {
+export default function StorageExpertGuideScreen({ navigation, route }) {
+    const { temp = 28.5, humidity = 62 } = route.params || {};
+
     const [loading, setLoading] = useState(true);
     const [knowledge, setKnowledge] = useState([]);
     const [activeTab, setActiveTab] = useState(0);
+    const [aiInsight, setAiInsight] = useState(null);
+    const [syncingAi, setSyncAi] = useState(false);
 
     // Hardcoded fallback data in case backend is unreachable during dev
     const fallbackData = [
@@ -107,16 +113,75 @@ export default function StorageExpertGuideScreen({ navigation }) {
                     "logic": "Raised traditional Atuwa protects from ground moisture and improves airflow."
                 }
             ]
+        },
+        {
+            "id": "q-sorting",
+            "title": "Quality & Sorting",
+            "icon": "filter-variant",
+            "goal": "Remove Disfigured Paddy to prevent batch contamination.",
+            "xgb_var": "Batch_Uniformity",
+            "items": [
+                {
+                    "name": "Disfigured Grain Removal",
+                    "industrial": "Gravity Separator / Color Sorter",
+                    "traditional": "Floatation & Hand Picking",
+                    "logic": "Traditional Sink/Float: Disfigured or 'bol' grains are lighter. In a water bucket, they float for skimming. Smut grains must be hand-picked or sieved using a 2mm mesh."
+                },
+                {
+                    "name": "Smut Treatment",
+                    "industrial": "Seed Dressing Fungicide",
+                    "traditional": "Sun-Exposure (Solarization)",
+                    "logic": "Thin-layer sun drying (thickness < 2cm) for 6 hours kills surface fungi. Smut-spoilt paddy must be kept separate from seed paddy."
+                }
+            ]
         }
     ];
 
-    useEffect(() => {
-        // In real app: fetch('http://LOCAL_IP:5000/api/guardian/knowledge')
+    const fetchKnowledge = () => {
         setTimeout(() => {
             setKnowledge(fallbackData);
             setLoading(false);
         }, 800);
+    };
+
+    const fetchAIDeepDive = async (category) => {
+        setSyncAi(true);
+        try {
+            const response = await fetch(`${BASE_URL}/api/guardian/advice`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    variety: "Rice",
+                    moisture: 13.5,
+                    warehouse_temp: temp,
+                    humidity_pct: humidity,
+                    context: `STORAGE MASTERY: ${category}. Provide 3 highly specific traditional or low-cost hacks to optimize this XGBoost variable.`
+                })
+            });
+            const data = await response.json();
+            if (data.success) {
+                setAiInsight(data.advice);
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setSyncAi(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchKnowledge();
+        if (route.params?.showDisfigured) {
+            // Wait for knowledge to load then set tab to the last one (Quality & Sorting)
+            setTimeout(() => setActiveTab(4), 1000);
+        }
     }, []);
+
+    useEffect(() => {
+        if (knowledge.length > 0) {
+            fetchAIDeepDive(knowledge[activeTab].title);
+        }
+    }, [activeTab, knowledge]);
 
     const renderKnowledgeCard = (data) => (
         <View key={data.id} style={styles.kCard}>
@@ -165,6 +230,37 @@ export default function StorageExpertGuideScreen({ navigation }) {
                         {idx < data.items.length - 1 && <View style={styles.kDivider} />}
                     </View>
                 ))}
+
+                {/* AI DEEP DIVE SECTION */}
+                <LinearGradient colors={['#7c3aed15', '#0f172a']} style={styles.aiDeepDive}>
+                    <View style={styles.aiDeepHeader}>
+                        <View style={styles.aiIconSpot}>
+                            <MaterialCommunityIcons name="auto-fix" size={24} color="#a78bfa" />
+                        </View>
+                        <View>
+                            <Text style={styles.aiDeepTitle}>AI DEEP DIVE</Text>
+                            <Text style={styles.aiDeepSub}>Custom hacks for your current climate</Text>
+                        </View>
+                    </View>
+
+                    {syncingAi ? (
+                        <ActivityIndicator color="#a78bfa" style={{ marginVertical: 20 }} />
+                    ) : aiInsight ? (
+                        <View style={styles.aiAdviseWrap}>
+                            <Text style={styles.aiAdviseTxt}>{aiInsight.risk_assessment}</Text>
+                            <View style={styles.hackList}>
+                                {aiInsight.immediate_actions?.map((hack, i) => (
+                                    <View key={i} style={styles.hackItem}>
+                                        <MaterialCommunityIcons name="lightbulb-on" size={16} color="#fbbf24" />
+                                        <Text style={styles.hackText}>{hack}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        </View>
+                    ) : (
+                        <Text style={styles.noAiText}>Connecting to LLM Strategy Engine...</Text>
+                    )}
+                </LinearGradient>
             </View>
         </View>
     );
@@ -274,5 +370,17 @@ const styles = StyleSheet.create({
     kDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.05)', marginTop: 25 },
 
     disclaimer: { margin: 20, flexDirection: 'row', gap: 10, alignItems: 'center', opacity: 0.6 },
-    disclaimerText: { flex: 1, color: '#4b6b8a', fontSize: 11, fontWeight: '600', fontStyle: 'italic' }
+    disclaimerText: { flex: 1, color: '#4b6b8a', fontSize: 11, fontWeight: '600', fontStyle: 'italic' },
+
+    aiDeepDive: { marginTop: 10, borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#7c3aed44' },
+    aiDeepHeader: { flexDirection: 'row', alignItems: 'center', gap: 15, marginBottom: 20 },
+    aiIconSpot: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#7c3aed20', justifyContent: 'center', alignItems: 'center' },
+    aiDeepTitle: { color: '#a78bfa', fontSize: 13, fontWeight: '900', letterSpacing: 1.5 },
+    aiDeepSub: { color: '#4b6b8a', fontSize: 11, fontWeight: '700' },
+    aiAdviseWrap: { gap: 15 },
+    aiAdviseTxt: { color: '#fff', fontSize: 13, lineHeight: 22, fontWeight: '600' },
+    hackList: { gap: 12 },
+    hackItem: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 14 },
+    hackText: { color: '#cbd5e1', fontSize: 12, fontWeight: '600', flex: 1, lineHeight: 18 },
+    noAiText: { color: '#4b6b8a', fontSize: 11, fontStyle: 'italic', textAlign: 'center' },
 });
