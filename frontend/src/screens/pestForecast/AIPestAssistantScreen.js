@@ -17,7 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 // Initialize Gemini API
-const GEMINI_API_KEY = 'AIzaSyD3f0os2ci9v_zydmXuItLWYutbbnCDEVM'; // Replace with your actual API key
+const GEMINI_API_KEY = 'My_Key'; // Replace with your actual API key
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 const AIPestAssistantScreen = ({ navigation, route }) => {
