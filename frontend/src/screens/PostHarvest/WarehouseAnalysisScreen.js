@@ -234,31 +234,88 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                             ))}
                         </View>
 
-                        {/* AI STRATEGY CENTER */}
-                        <View style={s.sectionHeader}>
-                            <Text style={s.sectionTitle}>AI STRATEGY CENTER</Text>
-                            <LinearGradient colors={['#7c3aed', '#4c1d95']} style={s.badgeSmall}>
-                                <Text style={s.badgeTextSmall}>LLM GUIDED</Text>
-                            </LinearGradient>
+                        {/* AI STRATEGY CENTER - RE-IMAGINED */}
+                        <View style={s.strategyHeader}>
+                            <View>
+                                <Text style={s.strategyTitle}>STRATEGIC INTEL</Text>
+                                <Text style={s.strategySub}>Autonomous Storage Optimization</Text>
+                            </View>
+                            <View style={s.aiLiveBadge}>
+                                <View style={s.pulse} />
+                                <Text style={s.aiLiveText}>AI LIVE</Text>
+                            </View>
                         </View>
+
+                        <View style={s.strategyGrid}>
+                            <View style={[s.strategyCard, { borderLeftColor: color }]}>
+                                <View style={s.strategyCardHeader}>
+                                    <MaterialCommunityIcons name="shield-check-outline" size={20} color={color} />
+                                    <Text style={s.strategyCardTitle}>Stability Plan</Text>
+                                </View>
+                                <Text style={s.strategyCardText}>{aiInsight?.strategy}</Text>
+                                <View style={s.executionMeta}>
+                                    <Text style={s.executionLabel}>EXECUTION STATUS:</Text>
+                                    <Text style={[s.executionVal, { color }]}>RUNNING</Text>
+                                </View>
+                            </View>
+
+                            <View style={[s.strategyCard, { borderLeftColor: '#f87171' }]}>
+                                <View style={s.strategyCardHeader}>
+                                    <MaterialCommunityIcons name="alert-decagram-outline" size={20} color="#f87171" />
+                                    <Text style={s.strategyCardTitle}>Risk Mitigation</Text>
+                                </View>
+                                <Text style={s.strategyCardText}>{aiInsight?.warning}</Text>
+                                <TouchableOpacity
+                                    style={s.mitigationBtn}
+                                    onPress={() => navigation.navigate('StorageStepGuide', {
+                                        temp: 28.5,
+                                        humidity: 62,
+                                        subCategory: locData?.subCategory
+                                    })}
+                                >
+                                    <Text style={s.mitigationBtnText}>DEPLOY PROTOCOL</Text>
+                                    <MaterialCommunityIcons name="chevron-right" size={14} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+
+                        {/* STORAGE PROTOCOL WIZARD */}
                         <TouchableOpacity
-                            style={s.aiAdvisorCard}
-                            onPress={() => navigation.navigate('PostHarvestAdvisor')}
+                            style={s.protocolBtn}
+                            onPress={() => navigation.navigate('StorageStepGuide', {
+                                temp: 28.5,
+                                humidity: 62,
+                                subCategory: locData?.subCategory
+                            })}
                         >
-                            <LinearGradient colors={['#1e1b4b', '#0f172a']} style={s.aiAdvisorGrad}>
-                                <View style={s.aiIconWrapper}>
-                                    <MaterialCommunityIcons name="brain" size={28} color="#a78bfa" />
+                            <LinearGradient colors={['#064e3b', '#065f46']} style={s.protocolGrad}>
+                                <View style={s.protocolIcon}>
+                                    <MaterialCommunityIcons name="clipboard-check-multiple" size={22} color="#34d399" />
                                 </View>
                                 <View style={{ flex: 1 }}>
-                                    <Text style={s.aiStrategyTitle}>Maintenance Strategy</Text>
-                                    <Text style={s.aiStrategyText}>{aiInsight?.strategy || "Analyzing storage conditions..."}</Text>
-                                    <View style={s.warningRow}>
-                                        <MaterialCommunityIcons name="alert-circle-outline" size={14} color="#f87171" />
-                                        <Text style={s.warningText}>{aiInsight?.warning}</Text>
-                                    </View>
+                                    <Text style={s.protocolTitle}>SAFE STORAGE PROTOCOL</Text>
+                                    <Text style={s.protocolSub}>Step-by-step specialist guide</Text>
                                 </View>
-                                <MaterialCommunityIcons name="chevron-right" size={24} color="#4c1d95" />
+                                <View style={s.protocolAction}>
+                                    <Text style={s.protocolActionText}>START</Text>
+                                </View>
                             </LinearGradient>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={s.expertHacksBtn}
+                            onPress={() => navigation.navigate('StorageExpertGuide', { temp: 28.5, humidity: 62 })}
+                        >
+                            <View style={s.expertHacksBody}>
+                                <View style={s.expertHacksIcon}>
+                                    <MaterialCommunityIcons name="lightbulb-on-outline" size={24} color="#fca5a5" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={s.expertHacksTitle}>LOW-COST MASTERY</Text>
+                                    <Text style={s.expertHacksSub}>View traditional hacks to optimize XGBoost variables</Text>
+                                </View>
+                                <MaterialCommunityIcons name="chevron-right" size={20} color="#4b6b8a" />
+                            </View>
                         </TouchableOpacity>
 
                         {/* PEST MANAGEMENT */}
@@ -291,30 +348,101 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
 
                         {/* ENVIRONMENTAL MONITORING */}
                         <View style={s.sectionHeader}>
-                            <Text style={s.sectionTitle}>ENVIRONMENTAL SENSORS</Text>
-                            <View style={s.liveTag}>
-                                <View style={s.liveDot} />
-                                <Text style={s.liveText}>LIVE</Text>
-                            </View>
+                            <Text style={s.sectionTitle}>MONITORING SENSORS</Text>
+                            <TouchableOpacity
+                                style={s.configLink}
+                                onPress={() => navigation.navigate('ConnectSensors')}
+                            >
+                                <Text style={s.configLinkText}>CONFIGURE</Text>
+                                <MaterialCommunityIcons name="cog" size={12} color="#10b981" />
+                            </TouchableOpacity>
                         </View>
                         <View style={s.envGrid}>
                             <View style={s.envCard}>
                                 <LinearGradient colors={['#FF6B6B22', '#Feca5722']} style={StyleSheet.absoluteFillObject} />
-                                <MaterialCommunityIcons name="thermometer" size={24} color="#FF6B6B" />
-                                <View>
-                                    <Text style={s.envLabel}>TEMPERATURE</Text>
-                                    <Text style={s.envValue}>28.5°C</Text>
+                                <View style={s.envIconRow}>
+                                    <MaterialCommunityIcons name="thermometer" size={20} color="#FF6B6B" />
+                                    <Text style={s.envStatus}>OPTIMAL</Text>
                                 </View>
-                                <Text style={s.envStatus}>OPTIMAL</Text>
+                                <Text style={s.envValue}>28.5°C</Text>
+                                <Text style={s.envLabel}>WAREHOUSE TEMP</Text>
                             </View>
                             <View style={s.envCard}>
                                 <LinearGradient colors={['#48dbfb22', '#00d2d322']} style={StyleSheet.absoluteFillObject} />
-                                <MaterialCommunityIcons name="water-percent" size={24} color="#48dbfb" />
-                                <View>
-                                    <Text style={s.envLabel}>HUMIDITY</Text>
-                                    <Text style={s.envValue}>62%</Text>
+                                <View style={s.envIconRow}>
+                                    <MaterialCommunityIcons name="water-percent" size={20} color="#48dbfb" />
+                                    <Text style={[s.envStatus, { color: '#48dbfb' }]}>STABLE</Text>
                                 </View>
-                                <Text style={s.envStatus}>SAFE</Text>
+                                <Text style={s.envValue}>62%</Text>
+                                <Text style={s.envLabel}>HUMIDITY INDEX</Text>
+                            </View>
+                        </View>
+
+                        {/* CERTIFICATION STANDARDS */}
+                        <View style={s.sectionHeader}>
+                            <Text style={s.sectionTitle}>CERTIFICATION STANDARDS (SLR 603)</Text>
+                            <Text style={s.stockCount}>MANDATORY</Text>
+                        </View>
+
+                        {/* Physical Parameters */}
+                        <View style={s.standardsCard}>
+                            <View style={s.standardsHeader}>
+                                <MaterialCommunityIcons name="cube-scan" size={20} color="#34d399" />
+                                <Text style={s.standardsTitle}>PHYSICAL PARAMETERS</Text>
+                            </View>
+                            <View style={s.parameterGrid}>
+                                <View style={s.paramBox}>
+                                    <Text style={s.paramLabel}>TEMP</Text>
+                                    <Text style={s.paramVal}>≤ 30°C</Text>
+                                </View>
+                                <View style={s.paramBox}>
+                                    <Text style={s.paramLabel}>HUMIDITY</Text>
+                                    <Text style={s.paramVal}>60-70%</Text>
+                                </View>
+                                <View style={s.paramBox}>
+                                    <Text style={s.paramLabel}>MOISTURE</Text>
+                                    <Text style={s.paramVal}>≤ 14%</Text>
+                                </View>
+                                <View style={s.paramBox}>
+                                    <Text style={s.paramLabel}>WALL GAP</Text>
+                                    <Text style={s.paramVal}>15cm MIN</Text>
+                                </View>
+                            </View>
+                        </View>
+
+                        {/* Grade Standards */}
+                        <View style={s.gradesContainer}>
+                            {/* GRADE A */}
+                            <View style={[s.gradeCard, { borderColor: '#10b981' }]}>
+                                <View style={[s.gradeBadge, { backgroundColor: '#10b981' }]}>
+                                    <Text style={s.gradeBadgeText}>GRADE A (PREMIUM)</Text>
+                                </View>
+                                <View style={s.gradeRow}><Text style={s.gradeText}>Moisture</Text><Text style={s.gradeReq}>≤ 14%</Text></View>
+                                <View style={s.gradeRow}><Text style={s.gradeText}>Broken Grains</Text><Text style={s.gradeReq}>≤ 5%</Text></View>
+                                <View style={s.gradeRow}><Text style={s.gradeText}>Discolored</Text><Text style={s.gradeReq}>≤ 1%</Text></View>
+                                <View style={s.gradeRow}><Text style={s.gradeText}>Foreign Matter</Text><Text style={s.gradeReq}>≤ 0.1%</Text></View>
+                            </View>
+
+                            {/* GRADE B */}
+                            <View style={[s.gradeCard, { borderColor: '#f59e0b' }]}>
+                                <View style={[s.gradeBadge, { backgroundColor: '#f59e0b' }]}>
+                                    <Text style={s.gradeBadgeText}>GRADE B (STANDARD)</Text>
+                                </View>
+                                <View style={s.gradeRow}><Text style={s.gradeText}>Moisture</Text><Text style={s.gradeReq}>≤ 14.5%</Text></View>
+                                <View style={s.gradeRow}><Text style={s.gradeText}>Broken Grains</Text><Text style={s.gradeReq}>≤ 10%</Text></View>
+                                <View style={s.gradeRow}><Text style={s.gradeText}>Discolored</Text><Text style={s.gradeReq}>≤ 2%</Text></View>
+                                <View style={s.gradeRow}><Text style={s.gradeText}>Foreign Matter</Text><Text style={s.gradeReq}>≤ 0.5%</Text></View>
+                            </View>
+
+                            {/* GRADE C */}
+                            <View style={[s.gradeCard, { borderColor: '#ef4444' }]}>
+                                <View style={[s.gradeBadge, { backgroundColor: '#ef4444' }]}>
+                                    <Text style={s.gradeBadgeText}>GRADE C (BELOW STD)</Text>
+                                </View>
+                                <View style={s.gradeRow}><Text style={s.gradeText}>Moisture</Text><Text style={s.gradeReq}>≤ 15%</Text></View>
+                                <View style={s.gradeRow}><Text style={s.gradeText}>Broken Grains</Text><Text style={s.gradeReq}>≤ 20%</Text></View>
+                                <View style={s.gradeRow}><Text style={s.gradeText}>Discolored</Text><Text style={s.gradeReq}>≤ 5%</Text></View>
+                                <View style={s.gradeRow}><Text style={s.gradeText}>Foreign Matter</Text><Text style={s.gradeReq}>≤ 1%</Text></View>
                             </View>
                         </View>
 
@@ -331,7 +459,14 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                                 </View>
                             ) : (
                                 harvests.map((item, idx) => (
-                                    <View key={item.id} style={s.stockItem}>
+                                    <TouchableOpacity
+                                        key={item.id}
+                                        style={s.stockItem}
+                                        onPress={() => navigation.navigate('PostHarvestAdvisor', {
+                                            batch: item,
+                                            location: locData
+                                        })}
+                                    >
                                         <View style={[s.stockMarker, { backgroundColor: idx % 2 === 0 ? '#10b981' : '#3b82f6' }]} />
                                         <View style={{ flex: 1 }}>
                                             <Text style={s.stockVariety}>{item.riceVariety || 'Paddy'}</Text>
@@ -341,7 +476,7 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                                             <Text style={s.stockWeight}>{item.quantityKg?.toLocaleString()} KG</Text>
                                             <Text style={s.stockBags}>~{(item.quantityKg / 50).toFixed(0)} bags</Text>
                                         </View>
-                                    </View>
+                                    </TouchableOpacity>
                                 ))
                             )}
                         </View>
@@ -491,4 +626,58 @@ const s = StyleSheet.create({
     pestRiskValue: { fontSize: 14, fontWeight: '800' },
     reportBtn: { backgroundColor: '#dc2626', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, gap: 8 },
     reportBtnText: { color: '#fff', fontSize: 11, fontWeight: '900' },
+
+    protocolBtn: { marginHorizontal: 16, marginBottom: 25, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#065f46' },
+    protocolGrad: { flexDirection: 'row', alignItems: 'center', padding: 15, gap: 15 },
+    protocolIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(52,211,153,0.1)', justifyContent: 'center', alignItems: 'center' },
+    protocolTitle: { color: '#fff', fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
+    protocolSub: { color: '#34d399', fontSize: 11, fontWeight: '600', marginTop: 2 },
+    protocolAction: { backgroundColor: '#34d399', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
+    protocolActionText: { color: '#064e3b', fontSize: 10, fontWeight: '900' },
+
+    configLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    configLinkText: { color: '#10b981', fontSize: 10, fontWeight: '800' },
+
+    expertHacksBtn: { marginHorizontal: 16, backgroundColor: '#0a1a2f', borderRadius: 20, padding: 16, marginBottom: 25, borderWidth: 1, borderColor: '#1a2e46' },
+    expertHacksBody: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    expertHacksIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(252,165,165,0.1)', justifyContent: 'center', alignItems: 'center' },
+    expertHacksTitle: { color: '#fca5a5', fontSize: 11, fontWeight: '900', letterSpacing: 1 },
+    expertHacksSub: { color: '#8fa8c0', fontSize: 11, fontWeight: '600', marginTop: 2 },
+
+    strategyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 20, marginTop: 15, marginBottom: 15 },
+    strategyTitle: { color: '#fff', fontSize: 16, fontWeight: '900', letterSpacing: 1 },
+    strategySub: { color: '#4b6b8a', fontSize: 11, fontWeight: '700', marginTop: 2 },
+    aiLiveBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#7c3aed20', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1, borderColor: '#7c3aed44', gap: 6 },
+    pulse: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#7c3aed' },
+    aiLiveText: { color: '#a78bfa', fontSize: 9, fontWeight: '900' },
+
+    strategyGrid: { marginHorizontal: 16, gap: 12, marginBottom: 25 },
+    strategyCard: { backgroundColor: '#0a1a2f', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#1a2e46', borderLeftWidth: 4 },
+    strategyCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+    strategyCardTitle: { color: '#fff', fontSize: 14, fontWeight: '800' },
+    strategyCardText: { color: '#8fa8c0', fontSize: 13, lineHeight: 20, fontWeight: '600' },
+    executionMeta: { flexDirection: 'row', alignItems: 'baseline', marginTop: 12, gap: 8 },
+    executionLabel: { color: '#4b6b8a', fontSize: 9, fontWeight: '900' },
+    executionVal: { fontSize: 11, fontWeight: '900' },
+    mitigationBtn: { backgroundColor: '#dc2626', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 15, marginTop: 12, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8 },
+    mitigationBtnText: { color: '#fff', fontSize: 10, fontWeight: '900' },
+
+    envIconRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', alignSelf: 'stretch', marginBottom: 8 },
+
+    // Standards & Certification
+    standardsCard: { marginHorizontal: 16, backgroundColor: '#0a1a2f', borderRadius: 24, padding: 16, marginBottom: 15, borderWidth: 1, borderColor: '#1a2e46' },
+    standardsHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15 },
+    standardsTitle: { color: '#34d399', fontSize: 13, fontWeight: '900', letterSpacing: 1 },
+    parameterGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    paramBox: { flex: 1, minWidth: '45%', backgroundColor: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+    paramLabel: { color: '#4b6b8a', fontSize: 9, fontWeight: '800', marginBottom: 4 },
+    paramVal: { color: '#fff', fontSize: 13, fontWeight: '800' },
+
+    gradesContainer: { flexDirection: 'row', paddingHorizontal: 16, gap: 12, marginBottom: 25 },
+    gradeCard: { flex: 1, backgroundColor: '#0a1a2f', borderRadius: 16, borderWidth: 1, overflow: 'hidden', paddingBottom: 10 },
+    gradeBadge: { paddingVertical: 6, alignItems: 'center', marginBottom: 10 },
+    gradeBadgeText: { color: '#fff', fontSize: 8, fontWeight: '900', letterSpacing: 0.5 },
+    gradeRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10, marginBottom: 6 },
+    gradeText: { color: '#8fa8c0', fontSize: 9, fontWeight: '600' },
+    gradeReq: { color: '#fff', fontSize: 9, fontWeight: '800' },
 });

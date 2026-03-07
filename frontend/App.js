@@ -48,6 +48,8 @@ import MarketTrackingScreen from './src/screens/PostHarvest/MarketTrackingScreen
 import InventoryListScreen from './src/screens/PostHarvest/InventoryListScreen';
 import PostHarvestAdvisorScreen from './src/screens/PostHarvest/PostHarvestAdvisorScreen';
 import DealerDashboardScreen from './src/screens/PostHarvest/DealerDashboardScreen';
+import StorageStepGuideScreen from './src/screens/PostHarvest/StorageStepGuideScreen';
+import StorageExpertGuideScreen from './src/screens/PostHarvest/StorageExpertGuideScreen';
 
 // Pricing Placeholder
 function PricingForecastScreen() {
@@ -139,6 +141,8 @@ export default function App() {
             <Stack.Screen name="PostHarvestAdvisor" component={PostHarvestAdvisorScreen}
               options={{ headerShown: false }} />
             <Stack.Screen name="DealerDashboard" component={DealerDashboardScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="StorageStepGuide" component={StorageStepGuideScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="StorageExpertGuide" component={StorageExpertGuideScreen} options={{ headerShown: false }} />
 
             {/* weeds detection */}
             <Stack.Screen name="Stages" component={StageIdentificationScreen} options={{ title: 'Stage Identification' }} />

@@ -13,7 +13,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width } = Dimensions.get('window');
-const BASE_URL = 'http://192.168.100.200:5000'; // Match your computer's local IP
+const BASE_URL = 'http://192.168.100.198:5000'; // Match your computer's local IP
 
 export default function KnowledgeQuizScreen({ navigation }) {
     const [questions, setQuestions] = useState([]);
