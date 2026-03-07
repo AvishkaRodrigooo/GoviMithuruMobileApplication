@@ -23,6 +23,43 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+def is_rice_field_image(image_path):
+    """
+    Simple check to see if the image might be a rice field
+    This is a basic check - you can enhance this with a classifier
+    """
+    try:
+        img = cv2.imread(image_path)
+        if img is None:
+            return True  # Assume it's valid if can't read
+        
+        # Convert to HSV for better color analysis
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+        
+        # Define green color range for rice plants
+        lower_green = np.array([35, 40, 40])
+        upper_green = np.array([85, 255, 255])
+        
+        # Create mask for green regions
+        green_mask = cv2.inRange(hsv, lower_green, upper_green)
+        
+        # Calculate percentage of green pixels
+        green_pixels = cv2.countNonZero(green_mask)
+        total_pixels = img.shape[0] * img.shape[1]
+        green_percentage = (green_pixels / total_pixels) * 100
+        
+        print(f"🌱 Green percentage in image: {green_percentage:.2f}%")
+        
+        # FIX: Lower threshold to 1% to be more permissive
+        if green_percentage < 1:
+            print("⚠️ Image has very little green - might not be a rice field")
+            return False
+        
+        return True
+    except Exception as e:
+        print(f"⚠️ Error in is_rice_field_image: {e}")
+        return True  # Assume it's valid on error
+
 def map_yolo_class_to_pest_name(yolo_class_name, class_id=None, confidence=None):
     """
     Map YOLO detection class names to pest library keys
@@ -31,7 +68,7 @@ def map_yolo_class_to_pest_name(yolo_class_name, class_id=None, confidence=None)
     # First, check what the YOLO class name is
     print(f"🔍 Mapping YOLO class: '{yolo_class_name}' (ID: {class_id}, Confidence: {confidence})")
     
-    # HARD-CODED MAPPING for your specific 3 classes
+    # HARD-CODED MAPPING for your specific 3 classes and common pests
     hardcoded_mapping = {
         # String mappings
         '0': 'Brown Planthopper (BPH)',
@@ -55,7 +92,16 @@ def map_yolo_class_to_pest_name(yolo_class_name, class_id=None, confidence=None)
         'paddy_bug': 'Paddy Bug',
         'paddy-bug': 'Paddy Bug',
         'rice bug': 'Paddy Bug',
-        'rice_bug': 'Paddy Bug'
+        'rice_bug': 'Paddy Bug',
+        # Caterpillar mappings
+        'caterpillar': 'Caterpillar',
+        'armyworm': 'Armyworm',
+        'worm': 'Caterpillar',
+        'larva': 'Caterpillar',
+        'cutworm': 'Cutworm',
+        'bollworm': 'Bollworm',
+        'hornworm': 'Hornworm',
+        'looper': 'Looper Caterpillar'
     }
     
     # IMPORTANT: Your model is outputting actual class IDs (0, 1, 2)
@@ -95,6 +141,12 @@ def map_yolo_class_to_pest_name(yolo_class_name, class_id=None, confidence=None)
     elif any(word in yolo_lower for word in ['paddy', 'bug']) or 'rice bug' in yolo_lower:
         print(f"✅ Partial match (Paddy Bug): 'Paddy Bug'")
         return 'Paddy Bug'
+    elif any(word in yolo_lower for word in ['caterpillar', 'worm', 'armyworm', 'larva']):
+        print(f"✅ Partial match (Caterpillar): 'Caterpillar'")
+        return 'Caterpillar'
+    elif any(word in yolo_lower for word in ['cutworm']):
+        print(f"✅ Partial match (Cutworm): 'Cutworm'")
+        return 'Cutworm'
     
     # Try to find partial match in pest library keys
     try:
@@ -141,8 +193,9 @@ def run_detection(image_path, model, confidence_threshold=0.25):
         else:
             print("⚠️ Model doesn't have 'names' attribute")
         
-        # Run inference
-        results = model(image_path, conf=confidence_threshold)
+        # Run inference with a very low threshold to catch any detection
+        # This ensures we see everything, then filter later
+        results = model(image_path, conf=0.1)  # Lower threshold to catch more
         
         detections = []
         for result_idx, result in enumerate(results):
@@ -184,20 +237,28 @@ def run_detection(image_path, model, confidence_threshold=0.25):
         # Generate annotated image
         annotated_base64 = ""
         try:
-            if len(results) > 0 and len(detections) > 0:
-                # Plot detections on image
+            if len(results) > 0:
+                # If we have results, plot them (even if no detections, this will return original image)
                 annotated_img = results[0].plot()
                 # Convert to base64
                 _, buffer = cv2.imencode('.jpg', annotated_img)
                 annotated_base64 = base64.b64encode(buffer).decode('utf-8')
             else:
-                # If no results or no detections, return original image
+                # If no results at all, return original image
                 img = cv2.imread(image_path)
                 if img is not None:
                     _, buffer = cv2.imencode('.jpg', img)
                     annotated_base64 = base64.b64encode(buffer).decode('utf-8')
         except Exception as e:
             print(f"⚠️ Error generating annotated image: {e}")
+            # Fallback to original image
+            try:
+                img = cv2.imread(image_path)
+                if img is not None:
+                    _, buffer = cv2.imencode('.jpg', img)
+                    annotated_base64 = base64.b64encode(buffer).decode('utf-8')
+            except:
+                annotated_base64 = ""
         
         return detections, annotated_base64
         
@@ -217,6 +278,161 @@ def run_detection(image_path, model, confidence_threshold=0.25):
             annotated_base64 = ""
         
         return [], annotated_base64
+
+def get_bph_management():
+    """Return BPH management data directly"""
+    return {
+        'name': 'Brown Planthopper (BPH)',
+        'description': 'Small brown insects that cluster at the base of rice plants, causing hopperburn and wilting.',
+        'symptoms': [
+            'Yellowing of leaves',
+            'Stunted growth',
+            'Wilting',
+            'Hopperburn patches'
+        ],
+        'management': [
+            'Use resistant varieties',
+            'Maintain proper spacing',
+            'Avoid excessive nitrogen fertilizer',
+            'Use recommended pesticides like buprofezin or pymetrozine',
+            'Practice alternate wetting and drying',
+            'Conserve natural enemies like spiders and ladybirds'
+        ]
+    }
+
+def get_leaf_folder_management():
+    """Return Rice Leaf-folder management data"""
+    return {
+        'name': 'Rice Leaf-folder',
+        'description': 'Caterpillars that fold rice leaves and feed on green tissues, reducing photosynthesis.',
+        'symptoms': [
+            'Leaves folded longitudinally',
+            'White streaks on leaves',
+            'Reduced photosynthesis',
+            'Scraped leaf surface'
+        ],
+        'management': [
+            'Use light traps to monitor adult moths',
+            'Conserve natural enemies like parasitoids',
+            'Avoid excessive nitrogen fertilizer',
+            'Use recommended insecticides if damage exceeds threshold',
+            'Practice field sanitation'
+        ]
+    }
+
+def get_paddy_bug_management():
+    """Return Paddy Bug management data"""
+    return {
+        'name': 'Paddy Bug',
+        'description': 'Insects that feed on developing grains causing unfilled or discolored grains.',
+        'symptoms': [
+            'Unfilled grains',
+            'Discolored grains',
+            'Spotted grains',
+            'Chaffy grains'
+        ],
+        'management': [
+            'Early planting to avoid peak populations',
+            'Use resistant varieties',
+            'Apply insecticides at heading stage if needed',
+            'Practice synchronous planting',
+            'Maintain field hygiene'
+        ]
+    }
+
+def get_caterpillar_management():
+    """Return generic caterpillar management data"""
+    return {
+        'name': 'Caterpillar',
+        'description': 'Caterpillars are the larval stage of moths and butterflies that feed on plant leaves, causing damage to crops.',
+        'symptoms': [
+            'Chewed leaves',
+            'Holes in leaves',
+            'Presence of caterpillars on plants',
+            'Leaf skeletonization',
+            'Droppings (frass) on leaves'
+        ],
+        'management': [
+            'Handpick and destroy caterpillars',
+            'Use light traps to monitor adult moths',
+            'Apply neem-based pesticides',
+            'Use recommended insecticides if infestation is severe',
+            'Practice crop rotation',
+            'Conserve natural enemies like birds and parasitic wasps',
+            'Use biological controls like Bacillus thuringiensis (Bt)'
+        ]
+    }
+
+def get_armyworm_management():
+    """Return Armyworm management data"""
+    return {
+        'name': 'Armyworm',
+        'description': 'Armyworms are caterpillars that move in large groups and can quickly defoliate plants.',
+        'symptoms': [
+            'Ragged feeding damage on leaves',
+            'Rapid defoliation',
+            'Caterpillars moving in groups',
+            'Presence of droppings'
+        ],
+        'management': [
+            'Monitor fields regularly for early detection',
+            'Use pheromone traps',
+            'Apply recommended insecticides when larvae are small',
+            'Conserve natural enemies',
+            'Practice deep plowing to expose pupae',
+            'Use biological controls'
+        ]
+    }
+
+def get_cutworm_management():
+    """Return Cutworm management data"""
+    return {
+        'name': 'Cutworm',
+        'description': 'Cutworms are caterpillars that cut young plants at the base, causing them to wilt and die.',
+        'symptoms': [
+            'Seedlings cut off at ground level',
+            'Wilting plants',
+            'Caterpillars curled up in soil during day',
+            'Missing plants in rows'
+        ],
+        'management': [
+            'Use collars around young plants',
+            'Handpick caterpillars at night',
+            'Keep field free of weeds',
+            'Apply insecticides around plant base',
+            'Practice tillage to expose larvae'
+        ]
+    }
+
+def get_pest_management_data(pest_name):
+    """Get pest management data based on pest name"""
+    pest_lower = pest_name.lower()
+    
+    if any(word in pest_lower for word in ['brown', 'planthopper', 'bph']):
+        return get_bph_management()
+    elif any(word in pest_lower for word in ['leaf', 'folder']) and any(word in pest_lower for word in ['rice', 'paddy']):
+        return get_leaf_folder_management()
+    elif any(word in pest_lower for word in ['paddy', 'bug']) or 'rice bug' in pest_lower:
+        return get_paddy_bug_management()
+    elif 'armyworm' in pest_lower:
+        return get_armyworm_management()
+    elif 'cutworm' in pest_lower:
+        return get_cutworm_management()
+    elif any(word in pest_lower for word in ['caterpillar', 'worm', 'larva']):
+        return get_caterpillar_management()
+    else:
+        # Generic pest info
+        return {
+            'name': pest_name,
+            'description': f'This appears to be {pest_name}. Please consult local agricultural expert for proper identification and management.',
+            'symptoms': ['Visible pest on plant', 'Potential feeding damage'],
+            'management': [
+                'Consult local agricultural expert for proper identification',
+                'Monitor crop regularly',
+                'Practice integrated pest management',
+                'Use recommended control measures based on local advice'
+            ]
+        }
 
 @pest_detection_bp.route('/detect', methods=['POST'])
 def detect_pest():
@@ -239,7 +455,7 @@ def detect_pest():
         
         # Get parameters from request
         confidence_threshold = 0.25
-        language = 'en'  # Default language
+        language = 'en'
         
         if request.is_json:
             confidence_threshold = float(request.json.get('confidence', 0.25))
@@ -259,8 +475,6 @@ def detect_pest():
                 temp_path = os.path.join(UPLOAD_FOLDER, filename)
                 file.save(temp_path)
                 print(f"✅ Image saved temporarily: {temp_path}")
-                print(f"   Original filename: {file.filename}")
-                print(f"   File size: {os.path.getsize(temp_path)} bytes")
             else:
                 return jsonify({'success': False, 'error': 'Invalid file type'}), 400
                 
@@ -269,14 +483,12 @@ def detect_pest():
             if ',' in image_data:
                 image_data = image_data.split(',')[1]
             
-            # Decode and save temporarily
             image_bytes = base64.b64decode(image_data)
             image = Image.open(io.BytesIO(image_bytes))
             
             temp_path = os.path.join(UPLOAD_FOLDER, f"temp_{uuid.uuid4()}.jpg")
             image.save(temp_path)
             print(f"✅ Base64 image saved temporarily: {temp_path}")
-            print(f"   Image size: {image.size}, mode: {image.mode}")
             
         else:
             return jsonify({'success': False, 'error': 'No image provided'}), 400
@@ -284,6 +496,26 @@ def detect_pest():
         # Verify image was saved
         if not os.path.exists(temp_path):
             return jsonify({'success': False, 'error': 'Failed to save image'}), 500
+        
+        # OPTIONAL: Rice field check - completely disabled to avoid filtering
+        # is_rice_field = is_rice_field_image(temp_path)
+        # if not is_rice_field:
+        #     print("⚠️ Image doesn't appear to be a rice field")
+        #     # Clean up temp file
+        #     if temp_path and os.path.exists(temp_path):
+        #         os.remove(temp_path)
+        #     
+        #     return jsonify({
+        #         'success': True,
+        #         'no_detections': True,
+        #         'message': 'Please upload a rice field image',
+        #         'data': {
+        #             'detections': [],
+        #             'count': 0,
+        #             'annotated_image': None,
+        #             'prevention_tips': []
+        #         }
+        #     })
         
         # Run detection
         print(f"🔍 Running detection on {temp_path}...")
@@ -295,9 +527,14 @@ def detect_pest():
             os.remove(temp_path)
             print(f"✅ Temporary file cleaned up: {temp_path}")
         
-        # If no detections, return a specific response
-        if len(detections) == 0:
-            print("📭 No pests detected in the image")
+        # Log detection confidences for debugging
+        if len(detections) > 0:
+            confidences = [d['confidence'] for d in detections]
+            print(f"📊 Detection confidences: {confidences}")
+            for i, d in enumerate(detections):
+                print(f"   Detection {i}: {d['class']} (conf: {d['confidence']:.3f})")
+        else:
+            print("📭 No detections found at all")
             return jsonify({
                 'success': True,
                 'no_detections': True,
@@ -305,68 +542,68 @@ def detect_pest():
                 'data': {
                     'detections': [],
                     'count': 0,
-                    'annotated_image': f"data:image/jpeg;base64,{annotated_base64}" if annotated_base64 else None
+                    'annotated_image': f"data:image/jpeg;base64,{annotated_base64}" if annotated_base64 else None,
+                    'prevention_tips': [
+                        "Practice good field hygiene",
+                        "Monitor crops regularly",
+                        "Use resistant varieties"
+                    ]
                 }
             })
         
-        # Get detailed pest information from library
-        enhanced_detections = []
-        for detection in detections:
-            pest_name = detection['class']
-            print(f"📚 Looking up pest info for: '{pest_name}'")
-            
-            # Try to get pest info from library
-            pest_info = None
-            try:
-                pest_info = pest_library.get_pest_info(pest_name, language)
-            except Exception as e:
-                print(f"⚠️ Error getting pest info: {e}")
-            
-            if pest_info:
-                print(f"✅ Found info in library for: {pest_name}")
-                enhanced_detection = {
-                    **detection,
-                    'pest_details': pest_info
+        # FIX: Very low confidence threshold to catch all detections
+        min_confidence = 0.15  # Very low threshold to catch everything
+        
+        filtered_detections = [d for d in detections if d['confidence'] >= min_confidence]
+        
+        print(f"📊 After confidence filtering (>{min_confidence}): {len(filtered_detections)} detections (from {len(detections)})")
+        
+        # If no detections after filtering, return no_detections
+        if len(filtered_detections) == 0:
+            print("📭 No pests detected after confidence filtering")
+            return jsonify({
+                'success': True,
+                'no_detections': True,
+                'message': 'No pests detected in the image',
+                'data': {
+                    'detections': [],
+                    'count': 0,
+                    'annotated_image': f"data:image/jpeg;base64,{annotated_base64}" if annotated_base64 else None,
+                    'prevention_tips': [
+                        "Practice good field hygiene",
+                        "Monitor crops regularly",
+                        "Use resistant varieties"
+                    ]
                 }
-            else:
-                print(f"⚠️ No library info for: {pest_name}")
-                # Try to find by alternative name
-                alternative_name = None
-                pest_lower = pest_name.lower()
-                
-                if any(word in pest_lower for word in ['brown', 'planthopper', 'bph']):
-                    alternative_name = 'Brown Planthopper (BPH)'
-                elif any(word in pest_lower for word in ['leaf', 'folder']) and any(word in pest_lower for word in ['rice', 'paddy']):
-                    alternative_name = 'Rice Leaf-folder'
-                elif any(word in pest_lower for word in ['paddy', 'bug']) or 'rice bug' in pest_lower:
-                    alternative_name = 'Paddy Bug'
-                
-                if alternative_name:
-                    try:
-                        pest_info = pest_library.get_pest_info(alternative_name, language)
-                        if pest_info:
-                            print(f"✅ Found info using alternative name: {alternative_name}")
-                            enhanced_detection = {
-                                **detection,
-                                'class': alternative_name,
-                                'pest_details': pest_info
-                            }
-                        else:
-                            enhanced_detection = create_default_pest_info(detection, language)
-                    except:
-                        enhanced_detection = create_default_pest_info(detection, language)
-                else:
-                    enhanced_detection = create_default_pest_info(detection, language)
+            })
+        
+        # If we have detections, process them
+        print(f"📊 Processing {len(filtered_detections)} detections...")
+        
+        # Get detailed pest information
+        enhanced_detections = []
+        for detection in filtered_detections:
+            pest_name = detection['class']
+            confidence = detection['confidence']
+            print(f"📚 Getting pest info for: '{pest_name}' (conf: {confidence:.3f})")
             
+            pest_info = get_pest_management_data(pest_name)
+            
+            enhanced_detection = {
+                **detection,
+                'pest_details': pest_info
+            }
             enhanced_detections.append(enhanced_detection)
         
         # Get general prevention tips
-        prevention_tips = []
-        try:
-            prevention_tips = pest_library.get_prevention_tips()
-        except Exception as e:
-            print(f"⚠️ Error getting prevention tips: {e}")
-            prevention_tips = ["Practice good field hygiene", "Monitor crops regularly", "Use resistant varieties"]
+        prevention_tips = [
+            "Practice good field hygiene",
+            "Monitor crops regularly",
+            "Use resistant varieties",
+            "Maintain proper spacing",
+            "Avoid excessive nitrogen fertilizer",
+            "Conserve natural enemies"
+        ]
         
         print(f"✅ Returning {len(enhanced_detections)} enhanced detections")
         
@@ -383,7 +620,6 @@ def detect_pest():
         })
         
     except Exception as e:
-        # Clean up temp file in case of error
         if temp_path and os.path.exists(temp_path):
             try:
                 os.remove(temp_path)
@@ -438,6 +674,16 @@ def create_default_pest_info(detection, language):
                 'description': 'Paddy bugs feed on developing grains causing unfilled or discolored grains.' if language == 'en' else 'වී කුරුමිණියන් වැඩෙන ධාන්ය ආහාරයට ගෙන හිස් හෝ වර්ණවෙනස් වූ ධාන්ය ඇති කරයි.',
                 'symptoms': ['Unfilled grains', 'Discolored grains', 'Spotted grains'] if language == 'en' else ['හිස් ධාන්ය', 'වර්ණවෙනස් වූ ධාන්ය', 'පුල්ලි සහිත ධාන්ය'],
                 'management': ['Early planting', 'Use resistant varieties', 'Apply insecticides at heading stage'] if language == 'en' else ['ඉක්මන් වපුරනය', 'ප්‍රතිරෝධී ප්‍රභේද භාවිතය', 'මල් පිපෙන අවදියේ කෘමිනාශක යෙදීම']
+            }
+        }
+    elif any(word in pest_lower for word in ['caterpillar', 'worm', 'larva']):
+        return {
+            **detection,
+            'pest_details': {
+                'name': 'Caterpillar',
+                'description': 'This appears to be a caterpillar, which is the larval stage of a moth or butterfly.' if language == 'en' else 'මෙය දළඹුවෙකු ලෙස පෙනේ, එය සලබයෙකු හෝ සමනලයෙකුගේ කීට අවස්ථාවයි.',
+                'symptoms': ['Chewed leaves', 'Visible caterpillars on plants'] if language == 'en' else ['හපන ලද කොළ', 'පැලෑටි මත දළඹුවන් පෙනීම'],
+                'management': ['Handpick caterpillars', 'Use neem-based pesticides', 'Consult local expert'] if language == 'en' else ['දළඹුවන් අතින් එකතු කරන්න', 'නිම් බාහිත පළිබෝධනාශක භාවිතා කරන්න', 'පළාත් කෘෂිකර්ම නිලධාරි හමුවන්න']
             }
         }
     else:

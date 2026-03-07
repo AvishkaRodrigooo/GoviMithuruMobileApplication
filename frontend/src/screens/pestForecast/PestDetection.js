@@ -15,6 +15,89 @@ import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
+// Language translations
+const translations = {
+  english: {
+    pestDetection: "Paddy Pest Detection",
+    takePhoto: "Take Photo",
+    chooseImage: "Choose Image",
+    analyzing: "Analyzing Image...",
+    detectionResults: "Detection Results",
+    pestInfo: "Pest Info",
+    fertilizerPlan: "Fertilizer Plan",
+    description: "📝 Description",
+    symptoms: "⚠️ Symptoms",
+    management: "🔧 Management",
+    confidence: "Confidence",
+    noPestDetected: "✅ No Pest Detected",
+    healthyCrop: "Your crop looks healthy!",
+    newDetection: "New Detection",
+    generalFertilizerSchedule: "🌾 General Fertilizer Schedule",
+    bestPractices: "💡 Best Practices",
+    recommendedFertilizers: "✅ Recommended Fertilizers:",
+    avoid: "❌ Avoid:",
+    tips: "💡 Tips:",
+    fertilizerPlanFor: "🌱 Fertilizer Plan for"
+  },
+  sinhala: {
+    pestDetection: "වී පළිබෝධ හඳුනාගැනීම",
+    takePhoto: "ඡායාරූපයක් ගන්න",
+    chooseImage: "පින්තූරයක් තෝරන්න",
+    analyzing: "පින්තූරය විශ්ලේෂණය කරමින්...",
+    detectionResults: "හඳුනාගැනීමේ ප්‍රතිඵල",
+    pestInfo: "පළිබෝධ තොරතුරු",
+    fertilizerPlan: "පොහොර යෝජනා ක්‍රමය",
+    description: "📝 විස්තරය",
+    symptoms: "⚠️ රෝග ලක්ෂණ",
+    management: "🔧 කළමනාකරණය",
+    confidence: "විශ්වාසය",
+    noPestDetected: "✅ පළිබෝධ හමු නොවුණි",
+    healthyCrop: "ඔබේ බෝගය නිරෝගීව පවතී!",
+    newDetection: "නව හඳුනාගැනීමක්",
+    generalFertilizerSchedule: "🌾 සාමාන්‍ය පොහොර යෙදීම් කාලසටහන",
+    bestPractices: "💡 හොඳම පිළිවෙත්",
+    recommendedFertilizers: "✅ නිර්දේශිත පොහොර:",
+    avoid: "❌ වළක්වා ගත යුතු දේ:",
+    tips: "💡 උපදෙස්:",
+    fertilizerPlanFor: "🌱 සඳහා පොහොර යෝජනා ක්‍රමය"
+  }
+};
+
+// Pest names in Sinhala
+const pestNamesSinhala = {
+  'brown planthopper': 'දුඹුරු පැළ මකුණා',
+  'brown': 'දුඹුරු පැළ මකුණා',
+  'planthopper': 'පැළ මකුණා',
+  'bph': 'දුඹුරු පැළ මකුණා',
+  'rice leaf-folder': 'වී කොළ එතුම් පණුවා',
+  'leaf folder': 'කොළ එතුම් පණුවා',
+  'paddy bug': 'වී කූඩැල්ලා',
+  'bug': 'කූඩැල්ලා',
+  'stem borer': 'උඩ දඬු සිදුරු පණුවා',
+  'gall midge': 'කොළ මදුරුවා',
+  'rice hispa': 'වී කොළ කුරුමිණියා',
+  'armyworm': 'සේනා පණුවා'
+};
+
+// Fertilizer names in Sinhala
+const fertilizerNamesSinhala = {
+  'Potassium': 'පොටෑසියම්',
+  'Muriate of Potash': 'මියුරේට් ඔෆ් පොටෑෂ්',
+  'Silicon': 'සිලිකන්',
+  'Calcium Silicate': 'කැල්සියම් සිලිකේට්',
+  'Zinc': 'සින්ක්',
+  'Zinc Sulfate': 'සින්ක් සල්ෆේට්',
+  'Nitrogen': 'නයිට්‍රජන්',
+  'Urea': 'යූරියා',
+  'Phosphorus': 'පොස්පරස්',
+  'DAP': 'ඩීඒපී',
+  'TSP': 'ටීඑස්පී',
+  'Boron': 'බෝරෝන්',
+  'Borax': 'බෝරැක්ස්',
+  'NPK': 'එන්පීකේ',
+  'Potash': 'පොටෑෂ්'
+};
+
 export default function PestDetection() {
   const [permission, requestPermission] = useCameraPermissions();
   const [cameraVisible, setCameraVisible] = useState(false);
@@ -23,7 +106,8 @@ export default function PestDetection() {
   const [results, setResults] = useState(null);
   const [showResults, setShowResults] = useState(false);
   const [annotatedImage, setAnnotatedImage] = useState(null);
-  const [fertilizerTab, setFertilizerTab] = useState('pest'); // 'pest' or 'fertilizer'
+  const [fertilizerTab, setFertilizerTab] = useState('pest');
+  const [language, setLanguage] = useState('english'); // 'english' or 'sinhala'
 
   const cameraRef = useRef(null);
 
@@ -34,7 +118,7 @@ export default function PestDetection() {
 
   const openCamera = () => {
     if (!permission?.granted) {
-      Alert.alert("Camera permission required");
+      Alert.alert("Camera permission required", "Please enable camera access");
       return;
     }
     setCameraVisible(true);
@@ -65,7 +149,7 @@ export default function PestDetection() {
   const detectPest = async (img) => {
     try {
       setLoading(true);
-      setFertilizerTab('pest'); // Reset to pest tab on new detection
+      setFertilizerTab('pest');
 
       const formData = new FormData();
       formData.append("image", {
@@ -120,173 +204,259 @@ export default function PestDetection() {
     setFertilizerTab('pest');
   };
 
-  // Get fertilizer recommendations based on detected pest
+  const toggleLanguage = () => {
+    setLanguage(prev => prev === 'english' ? 'sinhala' : 'english');
+  };
+
+  const getText = (key) => {
+    return translations[language][key] || translations.english[key];
+  };
+
+  const getPestNameInCurrentLanguage = (pestName) => {
+    if (language === 'english') return pestName;
+    
+    const pestLower = pestName.toLowerCase();
+    for (const [key, value] of Object.entries(pestNamesSinhala)) {
+      if (pestLower.includes(key)) {
+        return value;
+      }
+    }
+    return pestName; // Return original if no translation found
+  };
+
+  const translateFertilizerName = (name) => {
+    if (language === 'english') return name;
+    
+    let translated = name;
+    for (const [key, value] of Object.entries(fertilizerNamesSinhala)) {
+      translated = translated.replace(new RegExp(key, 'gi'), value);
+    }
+    return translated;
+  };
+
   const getFertilizerRecommendations = (pestName) => {
     const pestLower = pestName.toLowerCase();
     
-    // Brown Planthopper (BPH) recommendations
     if (pestLower.includes('brown') || pestLower.includes('planthopper') || pestLower.includes('bph')) {
       return {
         fertilizers: [
           {
             name: 'Potassium (K) - Muriate of Potash',
-            reason: 'Strengthens plant cell walls and reduces BPH attraction',
-            application: 'Apply 60-80 kg/ha at tillering and panicle initiation'
+            reason: language === 'english' 
+              ? 'Strengthens plant cell walls and reduces BPH attraction'
+              : 'ශාක සෛල බිත්ති ශක්තිමත් කරන අතර දුඹුරු පැළ මකුණන් ආකර්ෂණය අඩු කරයි',
+            application: language === 'english'
+              ? 'Apply 60-80 kg/ha at tillering and panicle initiation'
+              : 'ගොයම් පැල සහ මල් කරල් ඇරඹීමේදී හෙක්ටයාරයට කිලෝ 60-80ක් යොදන්න'
           },
           {
             name: 'Silicon - Calcium Silicate',
-            reason: 'Creates physical barrier against BPH feeding',
-            application: 'Apply 500 kg/ha as basal dressing'
+            reason: language === 'english'
+              ? 'Creates physical barrier against BPH feeding'
+              : 'දුඹුරු පැළ මකුණන්ගේ ආහාර ගැනීමට එරෙහිව භෞතික බාධකයක් නිර්මාණය කරයි',
+            application: language === 'english'
+              ? 'Apply 500 kg/ha as basal dressing'
+              : 'මුල් පොහොර ලෙස හෙක්ටයාරයට කිලෝ 500ක් යොදන්න'
           },
           {
             name: 'Zinc - Zinc Sulfate',
-            reason: 'Improves plant vigor and resistance',
-            application: 'Apply 25 kg/ha at planting'
+            reason: language === 'english'
+              ? 'Improves plant vigor and resistance'
+              : 'ශාක ශක්තිය සහ ප්‍රතිරෝධය වැඩි දියුණු කරයි',
+            application: language === 'english'
+              ? 'Apply 25 kg/ha at planting'
+              : 'සිටුවීමේදී හෙක්ටයාරයට කිලෝ 25ක් යොදන්න'
           }
         ],
-        avoid: [
-          'Excessive Nitrogen - Reduces plant resistance',
-          'Urea - Can increase BPH population',
-          'Ammonium-based fertilizers'
-        ],
-        tips: [
-          'Split nitrogen application into 3-4 doses',
-          'Avoid nitrogen during peak BPH infestation',
-          'Maintain 2-3 cm water level during fertilizer application'
-        ]
+        avoid: language === 'english'
+          ? [
+              'Excessive Nitrogen - Reduces plant resistance',
+              'Urea - Can increase BPH population',
+              'Ammonium-based fertilizers'
+            ]
+          : [
+              'අධික නයිට්‍රජන් - ශාක ප්‍රතිරෝධය අඩු කරයි',
+              'යූරියා - දුඹුරු පැළ මකුණන්ගේ ව්‍යාප්තිය වැඩි කළ හැක',
+              'ඇමෝනියම් පාදක පොහොර'
+            ],
+        tips: language === 'english'
+          ? [
+              'Split nitrogen application into 3-4 doses',
+              'Avoid nitrogen during peak BPH infestation',
+              'Maintain 2-3 cm water level during fertilizer application'
+            ]
+          : [
+              'නයිට්‍රජන් කොටස් 3-4කට බෙදා යොදන්න',
+              'දුඹුරු පැළ මකුණන් ව්‍යාප්තිය උච්චතම අවස්ථාවේදී නයිට්‍රජන් යෙදීමෙන් වළකින්න',
+              'පොහොර යෙදීමේදී සෙ.මී. 2-3ක් ජල මට්ටමක් පවත්වා ගන්න'
+          ]
       };
     }
     
-    // Rice Leaf-folder recommendations
     else if (pestLower.includes('leaf') && pestLower.includes('folder')) {
       return {
         fertilizers: [
           {
             name: 'Nitrogen (N) - Urea (controlled)',
-            reason: 'Promotes healthy leaf growth but apply carefully',
-            application: 'Apply 40-50 kg/ha in split doses'
+            reason: language === 'english'
+              ? 'Promotes healthy leaf growth but apply carefully'
+              : 'නිරෝගී කොළ වර්ධනය ප්‍රවර්ධනය කරයි, නමුත් ප්‍රවේශමෙන් යොදන්න',
+            application: language === 'english'
+              ? 'Apply 40-50 kg/ha in split doses'
+              : 'කොටස් වශයෙන් හෙක්ටයාරයට කිලෝ 40-50ක් යොදන්න'
           },
           {
             name: 'Potassium (K) - Potash',
-            reason: 'Enhances leaf toughness and reduces feeding',
-            application: 'Apply 40-60 kg/ha at tillering'
+            reason: language === 'english'
+              ? 'Enhances leaf toughness and reduces feeding'
+              : 'කොළ දෘඪතාව වැඩි කරන අතර ආහාර ගැනීම අඩු කරයි',
+            application: language === 'english'
+              ? 'Apply 40-60 kg/ha at tillering'
+              : 'ගොයම් පැල ඇරඹීමේදී හෙක්ටයාරයට කිලෝ 40-60ක් යොදන්න'
           },
           {
             name: 'Phosphorus (P) - DAP/TSP',
-            reason: 'Strengthens root system',
-            application: 'Apply 30-40 kg/ha as basal'
+            reason: language === 'english'
+              ? 'Strengthens root system'
+              : 'මූල පද්ධතිය ශක්තිමත් කරයි',
+            application: language === 'english'
+              ? 'Apply 30-40 kg/ha as basal'
+              : 'මුල් පොහොර ලෙස හෙක්ටයාරයට කිලෝ 30-40ක් යොදන්න'
           }
         ],
-        avoid: [
-          'Excessive Nitrogen - Makes leaves soft and attractive',
-          'Late Nitrogen application - Promotes new growth during infestation',
-          'Foliar sprays during active feeding'
-        ],
-        tips: [
-          'Use slow-release nitrogen fertilizers',
-          'Apply fertilizers when fields are drained',
-          'Combine fertilizer with light traps for better control'
-        ]
+        avoid: language === 'english'
+          ? [
+              'Excessive Nitrogen - Makes leaves soft and attractive',
+              'Late Nitrogen application - Promotes new growth during infestation',
+              'Foliar sprays during active feeding'
+            ]
+          : [
+              'අධික නයිට්‍රජන් - කොළ මෘදු හා ආකර්ෂණීය කරයි',
+              'ප්‍රමාද නයිට්‍රජන් යෙදීම - ව්‍යාප්තිය අතරතුර නව වර්ධනය ප්‍රවර්ධනය කරයි',
+              'සක්‍රීය ආහාර ගැනීමේදී කොළ ඉසින'
+          ],
+        tips: language === 'english'
+          ? [
+              'Use slow-release nitrogen fertilizers',
+              'Apply fertilizers when fields are drained',
+              'Combine fertilizer with light traps for better control'
+            ]
+          : [
+              'මන්දගාමී මුදාහැරීමේ නයිට්‍රජන් පොහොර භාවිතා කරන්න',
+              'කෙත් ජලය බැස ගිය විට පොහොර යොදන්න',
+              'වඩා හොඳ පාලනය සඳහා පොහොර ආලෝක උගුල් සමඟ ඒකාබද්ධ කරන්න'
+          ]
       };
     }
     
-    // Paddy Bug recommendations
-    else if (pestLower.includes('paddy') || pestLower.includes('bug')) {
-      return {
-        fertilizers: [
-          {
-            name: 'Phosphorus (P) - Triple Super Phosphate',
-            reason: 'Promotes grain filling and development',
-            application: 'Apply 40-50 kg/ha at planting'
-          },
-          {
-            name: 'Potassium (K) - Muriate of Potash',
-            reason: 'Improves grain quality and reduces damage',
-            application: 'Apply 50-60 kg/ha at panicle initiation'
-          },
-          {
-            name: 'Boron - Borax',
-            reason: 'Prevents grain sterility',
-            application: 'Apply 5-10 kg/ha at booting stage'
-          }
-        ],
-        avoid: [
-          'Excessive Nitrogen - Increases grain susceptibility',
-          'Late season Nitrogen - Prolongs grain filling period',
-          'Fertilizers during flowering stage'
-        ],
-        tips: [
-          'Time fertilizer application before flowering',
-          'Use balanced NPK ratio (4:2:4)',
-          'Avoid water stress during grain filling'
-        ]
-      };
-    }
-    
-    // Default recommendations for unknown pests
+    // Default recommendations
     return {
       fertilizers: [
         {
           name: 'Balanced NPK - 15:15:15',
-          reason: 'General purpose fertilizer for rice',
-          application: 'Apply 100-120 kg/ha as basal'
+          reason: language === 'english'
+            ? 'General purpose fertilizer for rice'
+            : 'වී සඳහා සාමාන්‍ය අරමුණු පොහොර',
+          application: language === 'english'
+            ? 'Apply 100-120 kg/ha as basal'
+            : 'මුල් පොහොර ලෙස හෙක්ටයාරයට කිලෝ 100-120ක් යොදන්න'
         },
         {
           name: 'Urea (Nitrogen)',
-          reason: 'Promotes vegetative growth',
-          application: 'Split apply 40-50 kg/ha at 15, 30, 45 DAT'
+          reason: language === 'english'
+            ? 'Promotes vegetative growth'
+            : 'වර්ධන වර්ධනය ප්‍රවර්ධනය කරයි',
+          application: language === 'english'
+            ? 'Split apply 40-50 kg/ha at 15, 30, 45 DAT'
+            : 'දින 15, 30, 45 දී හෙක්ටයාරයට කිලෝ 40-50 බැගින් කොටස් වශයෙන් යොදන්න'
         },
         {
           name: 'Potash (K)',
-          reason: 'Improves overall plant health',
-          application: 'Apply 40 kg/ha at tillering and panicle initiation'
+          reason: language === 'english'
+            ? 'Improves overall plant health'
+            : 'සමස්ත ශාක සෞඛ්‍යය වැඩි දියුණු කරයි',
+          application: language === 'english'
+            ? 'Apply 40 kg/ha at tillering and panicle initiation'
+            : 'ගොයම් පැල සහ මල් කරල් ඇරඹීමේදී හෙක්ටයාරයට කිලෝ 40ක් යොදන්න'
         }
       ],
-      avoid: [
-        'Excessive fertilizer application',
-        'Fertilizers during drought or flood',
-        'Single large dose of nitrogen'
-      ],
-      tips: [
-        'Conduct soil test before fertilizer application',
-        'Apply fertilizers in split doses',
-        'Maintain proper water level during application'
-      ]
+      avoid: language === 'english'
+        ? [
+            'Excessive fertilizer application',
+            'Fertilizers during drought or flood',
+            'Single large dose of nitrogen'
+          ]
+        : [
+            'අධික පොහොර යෙදීම',
+            'නියඟය හෝ ගංවතුර අතරතුර පොහොර යෙදීම',
+            'තනි විශාල නයිට්‍රජන් ප්‍රමාණයක්'
+          ],
+      tips: language === 'english'
+        ? [
+            'Conduct soil test before fertilizer application',
+            'Apply fertilizers in split doses',
+            'Maintain proper water level during application'
+          ]
+        : [
+            'පොහොර යෙදීමට පෙර පාංශු පරීක්ෂණයක් කරන්න',
+            'කොටස් වශයෙන් පොහොර යොදන්න',
+            'යෙදීමේදී නිසි ජල මට්ටමක් පවත්වා ගන්න'
+          ]
     };
   };
 
-  // Get general fertilizer tips for no detection
   const getGeneralFertilizerTips = () => {
     return {
       fertilizers: [
         {
-          name: 'Basal Fertilizer - DAP + MOP + Urea',
-          reason: 'Foundation for healthy crop growth',
-          application: 'DAP 50 kg/ha + MOP 40 kg/ha + Urea 30 kg/ha at planting'
+          name: language === 'english' 
+            ? 'Basal Fertilizer - DAP + MOP + Urea'
+            : 'මුල් පොහොර - ඩීඒපී + එම්ඕපී + යූරියා',
+          reason: language === 'english'
+            ? 'Foundation for healthy crop growth'
+            : 'නිරෝගී බෝග වර්ධනය සඳහා පදනම',
+          application: language === 'english'
+            ? 'DAP 50 kg/ha + MOP 40 kg/ha + Urea 30 kg/ha at planting'
+            : 'සිටුවීමේදී ඩීඒපී 50 + එම්ඕපී 40 + යූරියා 30 කි.ග්‍රෑ/හෙක්'
         },
         {
-          name: 'Top Dressing 1 - Urea',
-          reason: 'Promotes tillering',
-          application: 'Urea 50 kg/ha at 15-20 days after transplanting'
+          name: language === 'english'
+            ? 'Top Dressing 1 - Urea'
+            : 'ඉහළ පොහොර 1 - යූරියා',
+          reason: language === 'english'
+            ? 'Promotes tillering'
+            : 'ගොයම් පැල ඇරඹීම ප්‍රවර්ධනය කරයි',
+          application: language === 'english'
+            ? 'Urea 50 kg/ha at 15-20 days after transplanting'
+            : 'සිටුවීමෙන් දින 15-20කට පසු යූරියා 50 කි.ග්‍රෑ/හෙක්'
         },
         {
-          name: 'Top Dressing 2 - Urea + MOP',
-          reason: 'Supports panicle initiation',
-          application: 'Urea 40 kg/ha + MOP 30 kg/ha at 40-45 DAT'
-        },
-        {
-          name: 'Panicle Fertilizer - Urea',
-          reason: 'Enhances grain filling',
-          application: 'Urea 30 kg/ha at booting stage'
+          name: language === 'english'
+            ? 'Top Dressing 2 - Urea + MOP'
+            : 'ඉහළ පොහොර 2 - යූරියා + එම්ඕපී',
+          reason: language === 'english'
+            ? 'Supports panicle initiation'
+            : 'මල් කරල් ඇරඹීමට සහාය වේ',
+          application: language === 'english'
+            ? 'Urea 40 kg/ha + MOP 30 kg/ha at 40-45 DAT'
+            : 'දින 40-45 දී යූරියා 40 + එම්ඕපී 30 කි.ග්‍රෑ/හෙක්'
         }
       ],
-      tips: [
-        'Conduct soil test for accurate recommendations',
-        'Maintain 2-3 cm water level during fertilizer application',
-        'Split nitrogen into 3-4 applications',
-        'Avoid fertilizer during extreme weather',
-        'Incorporate organic manure 2 weeks before planting'
-      ]
+      tips: language === 'english'
+        ? [
+            'Conduct soil test for accurate recommendations',
+            'Maintain 2-3 cm water level during fertilizer application',
+            'Split nitrogen into 3-4 applications',
+            'Avoid fertilizer during extreme weather',
+            'Incorporate organic manure 2 weeks before planting'
+          ]
+        : [
+            'නිවැරදි නිර්දේශ සඳහා පාංශු පරීක්ෂණයක් කරන්න',
+            'පොහොර යෙදීමේදී සෙ.මී. 2-3ක් ජල මට්ටමක් පවත්වා ගන්න',
+            'නයිට්‍රජන් යෙදීම් 3-4කට බෙදන්න',
+            'අයහපත් කාලගුණය තුළ පොහොර යෙදීමෙන් වළකින්න',
+            'සිටුවීමට සති 2කට පෙර කාබනික පොහොර එක් කරන්න'
+          ]
     };
   };
 
@@ -295,16 +465,16 @@ export default function PestDetection() {
       const generalTips = getGeneralFertilizerTips();
       return (
         <View style={styles.fertilizerContainer}>
-          <Text style={styles.fertilizerTitle}>🌾 General Fertilizer Schedule</Text>
+          <Text style={styles.fertilizerTitle}>{getText('generalFertilizerSchedule')}</Text>
           {generalTips.fertilizers.map((fert, index) => (
             <View key={index} style={styles.fertilizerCard}>
-              <Text style={styles.fertilizerName}>{fert.name}</Text>
+              <Text style={styles.fertilizerName}>{translateFertilizerName(fert.name)}</Text>
               <Text style={styles.fertilizerReason}>{fert.reason}</Text>
               <Text style={styles.fertilizerApp}>📝 {fert.application}</Text>
             </View>
           ))}
           
-          <Text style={styles.tipsTitle}>💡 Best Practices</Text>
+          <Text style={styles.tipsTitle}>{getText('bestPractices')}</Text>
           {generalTips.tips.map((tip, index) => (
             <Text key={index} style={styles.tipText}>• {tip}</Text>
           ))}
@@ -312,30 +482,31 @@ export default function PestDetection() {
       );
     }
 
-    // Show recommendations for each detected pest
     return results.detections.map((detection, index) => {
       const recommendations = getFertilizerRecommendations(detection.class);
+      const pestName = getPestNameInCurrentLanguage(detection.class);
+      
       return (
         <View key={index} style={styles.fertilizerContainer}>
           <Text style={styles.fertilizerTitle}>
-            🌱 Fertilizer Plan for {detection.class}
+            {getText('fertilizerPlanFor')} {pestName}
           </Text>
           
-          <Text style={styles.subTitle}>✅ Recommended Fertilizers:</Text>
+          <Text style={styles.subTitle}>{getText('recommendedFertilizers')}</Text>
           {recommendations.fertilizers.map((fert, idx) => (
             <View key={idx} style={styles.fertilizerCard}>
-              <Text style={styles.fertilizerName}>{fert.name}</Text>
+              <Text style={styles.fertilizerName}>{translateFertilizerName(fert.name)}</Text>
               <Text style={styles.fertilizerReason}>• {fert.reason}</Text>
               <Text style={styles.fertilizerApp}>📌 {fert.application}</Text>
             </View>
           ))}
           
-          <Text style={styles.subTitle}>❌ Avoid:</Text>
+          <Text style={styles.subTitle}>{getText('avoid')}</Text>
           {recommendations.avoid.map((item, idx) => (
             <Text key={idx} style={styles.avoidText}>• {item}</Text>
           ))}
           
-          <Text style={styles.subTitle}>💡 Tips:</Text>
+          <Text style={styles.subTitle}>{getText('tips')}</Text>
           {recommendations.tips.map((tip, idx) => (
             <Text key={idx} style={styles.tipText}>• {tip}</Text>
           ))}
@@ -348,18 +519,30 @@ export default function PestDetection() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Paddy Pest Detection</Text>
+      <View style={styles.header}>
+        <Text style={styles.title}>{getText('pestDetection')}</Text>
+        <TouchableOpacity onPress={toggleLanguage} style={styles.languageButton}>
+          <MaterialCommunityIcons 
+            name="translate" 
+            size={24} 
+            color="#16a34a" 
+          />
+          <Text style={styles.languageText}>
+            {language === 'english' ? 'සිංහල' : 'English'}
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {!image && !cameraVisible && !loading && (
         <View style={styles.options}>
           <TouchableOpacity style={styles.card} onPress={openCamera}>
             <MaterialCommunityIcons name="camera" size={40} color="#0369a1" />
-            <Text style={styles.cardTitle}>Take Photo</Text>
+            <Text style={styles.cardTitle}>{getText('takePhoto')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.card} onPress={pickImage}>
             <MaterialCommunityIcons name="image" size={40} color="#f59e0b" />
-            <Text style={styles.cardTitle}>Choose Image</Text>
+            <Text style={styles.cardTitle}>{getText('chooseImage')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -381,7 +564,7 @@ export default function PestDetection() {
       {loading && (
         <View style={styles.loading}>
           <ActivityIndicator size="large" color="#16a34a" />
-          <Text>Analyzing Image...</Text>
+          <Text>{getText('analyzing')}</Text>
         </View>
       )}
 
@@ -390,11 +573,15 @@ export default function PestDetection() {
           <TouchableOpacity onPress={() => setShowResults(false)} style={styles.closeButton}>
             <MaterialCommunityIcons name="close" size={24} color="#111827" />
           </TouchableOpacity>
-          <Text style={styles.modalTitle}>Detection Results</Text>
-          <View style={{ width: 40 }} />
+          <Text style={styles.modalTitle}>{getText('detectionResults')}</Text>
+          <TouchableOpacity onPress={toggleLanguage} style={styles.modalLanguageButton}>
+            <MaterialCommunityIcons name="translate" size={20} color="#16a34a" />
+            <Text style={styles.modalLanguageText}>
+              {language === 'english' ? 'සිංහල' : 'English'}
+            </Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Tab Navigation */}
         <View style={styles.tabContainer}>
           <TouchableOpacity
             style={[styles.tab, fertilizerTab === 'pest' && styles.activeTab]}
@@ -406,7 +593,7 @@ export default function PestDetection() {
               color={fertilizerTab === 'pest' ? '#16a34a' : '#6b7280'} 
             />
             <Text style={[styles.tabText, fertilizerTab === 'pest' && styles.activeTabText]}>
-              Pest Info
+              {getText('pestInfo')}
             </Text>
           </TouchableOpacity>
           
@@ -420,13 +607,12 @@ export default function PestDetection() {
               color={fertilizerTab === 'fertilizer' ? '#16a34a' : '#6b7280'} 
             />
             <Text style={[styles.tabText, fertilizerTab === 'fertilizer' && styles.activeTabText]}>
-              Fertilizer Plan
+              {getText('fertilizerPlan')}
             </Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.resultContainer}>
-          {/* Annotated Image */}
           {annotatedImage && (
             <Image
               source={{ uri: annotatedImage }}
@@ -435,13 +621,12 @@ export default function PestDetection() {
           )}
 
           {fertilizerTab === 'pest' ? (
-            // Pest Information Tab
             <>
               {results?.detections?.length === 0 ? (
                 <View style={styles.noPestCard}>
                   <MaterialCommunityIcons name="check-circle" size={50} color="#16a34a" />
-                  <Text style={styles.noPestText}>✅ No Pest Detected</Text>
-                  <Text style={styles.noPestSubText}>Your crop looks healthy!</Text>
+                  <Text style={styles.noPestText}>{getText('noPestDetected')}</Text>
+                  <Text style={styles.noPestSubText}>{getText('healthyCrop')}</Text>
                 </View>
               ) : (
                 results?.detections?.map((detection, index) => (
@@ -449,26 +634,36 @@ export default function PestDetection() {
                     <View style={styles.pestHeader}>
                       <MaterialCommunityIcons name="bug" size={24} color="#dc2626" />
                       <Text style={styles.pestName}>
-                        {detection.class || detection.yolo_class}
+                        {getPestNameInCurrentLanguage(detection.class || detection.yolo_class)}
                       </Text>
                     </View>
 
                     <View style={styles.confidenceBadge}>
                       <Text style={styles.confidenceText}>
-                        {(detection.confidence * 100).toFixed(1)}% Confidence
+                        {(detection.confidence * 100).toFixed(1)}% {getText('confidence')}
                       </Text>
                     </View>
 
-                    <Text style={styles.section}>📝 Description</Text>
-                    <Text style={styles.sectionText}>{detection.pest_details.description}</Text>
+                    <Text style={styles.section}>{getText('description')}</Text>
+                    <Text style={styles.sectionText}>
+                      {language === 'english' 
+                        ? detection.pest_details.description
+                        : detection.pest_details.description_sinhala || detection.pest_details.description}
+                    </Text>
 
-                    <Text style={styles.section}>⚠️ Symptoms</Text>
-                    {detection.pest_details.symptoms.map((s, i) => (
+                    <Text style={styles.section}>{getText('symptoms')}</Text>
+                    {(language === 'english' 
+                      ? detection.pest_details.symptoms 
+                      : detection.pest_details.symptoms_sinhala || detection.pest_details.symptoms
+                    ).map((s, i) => (
                       <Text key={i} style={styles.listItem}>• {s}</Text>
                     ))}
 
-                    <Text style={styles.section}>🔧 Management</Text>
-                    {detection.pest_details.management.map((m, i) => (
+                    <Text style={styles.section}>{getText('management')}</Text>
+                    {(language === 'english' 
+                      ? detection.pest_details.management 
+                      : detection.pest_details.management_sinhala || detection.pest_details.management
+                    ).map((m, i) => (
                       <Text key={i} style={styles.listItem}>• {m}</Text>
                     ))}
                   </View>
@@ -476,7 +671,6 @@ export default function PestDetection() {
               )}
             </>
           ) : (
-            // Fertilizer Recommendations Tab
             <View style={styles.fertilizerMainContainer}>
               {renderFertilizerContent()}
             </View>
@@ -484,7 +678,7 @@ export default function PestDetection() {
 
           <TouchableOpacity style={styles.newButton} onPress={resetDetection}>
             <MaterialCommunityIcons name="camera" size={20} color="#fff" />
-            <Text style={styles.newButtonText}>New Detection</Text>
+            <Text style={styles.newButtonText}>{getText('newDetection')}</Text>
           </TouchableOpacity>
         </ScrollView>
       </Modal>
@@ -495,15 +689,51 @@ export default function PestDetection() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#f9fafb",
+    backgroundColor: "#e0e8dd",
     paddingTop: 60,
     alignItems: "center"
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 20,
+    marginBottom: 30
   },
   title: {
     fontSize: 22,
     fontWeight: "bold",
-    marginBottom: 30,
-    color: "#111827"
+    color: "#111827",
+    flex: 1
+  },
+  languageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4
+  },
+  languageText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#16a34a'
+  },
+  modalLanguageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0fdf4',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15,
+    gap: 4
+  },
+  modalLanguageText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#16a34a'
   },
   options: {
     flexDirection: "row",
@@ -695,7 +925,6 @@ const styles = StyleSheet.create({
     color: "#6b7280",
     marginTop: 5
   },
-  // Fertilizer styles
   fertilizerMainContainer: {
     marginBottom: 20
   },

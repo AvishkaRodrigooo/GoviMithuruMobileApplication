@@ -147,7 +147,7 @@ export default function PestManagementScreen({ navigation }) {
         ) : (
           <TouchableOpacity 
             style={styles.newForecastCard}
-            onPress={() => navigation.navigate('PestForecastForm')}
+            onPress={() => navigation.navigate('PestForecastDashboard')}
           >
             <MaterialCommunityIcons name="plus-circle" size={40} color="#16a34a" />
             <Text style={styles.newForecastText}>Get New Forecast</Text>
@@ -199,7 +199,7 @@ export default function PestManagementScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f9fafb',
+    backgroundColor: 'white',
   },
   header: {
     flexDirection: 'row',
@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
   },
   gridItem: {
     width: '48%',
-    backgroundColor: '#fff',
+    backgroundColor: 'white',
     borderRadius: 16,
     padding: 16,
     elevation: 2,

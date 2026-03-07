@@ -19,7 +19,7 @@ import HerbicideRecommendationAdminScreen from './src/screens/adminDashboard/Her
 //pest Management
 import PestManagementScreen from './src/screens/pestForecast/PestManagementScreen';
 import PestForecastDashboard from './src/screens/pestForecast/PestForecastDashboard';
-import PestForecastForm from './src/screens/pestForecast/PestForecastForm';
+// import PestForecastForm from './src/screens/pestForecast/PestForecastForm';
 import PestDetection from './src/screens/pestForecast/PestDetection';
 import PestLibrary from './src/screens/pestForecast/PestLibrary';
 import PestHeatMap from './src/screens/pestForecast/PestHeatMap';
@@ -139,7 +139,7 @@ export default function App() {
             {/* Pest Management */}
             <Stack.Screen name="PestManagement" component={PestManagementScreen} options={{ headerShown: false }} />
             <Stack.Screen name="PestForecastDashboard" component={PestForecastDashboard} options={{ title: 'Pest Forecast' }} />
-<Stack.Screen name="PestForecastForm" component={PestForecastForm} options={{ title: 'New Forecast' }} />
+{/* <Stack.Screen name="PestForecastForm" component={PestForecastForm} options={{ title: 'New Forecast' }} /> */}
 <Stack.Screen name="PestDetection" component={PestDetection} options={{ title: 'Pest Detection' }} />
 <Stack.Screen 
   name="PestLibrary" 
