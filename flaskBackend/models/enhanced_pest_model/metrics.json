@@ -1,0 +1,9 @@
+{
+  "severity_accuracy": 0.609375,
+  "risk_accuracy": 0.3645833333333333,
+  "pest_accuracy": 1.0,
+  "incidence_rmse": 7.223597994173363,
+  "incidence_r2": -0.049365759929294484,
+  "cv_mean": 0.3646634411340294,
+  "cv_std": 0.026830724997220626
+}

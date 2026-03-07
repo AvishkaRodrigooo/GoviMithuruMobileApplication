@@ -137,12 +137,12 @@ export default function HomeScreen({ navigation }) {
         {/* AI Features */}
         <Text style={styles.sectionTitle}>AI-Powered Solutions</Text>
         <View style={styles.featuresGrid}>
-          <Pressable style={[styles.featureCard, styles.featureLarge]} onPress={() => navTo('Pest', 'pest')}>
+          <Pressable style={[styles.featureCard, styles.featureLarge]} onPress={() => navTo('PestManagement', 'pest')}>
             <View style={[styles.featureIcon, { backgroundColor: '#fef3c7' }]}>
               <MaterialCommunityIcons name="bug" size={40} color="#f59e0b" />
             </View>
-            <Text style={styles.featureTitle}>Pest Detection</Text>
-            <Text style={styles.featureDesc}>Identify pests instantly</Text>
+            <Text style={styles.featureTitle}>Pest Management</Text>
+            <Text style={styles.featureDesc}>Identify and manage pests effectively</Text>
           </Pressable>
           <Pressable style={[styles.featureCard, styles.featureLarge]} onPress={() => navTo('weedsDashboard', 'weeds')}>
             <View style={[styles.featureIcon, { backgroundColor: '#d1fae5' }]}>

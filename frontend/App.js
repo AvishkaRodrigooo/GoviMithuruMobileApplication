@@ -16,6 +16,20 @@ import WelcomeScreen from './src/screens/WelcomeScreen';
 import adminDashboardScreen from './src/screens/adminDashboard/adminDashboardScreen';
 import HerbicideRecommendationAdminScreen from './src/screens/adminDashboard/HerbicideRecommendationAdminScreen';
 
+//pest Management
+import PestManagementScreen from './src/screens/pestForecast/PestManagementScreen';
+import PestForecastDashboard from './src/screens/pestForecast/PestForecastDashboard';
+import PestForecastForm from './src/screens/pestForecast/PestForecastForm';
+import PestDetection from './src/screens/pestForecast/PestDetection';
+import PestLibrary from './src/screens/pestForecast/PestLibrary';
+import PestHeatMap from './src/screens/pestForecast/PestHeatMap';
+import PestAlerts from './src/screens/pestForecast/PestAlerts';
+import PestHistory from './src/screens/pestForecast/PestHistory';
+// import PestForecastHistory from './src/screens/pestForecast/PestForecastHistory';
+import PestDetectionHistory from './src/screens/pestForecast/PestDetectionHistory';
+import NotificationSettings from './src/screens/pestForecast/NotificationSettings';
+
+
 //weeds controller
 import StageIdentificationScreen from './src/screens/weedsDetection/StageIdentificationScreen';
 import weesDashboardScreen from './src/screens/weedsDetection/weedsdashboard';
@@ -121,6 +135,43 @@ export default function App() {
               component={AgroShopsScreen}
               options={{ title: "Agro Shops Nearby" }}
             />
+
+            {/* Pest Management */}
+            <Stack.Screen name="PestManagement" component={PestManagementScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="PestForecastDashboard" component={PestForecastDashboard} options={{ title: 'Pest Forecast' }} />
+<Stack.Screen name="PestForecastForm" component={PestForecastForm} options={{ title: 'New Forecast' }} />
+<Stack.Screen name="PestDetection" component={PestDetection} options={{ title: 'Pest Detection' }} />
+<Stack.Screen 
+  name="PestLibrary" 
+  component={PestLibrary} 
+  options={{ title: 'Pest Library' }} 
+/>
+<Stack.Screen 
+  name="PestHeatMap" 
+  component={PestHeatMap} 
+  options={{ title: 'Heat Map' }} 
+/>
+<Stack.Screen 
+  name="PestAlerts" 
+  component={PestAlerts} 
+  options={{ title: 'Alerts' }} 
+/>
+<Stack.Screen 
+  name="PestHistory" 
+  component={PestHistory} 
+  options={{ title: 'History' }} 
+/>
+
+<Stack.Screen 
+  name="PestDetectionHistory" 
+  component={PestDetectionHistory} 
+  options={{ title: 'Detection History' }} 
+/>
+<Stack.Screen 
+  name="NotificationSettings" 
+  component={NotificationSettings} 
+  options={{ title: 'Notifications' }} 
+/>
             {/* Post Harvest Analysis Flow */}
             <Stack.Screen name="PostHarvestOnboarding" component={KnowledgeSelectionScreen} options={{ headerShown: false }} />
             <Stack.Screen name="KnowledgeQuiz" component={KnowledgeQuizScreen} options={{ headerShown: false }} />

@@ -1,0 +1,9 @@
+names:
+- Brown Planthopper (BPH)
+- Rice Leaf-folder
+- Paddy Bug
+nc: 3
+path: E:\new pestforcasting\GoviMithuruMobileApplication\flaskBackend\dataset\pestdata_3classes
+test: images/test
+train: images/train
+val: images/valid
