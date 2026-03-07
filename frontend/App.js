@@ -28,6 +28,7 @@ import PestHistory from './src/screens/pestForecast/PestHistory';
 // import PestForecastHistory from './src/screens/pestForecast/PestForecastHistory';
 import PestDetectionHistory from './src/screens/pestForecast/PestDetectionHistory';
 import NotificationSettings from './src/screens/pestForecast/NotificationSettings';
+import AIPestAssistantScreen from './src/screens/pestForecast/AIPestAssistantScreen';
 
 
 //weeds controller
@@ -172,6 +173,12 @@ export default function App() {
   component={NotificationSettings} 
   options={{ title: 'Notifications' }} 
 />
+  <Stack.Screen 
+    name="AIPestAssistant" 
+    component={AIPestAssistantScreen} 
+    options={{ headerShown: false }}
+  />
+
             {/* Post Harvest Analysis Flow */}
             <Stack.Screen name="PostHarvestOnboarding" component={KnowledgeSelectionScreen} options={{ headerShown: false }} />
             <Stack.Screen name="KnowledgeQuiz" component={KnowledgeQuizScreen} options={{ headerShown: false }} />

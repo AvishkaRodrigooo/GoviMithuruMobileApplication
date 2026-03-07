@@ -306,6 +306,16 @@ try:
 except Exception as e:
     print(f"⚠️ Failed to register pest_detection_routes: {e}")
 
+# ============================================================
+# Register Gemini AI Blueprint (NEW)
+# ============================================================
+try:
+    from routes.gemini_routes import gemini_bp
+    app.register_blueprint(gemini_bp)
+    print("✅ Registered: gemini_routes at /api/gemini")
+except Exception as e:
+    print(f"⚠️ Failed to register gemini_routes: {e}")
+
 print("✅ All blueprints registered")
 print("="*60 + "\n")
 
@@ -318,6 +328,7 @@ def home():
     # Check model status
     pest_detection_status = "loaded" if app.model is not None else "not loaded"
     pest_forecast_status = "loaded" if (hasattr(app, 'pest_forecast_models') and app.pest_forecast_models is not None) else "not loaded"
+    gemini_status = "loaded"  # Gemini is always available if package is installed
     
     # Get class names safely
     class_names = {}
@@ -328,7 +339,7 @@ def home():
         "status": "online",
         "message": "GoviMithuru API is running",
         "timestamp": __import__('datetime').datetime.now().isoformat(),
-        "features": ["pest-forecast", "pest-detection", "post-harvest", "weed-detection"],
+        "features": ["pest-forecast", "pest-detection", "post-harvest", "weed-detection", "gemini-ai"],
         "database": {
             "connected": app.db is not None
         },
@@ -340,6 +351,9 @@ def home():
             },
             "pest_forecast": {
                 "status": pest_forecast_status
+            },
+            "gemini_ai": {
+                "status": gemini_status
             }
         }
     }
@@ -356,6 +370,10 @@ def model_info():
         },
         "pest_forecast": {
             "loaded": hasattr(app, 'pest_forecast_models') and app.pest_forecast_models is not None,
+        },
+        "gemini_ai": {
+            "loaded": True,
+            "endpoint": "/api/gemini/chat"
         },
         "database": {
             "connected": app.db is not None
@@ -383,7 +401,8 @@ def health_check():
     return {
         "status": "healthy",
         "timestamp": __import__('datetime').datetime.now().isoformat(),
-        "database": app.db is not None
+        "database": app.db is not None,
+        "gemini": "available"
     }
 
 @app.route('/debug/models')
@@ -406,6 +425,7 @@ def debug_models():
         "pest_detection_api_classes": app.pest_class_names if hasattr(app, 'pest_class_names') else {},
         "pest_detection_original_classes": app.model.names if app.model and hasattr(app.model, 'names') else "Not available",
         "pest_forecast_loaded": hasattr(app, 'pest_forecast_models') and app.pest_forecast_models is not None,
+        "gemini_loaded": True,
         "database_connected": app.db is not None
     }
 
@@ -440,6 +460,7 @@ if __name__ == '__main__':
         print(f"     Original model classes: {app.model.names if hasattr(app.model, 'names') else 'None'}")
         print(f"     API will map to: {app.pest_class_names}")
     print(f"   - Pest Forecast: {'✅ Loaded' if hasattr(app, 'pest_forecast_models') and app.pest_forecast_models else '❌ Not loaded'}")
+    print(f"   - Gemini AI: {'✅ Loaded'}")
     print(f"   - Database: {'✅ Connected' if app.db else '❌ Not connected'}")
     print("="*60 + "\n")
     print("📌 Available endpoints:")
@@ -449,6 +470,8 @@ if __name__ == '__main__':
     print("   - GET  /debug/models      - Debug models")
     print("   - POST /api/pest-detection/detect - Detect pests")
     print("   - GET  /api/pest-detection/health - Detection health")
+    print("   - POST /api/gemini/chat   - Gemini AI chat")  # NEW
+    print("   - GET  /api/gemini/health - Gemini health check")  # NEW
     print("="*60 + "\n")
     
     app.run(host='0.0.0.0', port=5005, debug=True)
