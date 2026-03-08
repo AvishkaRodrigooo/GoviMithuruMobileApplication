@@ -26,7 +26,7 @@ load_dotenv()
 # Import blueprints
 
 from routes.predict import predict_bp
-from routes.stages import stages_bp
+from routes.stages import stages_bp  
 
 app.register_blueprint(stages_bp)
 # Register blueprints
