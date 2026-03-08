@@ -24,6 +24,8 @@ const CropRecommenderScreen = ({ navigation }) => {
   const [userLocation, setUserLocation] = useState(null);
   const [weatherData, setWeatherData] = useState(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
+  const [autoWater, setAutoWater] = useState(true);
+  const [autoSeason, setAutoSeason] = useState(true);
   const [formData, setFormData] = useState({
     district: '',
     gnDivision: '',
@@ -36,6 +38,32 @@ const CropRecommenderScreen = ({ navigation }) => {
     predictedSoil: null,
     searchTimeout: null,
   });
+
+
+  useEffect(() => {
+
+  if(!autoSeason) return;
+
+  const month = new Date().getMonth() + 1;
+
+  let detectedSeason = "Yala";
+
+  if(month >= 10 || month <= 1){
+    detectedSeason = "Maha";
+  }
+  else if(month >= 4 && month <= 8){
+    detectedSeason = "Yala";
+  }
+  else{
+    detectedSeason = "Maas kanna";
+  }
+
+  setFormData(prev => ({
+    ...prev,
+    season: detectedSeason
+  }));
+
+}, [autoSeason]);
 
   // Sri Lankan districts for dropdown.
   const districts = [
@@ -58,7 +86,7 @@ const CropRecommenderScreen = ({ navigation }) => {
     'Poor (Rain-fed Only)'
   ];
 
-  const seasons = ['Yala', 'Maha'];
+  const seasons = ['Yala', 'Maha', 'Maas kanna'];
 
   // Sri Lankan provinces to districts mapping (for better location parsing)
   const provinceToDistricts = {
@@ -473,11 +501,23 @@ const getWeatherForecast = async (lat, lon) => {
     else if (avgTemp > 30) climatePrediction = "Dry Hot Period";
     else climatePrediction = "Moderate Climate";
 
-    setWeatherData({
-      temperature: avgTemp.toFixed(1),
-      rainProbability: rainCount,
-      climatePrediction: climatePrediction,
-    });
+    const weatherInfo = {
+  temperature: avgTemp.toFixed(1),
+  rainProbability: rainCount,
+  climatePrediction: climatePrediction,
+};
+
+setWeatherData(weatherInfo);
+
+// 🔹 Auto detect water availability
+const waterLevel = detectWaterAvailability(weatherInfo);
+
+if (autoWater) {
+  setFormData(prev => ({
+    ...prev,
+    waterAvailability: waterLevel
+  }));
+}
 
   } catch (error) {
     console.log("Weather error:", error);
@@ -486,6 +526,32 @@ const getWeatherForecast = async (lat, lon) => {
   }
 };
 
+
+const detectWaterAvailability = (weather) => {
+
+  if (!weather) return "";
+
+  const rain = weather.rainProbability;
+  const temp = parseFloat(weather.temperature);
+
+  if (rain > 12) {
+    return "Excellent (Irrigation + Rainfall)";
+  }
+
+  if (rain > 8) {
+    return "Good (Reliable Irrigation)";
+  }
+
+  if (rain > 4) {
+    return "Moderate (Seasonal Irrigation)";
+  }
+
+  if (rain <= 4 && temp > 32) {
+    return "Poor (Rain-fed Only)";
+  }
+
+  return "Moderate (Seasonal Irrigation)";
+};
 
 
   // 4. GET RECOMMENDATION (AI/Backend Integration)
@@ -646,9 +712,10 @@ const generateRecommendation = (formData, weatherData) => {
 
   // Season-based planting windows
   const plantingWindows = {
-    'Yala': 'April 15 - May 30',
-    'Maha': 'October 15 - November 30'
-  };
+  'Yala': 'April 15 - May 30',
+  'Maha': 'October 15 - November 30',
+  'Maas kanna': 'January 15 - February 28'
+};
 
   // Paddy varieties database for Sri Lanka
   const paddyVarieties = [
@@ -749,9 +816,13 @@ const generateRecommendation = (formData, weatherData) => {
   }
 
   // Season match
-  if (variety.season === 'Both' || variety.season === season) {
-    score += 20;
-  }
+  if (
+  variety.season === 'Both' ||
+  variety.season === season ||
+  (season === 'Maas kanna' && variety.season === 'Yala')
+) {
+  score += 20;
+}
 
   // Climate effect
   if (climateScore > 75) score += 20;
@@ -842,6 +913,11 @@ const generateRecommendation = (formData, weatherData) => {
   
   if (fieldSizeInHectares > 2) {
     specialAdvice.push('• Consider mechanization for cost efficiency');
+  }
+  if (season === 'Maas kanna') {
+  specialAdvice.push('• Maas Kanna is a short cultivation season');
+  specialAdvice.push('• Choose short duration paddy varieties');
+  specialAdvice.push('• Ensure irrigation availability');
   }
   
   return {
@@ -1277,26 +1353,120 @@ const predictSoilTypeFromLocation = async (district, city) => {
   )}
 </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Water Availability</Text>
-            {waterAvailabilityOptions.map((option, index) => (
-              <TouchableOpacity
-                key={index}
+          {/* Water Availability Selection */}
+<View style={styles.inputGroup}>
+  <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center'}}>
+  <Text style={styles.inputLabel}>Water Availability</Text>
+
+  <TouchableOpacity
+    onPress={()=>setAutoWater(!autoWater)}
+    style={{
+      backgroundColor:'#16a34a',
+      paddingHorizontal:12,
+      paddingVertical:5,
+      borderRadius:10
+    }}
+  >
+    <Text style={{color:'white', fontSize:12}}>
+      {autoWater ? "Auto Mode" : "Manual Mode"}
+    </Text>
+  </TouchableOpacity>
+</View>
+
+{autoWater && (
+<Text style={{color:"#16a34a"}}>
+Auto detected water availability: {formData.waterAvailability}
+</Text>
+)}
+
+
+  {!autoWater && waterAvailabilityOptions.map((option, index) => (
+    <TouchableOpacity
+      key={index}
+      style={[
+        styles.optionButton,
+        formData.waterAvailability === option && styles.optionButtonActive,
+      ]}
+      onPress={() => handleInputChange('waterAvailability', option)}
+    >
+      <View style={styles.optionRadio}>
+        {formData.waterAvailability === option && (
+          <View style={styles.optionRadioSelected} />
+        )}
+      </View>
+      <Text style={styles.optionText}>{option}</Text>
+    </TouchableOpacity>
+  ))}
+
+  {/* NEW: Water Requirement Bar - Add this section */}
+  {formData.waterAvailability && (
+    <View style={styles.waterRequirementContainer}>
+      <View style={styles.waterHeader}>
+        <MaterialCommunityIcons name="water" size={20} color="#0284c7" />
+        <Text style={styles.waterTitle}>Water Requirement Level</Text>
+      </View>
+
+      {/* Calculate water level based on selection */}
+      {(() => {
+        const waterLevel = 
+          formData.waterAvailability === 'Excellent (Irrigation + Rainfall)' ? 100 :
+          formData.waterAvailability === 'Good (Reliable Irrigation)' ? 75 :
+          formData.waterAvailability === 'Moderate (Seasonal Irrigation)' ? 50 : 25;
+        
+        const waterText = 
+          formData.waterAvailability === 'Excellent (Irrigation + Rainfall)' ? 'Very High' :
+          formData.waterAvailability === 'Good (Reliable Irrigation)' ? 'High' :
+          formData.waterAvailability === 'Moderate (Seasonal Irrigation)' ? 'Medium' : 'Low';
+        
+        const barColor = 
+          waterLevel > 75 ? '#16a34a' : 
+          waterLevel > 50 ? '#eab308' : 
+          waterLevel > 25 ? '#f97316' : '#dc2626';
+        
+        return (
+          <>
+            <View style={styles.waterBarContainer}>
+              <View 
                 style={[
-                  styles.optionButton,
-                  formData.waterAvailability === option && styles.optionButtonActive,
-                ]}
-                onPress={() => handleInputChange('waterAvailability', option)}
-              >
-                <View style={styles.optionRadio}>
-                  {formData.waterAvailability === option && (
-                    <View style={styles.optionRadioSelected} />
-                  )}
-                </View>
-                <Text style={styles.optionText}>{option}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+                  styles.waterBarFill, 
+                  { width: `${waterLevel}%`, backgroundColor: barColor }
+                ]} 
+              />
+            </View>
+            
+            <View style={styles.waterInfoRow}>
+              <Text style={styles.waterLevelText}>
+                Requirement: <Text style={[styles.waterLevelValue, { color: barColor }]}>
+                  {waterText}
+                </Text>
+              </Text>
+              <Text style={styles.waterPercentage}>{waterLevel}%</Text>
+            </View>
+
+            {/* Show specific advice based on selection */}
+            <View style={styles.waterAdviceBox}>
+              <MaterialCommunityIcons 
+                name={waterLevel > 50 ? "check-circle" : "alert-circle"} 
+                size={16} 
+                color={waterLevel > 50 ? "#16a34a" : "#dc2626"} 
+              />
+              <Text style={styles.waterAdviceText}>
+                {formData.waterAvailability === 'Excellent (Irrigation + Rainfall)' && 
+                  "Ideal for high-yield varieties like BG 358 or BG 300"}
+                {formData.waterAvailability === 'Good (Reliable Irrigation)' && 
+                  "Good for most varieties. Consider BG 358 or Bg 94-1"}
+                {formData.waterAvailability === 'Moderate (Seasonal Irrigation)' && 
+                  "Choose drought-tolerant varieties like BG 360 or AT 362"}
+                {formData.waterAvailability === 'Poor (Rain-fed Only)' && 
+                  "Select water-efficient varieties like AT 362 or Ld 365"}
+              </Text>
+            </View>
+          </>
+        );
+      })()}
+    </View>
+  )}
+</View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.inputLabel}>Field Size</Text>
@@ -1327,9 +1497,34 @@ const predictSoilTypeFromLocation = async (district, city) => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Season</Text>
+            
+            <View style={{flexDirection:'row',justifyContent:'space-between',alignItems:'center'}}>
+
+<Text style={styles.inputLabel}>Season</Text>
+
+<TouchableOpacity
+onPress={()=>setAutoSeason(!autoSeason)}
+style={{
+backgroundColor:'#16a34a',
+paddingHorizontal:12,
+paddingVertical:5,
+borderRadius:10
+}}
+>
+<Text style={{color:'white',fontSize:12}}>
+{autoSeason ? "Auto Mode" : "Manual Mode"}
+</Text>
+</TouchableOpacity>
+
+</View>
+            {autoSeason && (
+<Text style={{color:"#16a34a"}}>
+Auto detected season: {formData.season}
+</Text>
+)}
+
             <View style={styles.seasonContainer}>
-              {seasons.map((season, index) => (
+              {!autoSeason && seasons.map((season, index) => (
                 <TouchableOpacity
                   key={index}
                   style={[
@@ -1350,17 +1545,7 @@ const predictSoilTypeFromLocation = async (district, city) => {
           </View>
         </View>
 
-        {/* Soil Report Option */}
-        <TouchableOpacity style={styles.soilReportCard} onPress={uploadSoilReport}>
-          <MaterialCommunityIcons name="file-document" size={24} color="#16a34a" />
-          <View style={styles.soilReportContent}>
-            <Text style={styles.soilReportTitle}>Have a soil test report?</Text>
-            <Text style={styles.soilReportDesc}>
-              Upload for more accurate recommendations
-            </Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={20} color="#9ca3af" />
-        </TouchableOpacity>
+        
 
         {/* Action Button */}
         <TouchableOpacity
@@ -1770,7 +1955,84 @@ adviceText:{
   marginLeft:6,
   fontSize:13,
   color:"#2E7D32"
-}
+},
+
+
+waterRequirementContainer: {
+  marginTop: 16,
+  padding: 16,
+  backgroundColor: '#f0f9ff',
+  borderRadius: 12,
+  borderWidth: 1,
+  borderColor: '#bae6fd',
+},
+
+waterHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 12,
+},
+
+waterTitle: {
+  fontSize: 14,
+  fontWeight: '600',
+  color: '#0369a1',
+  marginLeft: 8,
+},
+
+waterBarContainer: {
+  height: 12,
+  backgroundColor: '#e2e8f0',
+  borderRadius: 6,
+  overflow: 'hidden',
+  marginBottom: 8,
+},
+
+waterBarFill: {
+  height: '100%',
+  borderRadius: 6,
+},
+
+waterInfoRow: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: 12,
+},
+
+waterLevelText: {
+  fontSize: 13,
+  color: '#334155',
+},
+
+waterLevelValue: {
+  fontWeight: '700',
+  fontSize: 14,
+},
+
+waterPercentage: {
+  fontSize: 13,
+  fontWeight: '600',
+  color: '#64748b',
+},
+
+waterAdviceBox: {
+  flexDirection: 'row',
+  backgroundColor: 'white',
+  padding: 10,
+  borderRadius: 8,
+  alignItems: 'center',
+  borderLeftWidth: 3,
+  borderLeftColor: '#0284c7',
+},
+
+waterAdviceText: {
+  fontSize: 12,
+  color: '#334155',
+  marginLeft: 8,
+  flex: 1,
+  lineHeight: 18,
+},
 });
 
 export default CropRecommenderScreen;

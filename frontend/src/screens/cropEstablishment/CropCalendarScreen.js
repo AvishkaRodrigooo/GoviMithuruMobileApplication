@@ -14,6 +14,27 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Calendar from 'expo-calendar';
+import * as Notifications from 'expo-notifications';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+const formatDate = (daysToAdd = 0) => {
+  const date = new Date();
+  date.setDate(date.getDate() + daysToAdd);
+
+  return date.toLocaleDateString('en-LK', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric'
+  });
+};
 
 const CropCalendarScreen = ({ route, navigation }) => {
   const { variety, plantingWindow, season } = route.params || {};
@@ -21,83 +42,49 @@ const CropCalendarScreen = ({ route, navigation }) => {
   // Calendar tasks based on the design you provided
   const [calendarTasks, setCalendarTasks] = useState({
     today: [
-      {
-        id: 1,
-        title: 'Land Preparation',
-        description: 'Plowing and leveling the field for cultivation. Ensure proper drainage.',
-        date: 'Today, January 07, 2026',
-        completed: false,
-        icon: 'tractor',
-        time: 'Morning',
-        priority: 'high'
+{
+  id:1,
+  title:'Land Preparation',
+  description:'Plowing and leveling the field for cultivation.',
+  date: `Today, ${formatDate(0)}`,
       }
     ],
     tomorrow: [
-      {
-        id: 2,
-        title: 'Sowing',
-        description: 'Planting selected paddy seeds. Monitor soil moisture levels.',
-        date: 'Tomorrow, January 08, 2026',
-        completed: false,
-        icon: 'seed',
-        time: 'Early Morning',
-        priority: 'high'
+{
+  id:2,
+  title:'Sowing',
+  date: `Tomorrow, ${formatDate(1)}`,
       }
     ],
-    thisWeek: [
-      {
-        id: 3,
-        title: 'First Irrigation',
-        description: 'Watering the nursery beds. Maintain water depth of 2–3 cm.',
-        date: 'Saturday, January 09, 2026',
-        completed: false,
-        icon: 'water',
-        time: 'Morning',
-        priority: 'medium'
-      },
-      {
-        id: 4,
-        title: 'Fertilizer Application',
-        description: 'Apply basal dose of fertilizer for healthy growth.',
-        date: 'Monday, January 10, 2026',
-        completed: false,
-        icon: 'flask',
-        time: 'Afternoon',
-        priority: 'high'
-      },
-      {
-        id: 5,
-        title: 'Weed Control',
-        description: 'Manual weeding or herbicide application to prevent weed competition.',
-        date: 'Friday, January 13, 2026',
-        completed: false,
-        icon: 'sprout',
-        time: 'Morning',
-        priority: 'medium'
-      }
-    ],
-    upcoming: [
-      {
-        id: 6,
-        title: 'Pest Management',
-        description: 'Inspect for pests and apply organic pesticides if necessary.',
-        date: 'Saturday, January 22, 2026',
-        completed: false,
-        icon: 'bug',
-        time: 'Morning',
-        priority: 'medium'
-      },
-      {
-        id: 7,
-        title: 'Pre-harvest Drainage',
-        description: 'Drain water from the fields 10–15 days before harvesting.',
-        date: 'Monday, Februaary 15, 2026',
-        completed: false,
-        icon: 'water-pump',
-        time: 'Morning',
-        priority: 'low'
-      }
-    ]
+    thisWeek:[
+{
+ id:3,
+ title:'First Irrigation',
+ date: formatDate(3),
+},
+{
+ id:4,
+ title:'Fertilizer Application',
+ date: formatDate(5),
+},
+{
+ id:5,
+ title:'Weed Control',
+ date: formatDate(7),
+}
+],
+    upcoming:[
+{
+ id:6,
+ title:'Pest Management',
+ date: formatDate(15),
+},
+{
+ id:7,
+ title:'Pre-harvest Drainage',
+ date: formatDate(90),
+}
+]
   });
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
@@ -120,68 +107,68 @@ const CropCalendarScreen = ({ route, navigation }) => {
 
   // Schedule notification for a task
   const scheduleNotification = async (task) => {
-    if (!notificationsEnabled) {
-      Alert.alert(
-        'Enable Notifications',
-        'Please enable notifications to get reminders for farming tasks.',
-        [{ text: 'OK' }]
-      );
+  try {
+
+    const { status } = await Notifications.requestPermissionsAsync();
+
+    if (status !== 'granted') {
+      Alert.alert("Permission Required", "Enable notifications to get reminders");
       return;
     }
 
-    try {
-      // Calculate notification time (day before at 8 AM)
-      const taskDate = new Date(task.date.split(', ')[1]);
-      taskDate.setDate(taskDate.getDate() - 1);
-      taskDate.setHours(8, 0, 0);
+    const triggerDate = new Date();
+    triggerDate.setMinutes(triggerDate.getMinutes() + 1); // test notification after 1 minute
 
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: `Upcoming Task: ${task.title}`,
-          body: task.description,
-          data: { taskId: task.id },
-        },
-        trigger: {
-          date: taskDate,
-          repeats: false,
-        },
-      });
+    await Notifications.scheduleNotificationAsync({
+  content: {
+    title: "🌾 Farming Task Reminder",
+    body: `${task.title} - ${task.description}`,
+  },
+  trigger: {
+    type: Notifications.SchedulableTriggerInputTypes.DATE,
+    date: triggerDate,
+  },
+});
 
-      Alert.alert('Success', `Reminder set for ${task.title}`);
-    } catch (error) {
-      console.error('Error scheduling notification:', error);
-    }
-  };
+    Alert.alert("Reminder Set", `${task.title} reminder scheduled`);
+
+  } catch (error) {
+    console.log(error);
+  }
+};
 
   // Add task to device calendar
   const addToDeviceCalendar = async (task) => {
-    try {
-      const { status } = await Calendar.requestCalendarPermissionsAsync();
-      
-      if (status === 'granted') {
-        const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
-        const defaultCalendar = calendars.find(cal => cal.allowsModifications);
+  try {
 
-        if (defaultCalendar) {
-          const eventDate = new Date(task.date.split(', ')[1]);
-          
-          await Calendar.createEventAsync(defaultCalendar.id, {
-            title: `Farming: ${task.title}`,
-            startDate: eventDate,
-            endDate: new Date(eventDate.getTime() + 2 * 60 * 60 * 1000), // 2 hours
-            location: 'Farm Field',
-            notes: task.description,
-            alarms: [{ relativeOffset: -60 }] // 1 hour before
-          });
+    const { status } = await Calendar.requestCalendarPermissionsAsync();
 
-          Alert.alert('Success', 'Task added to calendar');
-        }
-      }
-    } catch (error) {
-      console.error('Error adding to calendar:', error);
-      Alert.alert('Error', 'Could not add to calendar');
+    if (status !== 'granted') {
+      Alert.alert("Permission needed", "Calendar permission required");
+      return;
     }
-  };
+
+    const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+
+    const defaultCalendar = calendars.find(cal => cal.allowsModifications);
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() + 1);
+
+    await Calendar.createEventAsync(defaultCalendar.id, {
+      title: `🌾 ${task.title}`,
+      startDate: startDate,
+      endDate: new Date(startDate.getTime() + 60 * 60 * 1000),
+      notes: task.description,
+      alarms: [{ relativeOffset: -30 }]
+    });
+
+    Alert.alert("Success", "Task added to phone calendar");
+
+  } catch (error) {
+    console.log(error);
+  }
+};
 
   // Request notification permissions
   const requestNotificationPermissions = async () => {
@@ -245,7 +232,7 @@ const CropCalendarScreen = ({ route, navigation }) => {
             </Text>
             <Text style={styles.taskTime}>
               {task.time} • <Text style={[styles.priorityText, { color: getPriorityColor(task.priority) }]}>
-                {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)} Priority
+                {(task.priority || 'medium').charAt(0).toUpperCase() + (task.priority || 'medium').slice(1)} Priority
               </Text>
             </Text>
           </View>
