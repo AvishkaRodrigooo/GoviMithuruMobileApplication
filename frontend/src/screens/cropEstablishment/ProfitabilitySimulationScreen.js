@@ -35,21 +35,21 @@ const ProfitabilitySimulationScreen = ({ navigation, route }) => {
       id: 1,
       name: 'Traditional Paddy (Current)',
       yieldPerAcre: 571, // kg
-      pricePerKg: 120, // LKR per kg
+      pricePerKg: 250, // LKR per kg
       color: '#16a34a',
     },
     {
       id: 2,
       name: 'Organic Paddy',
       yieldPerAcre: 450, // kg
-      pricePerKg: 200, // LKR per kg (organic premium)
+      pricePerKg: 240, // LKR per kg (organic premium)
       color: '#f59e0b',
     },
     {
       id: 3,
       name: 'High-Yield Variety',
       yieldPerAcre: 700, // kg
-      pricePerKg: 110, // LKR per kg
+      pricePerKg: 180, // LKR per kg
       color: '#3b82f6',
     },
   ]);
@@ -133,44 +133,32 @@ const ProfitabilitySimulationScreen = ({ navigation, route }) => {
 
   // Prepare data for charts
   const chartData = {
-    labels: scenarios.map(s => s.name.split(' ')[0]),
-    datasets: [
-      {
-        data: scenarios.map(s => {
-          const results = calculateScenarioResults(s);
-          return results.profit / 1000; // Convert to thousands for better display
-        }),
-        color: (opacity = 1) => `rgba(22, 163, 74, ${opacity})`,
-        strokeWidth: 2,
-      },
-      {
-        data: scenarios.map(s => {
-          const results = calculateScenarioResults(s);
-          return results.revenue / 1000; // Convert to thousands
-        }),
-        color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`,
-        strokeWidth: 2,
-      }
-    ],
-    legend: ["Profit (Thousands LKR)", "Revenue (Thousands LKR)"]
-  };
+  labels: scenarios.map(s => s.name.split(' ')[0]),
+  datasets: [
+    {
+      data: scenarios.map(s => calculateScenarioResults(s).profit),
+      color: (opacity = 1) => `rgba(22, 163, 74, ${opacity})`, // Green for profit
+      strokeWidth: 2,
+    },
+    {
+      data: scenarios.map(s => calculateScenarioResults(s).revenue),
+      color: (opacity = 1) => `rgba(59, 130, 246, ${opacity})`, // Blue for revenue
+      strokeWidth: 2,
+    }
+  ],
+  legend: ["Profit (LKR)", "Revenue (LKR)"]
+};
 
   const chartConfig = {
-    backgroundColor: '#ffffff',
-    backgroundGradientFrom: '#f9fafb',
-    backgroundGradientTo: '#f9fafb',
-    decimalPlaces: 0,
-    color: (opacity = 1) => `rgba(22, 163, 74, ${opacity})`,
-    labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
-    style: {
-      borderRadius: 16,
-    },
-    propsForDots: {
-      r: '6',
-      strokeWidth: '2',
-      stroke: '#16a34a'
-    }
-  };
+  backgroundColor: '#ffffff',
+  backgroundGradientFrom: '#f9fafb',
+  backgroundGradientTo: '#f9fafb',
+  decimalPlaces: 0, // no decimals
+  color: (opacity = 1) => `rgba(22, 163, 74, ${opacity})`,
+  labelColor: (opacity = 1) => `rgba(107, 114, 128, ${opacity})`,
+  style: { borderRadius: 16 },
+  propsForDots: { r: '6', strokeWidth: '2', stroke: '#16a34a' }
+};
 
   // Render cost input field
   const renderCostInput = (label, key, icon) => (
