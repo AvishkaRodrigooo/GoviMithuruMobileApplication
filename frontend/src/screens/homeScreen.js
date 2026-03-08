@@ -169,6 +169,16 @@ export default function HomeScreen({ navigation }) {
             <Text style={styles.featureTitle}>Weather Forecast</Text>
             <Text style={styles.featureDesc}>weather prediction</Text>
           </Pressable>
+         
+         <Pressable style={[styles.featureCard, styles.featureLarge]} onPress={() => navigation.navigate('Stagesplant')}>
+            <View style={[styles.featureIcon, { backgroundColor: '#fee2e2' }]}>
+              <MaterialCommunityIcons name="weather--cloudy" size={40} color="#3a6193ff" />
+
+            </View>
+            <Text style={styles.featureTitle}>Paddy Plant Stages</Text>
+            <Text style={styles.featureDesc}>Identify growth stages</Text>
+          </Pressable>
+
         </View>
 
 

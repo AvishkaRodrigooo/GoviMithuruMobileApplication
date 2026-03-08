@@ -28,6 +28,8 @@ import grassKillersScreen from './src/screens/weedsDetection/herbicides/grassKil
 import broadLeavesKillersScreen from './src/screens/weedsDetection/herbicides/broadleavesKillersScreen';
 import AgroShopsScreen from './src/screens/weedsDetection/shops/AgroShopsScreen';
 
+//paddy plant stages
+import StagesScreen from './src/screens/StagesIdentification/stagesScreen';
 // Crop Establishment
 import InputPlannerScreen from './src/screens/cropEstablishment/InputPlannerScreen ';
 import CropRecommenderScreen from './src/screens/cropEstablishment/CropRecommenderScreen ';
@@ -128,6 +130,8 @@ export default function App() {
               component={AgroShopsScreen}
               options={{ title: "Agro Shops Nearby" }}
             />
+            <Stack.Screen name="Stagesplant" component={StagesScreen} options={{title: 'Paddy Plant Growth Stage' }}/>
+
             {/* Post Harvest Analysis Flow */}
             <Stack.Screen name="PostHarvestOnboarding" component={KnowledgeSelectionScreen} options={{ headerShown: false }} />
             <Stack.Screen name="KnowledgeQuiz" component={KnowledgeQuizScreen} options={{ headerShown: false }} />
