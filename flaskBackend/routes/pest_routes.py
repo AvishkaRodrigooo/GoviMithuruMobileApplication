@@ -51,14 +51,14 @@ try:
         except:
             print(f"Warning: Could not load {col} encoder")
             
-    print("✅ All models loaded successfully")
+    print(" All models loaded successfully")
 except Exception as e:
-    print(f"⚠️ Error loading models: {e}")
+    print(f" Error loading models: {e}")
     print("Using rule-based fallback predictions")
 
-# ============================================================
-# FORECASTING ENDPOINTS (Matches your React Native app)
-# ============================================================
+
+# FORECASTING ENDPOINTS 
+
 
 @pest_bp.route('/predict', methods=['POST'])
 def predict_pest():
@@ -86,16 +86,16 @@ def predict_pest():
                 'error': 'Missing required fields'
             }), 400
         
-        # Get current weather data (you can integrate with weather API)
+        #  current weather data 
         weather_data = get_weather_for_district(district)
         
-        # Prepare features for prediction
+        #  features for prediction
         features_dict = prepare_features(district, paddy_type, paddy_age, weather_data)
         
-        # Make prediction
+        #  prediction
         prediction_result = make_prediction(features_dict)
         
-        # Get fertilizer recommendation
+      
         fertilizer_rec = get_fertilizer_recommendation(
             prediction_result['predicted_pest'],
             prediction_result['severity'],
@@ -133,14 +133,14 @@ def get_7day_forecast():
         paddy_age = float(data.get('paddy_age', 30))
         language = data.get('language', 'en')
         
-        # Get weather forecast
+       
         weather_forecast = get_weather_forecast_for_district(district, days=7)
         
         predictions = []
         current_age = paddy_age
         
         for day in range(1, 8):
-            # Prepare features for each day
+            #  features for each day
             day_weather = weather_forecast[day-1] if day <= len(weather_forecast) else weather_forecast[-1]
             
             features_dict = prepare_features(
@@ -150,7 +150,7 @@ def get_7day_forecast():
                 day_weather
             )
             
-            # Make prediction for this day
+            #  prediction for this day
             day_prediction = make_prediction(features_dict)
             
             predictions.append({
@@ -208,7 +208,7 @@ def get_weather(district):
             'source': 'Weather Data'
         })
     except Exception as e:
-        # Return mock data if weather service fails
+       
         return jsonify({
             'status': 'success',
             'weather': get_mock_weather(district),
@@ -223,14 +223,14 @@ def get_model_status():
         'models': list(models.keys()) if models else []
     })
 
-# ============================================================
+
 # HELPER FUNCTIONS
-# ============================================================
+
 
 def prepare_features(district, paddy_variety, paddy_age, weather):
     """Prepare feature vector for prediction"""
     
-    # Get encoded values
+    
     district_encoded = encode_value('District', district)
     variety_encoded = encode_value('Paddy_Variety', paddy_variety)
     
@@ -238,7 +238,7 @@ def prepare_features(district, paddy_variety, paddy_age, weather):
     season = get_current_season()
     season_encoded = encode_value('Season', season)
     
-    # Calculate growth stage
+    
     growth_stage = get_growth_stage_code(paddy_age)
     
     # Calculate interaction features
@@ -246,16 +246,16 @@ def prepare_features(district, paddy_variety, paddy_age, weather):
     rain_moisture = weather['rain'] * weather.get('soil_moisture', 75) / 100
     ph_organic = weather.get('soil_ph', 6.5) * weather.get('organic_matter', 2.0)
     
-    # Calculate weather severity score
+   
     weather_severity = (
-        (weather['temp'] - 27) / 3 +  # Normalize around 27°C
+        (weather['temp'] - 27) / 3 +  
         (weather['humidity'] - 75) / 15 +
         (weather['rain'] - 5) / 5
     )
     
     # Calculate soil quality score
     soil_quality = (
-        -abs(weather.get('soil_ph', 6.5) - 6.5) +  # Perfect pH 6.5
+        -abs(weather.get('soil_ph', 6.5) - 6.5) +  
         weather.get('organic_matter', 2.0) / 5 +
         weather.get('soil_moisture', 75) / 100
     )
@@ -279,12 +279,12 @@ def prepare_features(district, paddy_variety, paddy_age, weather):
         'Soil_Quality_Score': soil_quality
     }
     
-    # Convert to array in correct order
+    
     feature_array = []
     for f in features:
         feature_array.append(features[f])
     
-    # Scale features
+    
     if 'feature' in scalers:
         feature_array = scalers['feature'].transform([feature_array])[0]
     
@@ -303,17 +303,17 @@ def make_prediction(features):
         incidence_pred_transformed = models['incidence'].predict(features_2d)[0]
         incidence_percent = np.expm1(incidence_pred_transformed)
         
-        # Get pest name from encoder
+        #  pest name from encoder
         if 'Pest' in encoders:
             pest_name = encoders['Pest'].inverse_transform([int(pest_pred)])[0]
         else:
             pest_name = f"Pest_{pest_pred}"
         
-        # Get confidence scores
+        #  confidence scores
         pest_proba = models['pest'].predict_proba(features_2d)[0]
         confidence = float(np.max(pest_proba) * 100)
         
-        # Get top 3 pests
+        #  top 3 pests
         top_indices = np.argsort(pest_proba)[-3:][::-1]
         top_pests = []
         for idx in top_indices:
@@ -328,7 +328,7 @@ def make_prediction(features):
                 'risk_factor': 'Primary' if idx == pest_pred else 'Secondary'
             })
         
-        # Map severity
+        
         severity_map = {0: 'Low', 1: 'Moderate', 2: 'High'}
         severity = severity_map.get(severity_pred, 'Low')
         
@@ -340,13 +340,13 @@ def make_prediction(features):
             'severity': severity,
             'incidence_percent': float(incidence_percent),
             'risk_level': risk_level,
-            'risk_score': float(incidence_percent * 2),  # Scale to 0-100
+            'risk_score': float(incidence_percent * 2),  
             'confidence': confidence,
             'top_pests': top_pests,
             'weather_impact': get_weather_impact(features)
         }
     else:
-        # Rule-based fallback
+       
         return get_rule_based_prediction(features)
 
 def get_fertilizer_recommendation(pest, severity, incidence):
@@ -472,8 +472,7 @@ def get_current_season():
 
 def get_weather_for_district(district):
     """Get weather data for a district (mock or real API)"""
-    # You can integrate with OpenWeatherMap or other weather API here
-    # For now, return mock data
+   
     return get_mock_weather(district)
 
 def get_weather_forecast_for_district(district, days=7):
@@ -483,7 +482,7 @@ def get_weather_forecast_for_district(district, days=7):
     
     for i in range(days):
         day_weather = base_weather.copy()
-        # Add some variation
+      
         day_weather['temp'] += np.random.uniform(-2, 2)
         day_weather['rain'] = max(0, base_weather['rain'] + np.random.uniform(-3, 5))
         day_weather['humidity'] = min(100, base_weather['humidity'] + np.random.uniform(-5, 5))
@@ -523,13 +522,13 @@ def get_mock_weather(district):
 
 def get_rule_based_prediction(features):
     """Fallback rule-based prediction when ML models aren't available"""
-    # Extract key features
+    
     temp = features[0] if len(features) > 0 else 28
     rain = features[1] if len(features) > 1 else 5
     humidity = features[2] if len(features) > 2 else 75
     age = features[9] if len(features) > 9 else 45
     
-    # Simple rule-based logic
+    
     risk_score = 0
     
     # Temperature impact
@@ -632,9 +631,9 @@ def get_rule_based_prediction(features):
 #     except Exception as e:
 #         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ============================================================
+
 # NOTIFICATION ENDPOINTS
-# ============================================================
+
 
 @pest_bp.route('/notifications/toggle', methods=['POST'])
 def toggle_notifications():
@@ -655,7 +654,7 @@ def toggle_notifications():
             'updated_at': datetime.now().isoformat()
         }
         
-        # Save to database if available
+        
         if hasattr(current_app, 'db'):
             current_app.db.user_notifications.update_one(
                 {'user_id': user_id},
@@ -667,7 +666,7 @@ def toggle_notifications():
                 upsert=True
             )
         
-        # Schedule daily notifications if enabled
+  
         if enabled and onesignal_id:
             notifier.schedule_daily_forecast(onesignal_id, hour=6, minute=0)
         else:
@@ -690,14 +689,14 @@ def get_notification_status():
         if not user_id:
             return jsonify({'success': False, 'error': 'user_id required'}), 400
         
-        # Check in-memory first
+      
         if user_id in user_preferences:
             return jsonify({
                 'success': True,
                 'data': user_preferences[user_id]
             })
         
-        # Check database
+        
         if hasattr(current_app, 'db'):
             pref = current_app.db.user_notifications.find_one(
                 {'user_id': user_id},
@@ -709,7 +708,7 @@ def get_notification_status():
                     'data': pref
                 })
         
-        # Default
+       
         return jsonify({
             'success': True,
             'data': {
@@ -745,9 +744,9 @@ def send_pest_alert():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ============================================================
+
 # PEST LIBRARY ENDPOINTS
-# ============================================================
+
 
 @pest_bp.route('/library', methods=['GET'])
 def get_pest_library():
@@ -820,9 +819,9 @@ def get_prevention_tips():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ============================================================
+
 # HEATMAP ENDPOINTS
-# ============================================================
+
 
 @pest_bp.route('/heatmap', methods=['GET'])
 def get_heatmap():
@@ -830,11 +829,11 @@ def get_heatmap():
     try:
         pest = request.args.get('pest')
         
-        # Load historical data
+        #  data
         try:
             df = pd.read_csv('data/paddy_pest_weather_soil_SriLanka_2015_2024_updated.csv')
         except:
-            # Return sample data if file not found
+            
             return jsonify({
                 'success': True,
                 'data': [
@@ -847,11 +846,11 @@ def get_heatmap():
             })
         
         if pest:
-            # Filter for specific pest
+           
             pest_data = df[df['Pest'].str.contains(pest, na=False)]
             heatmap_data = heatmap_generator.get_heatmap_data(pest_data)
         else:
-            # All pests
+            
             heatmap_data = heatmap_generator.get_heatmap_data(df)
         
         return jsonify({
@@ -869,7 +868,7 @@ def generate_heatmap():
         data = request.json
         pest = data.get('pest')
         
-        # Load data
+       
         df = pd.read_csv('data/paddy_pest_weather_soil_option1_ml_ready.csv')
         
         if pest:
@@ -885,9 +884,9 @@ def generate_heatmap():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ============================================================
+
 # STATISTICS ENDPOINTS
-# ============================================================
+
 
 @pest_bp.route('/statistics', methods=['GET'])
 def get_statistics():
@@ -896,7 +895,7 @@ def get_statistics():
         district = request.args.get('district')
         days = int(request.args.get('days', 30))
         
-        # Calculate statistics from database
+       
         stats = {
             'total_forecasts': 0,
             'high_risk_alerts': 0,
@@ -906,17 +905,17 @@ def get_statistics():
         }
         
         if hasattr(current_app, 'db'):
-            # Count total forecasts
+           
             stats['total_forecasts'] = current_app.db.pest_forecasts.count_documents({})
             
-            # Count high risk alerts in last N days
+            
             cutoff = datetime.now() - timedelta(days=days)
             stats['high_risk_alerts'] = current_app.db.pest_forecasts.count_documents({
                 'risk_level': 'High',
                 'created_at': {'$gte': cutoff}
             })
             
-            # Get most common pests
+            
             pipeline = [
                 {'$group': {'_id': '$predicted_pest', 'count': {'$sum': 1}}},
                 {'$sort': {'count': -1}},
@@ -933,9 +932,9 @@ def get_statistics():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ============================================================
+
 # WEATHER ENDPOINTS
-# ============================================================
+
 
 @pest_bp.route('/weather/current', methods=['GET'])
 def get_current_weather():
@@ -972,7 +971,7 @@ def get_weather_forecast():
         if lat and lon:
             forecast = weather_service.get_forecast(lat, lon, days)
         else:
-            # Default to Anuradhapura
+           
             forecast = weather_service.get_forecast(8.3114, 80.4037, days)
         
         return jsonify({
@@ -983,9 +982,9 @@ def get_weather_forecast():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# ============================================================
+
 # MODEL INFO ENDPOINTS
-# ============================================================
+
 
 @pest_bp.route('/model-info', methods=['GET'])
 def get_model_info():

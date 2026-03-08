@@ -1,4 +1,3 @@
-# filter_to_3_pests.py
 import os
 import shutil
 import yaml
@@ -17,7 +16,7 @@ CLASS_MAPPING = {
     3: 2,  # rice-bug -> Paddy Bug
 }
 
-print("🎯 Creating dataset with 3 target classes:")
+print(" Creating dataset with 3 target classes:")
 for i, name in enumerate(TARGET_PESTS):
     print(f"   {i}: {name}")
 
@@ -34,7 +33,7 @@ def filter_dataset():
     
     # Process each split
     for split in ['train', 'valid', 'test']:
-        print(f"\n🔄 Processing {split}...")
+        print(f"\n Processing {split}...")
         
         src_img_dir = f'dataset/pestdata/{split}/images'
         src_label_dir = f'dataset/pestdata/{split}/labels'
@@ -86,7 +85,7 @@ def filter_dataset():
                 
                 split_filtered += 1
         
-        print(f"  ✅ {split}: {split_filtered} images")
+        print(f"   {split}: {split_filtered} images")
         total_filtered += split_filtered
     
     # Create data.yaml for 3 classes
@@ -103,11 +102,11 @@ def filter_dataset():
         yaml.dump(new_data, f, default_flow_style=False)
     
     # Print summary
-    print(f"\n📊 Class distribution:")
+    print(f"\n Class distribution:")
     for class_id, count in stats.items():
         print(f"   {TARGET_PESTS[class_id]}: {count} instances")
     
-    print(f"\n✅ Filtered dataset created at: {output_dir}")
+    print(f"\n Filtered dataset created at: {output_dir}")
     print(f"   Total images: {total_filtered}")
     print(f"   Classes: {len(TARGET_PESTS)}")
     

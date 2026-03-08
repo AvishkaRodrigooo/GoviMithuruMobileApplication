@@ -136,14 +136,14 @@ try:
     model_metrics = model_package.get('metrics', {})
     
     print("="*80)
-    print("✅ ENHANCED PEST MODEL LOADED SUCCESSFULLY!")
-    print(f"📊 Risk Accuracy: {model_metrics.get('risk_accuracy', 0):.1%}")
-    print(f"📊 Severity Accuracy: {model_metrics.get('severity_accuracy', 0):.1%}")
-    print(f"📊 Features: {len(feature_cols)} engineered features")
+    print(" ENHANCED PEST MODEL LOADED SUCCESSFULLY!")
+    print(f" Risk Accuracy: {model_metrics.get('risk_accuracy', 0):.1%}")
+    print(f" Severity Accuracy: {model_metrics.get('severity_accuracy', 0):.1%}")
+    print(f" Features: {len(feature_cols)} engineered features")
     print("="*80)
     
 except Exception as e:
-    print(f"⚠️ Could not load enhanced model: {e}")
+    print(f" Could not load enhanced model: {e}")
     risk_model = None
     severity_model = None
     incidence_model = None
@@ -982,7 +982,7 @@ def forecast_pest_risk(field_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# ============ PEST DETECTION WITH ROBOFLOW API ============
+
 # ============ PEST DETECTION WITH MULTIPLE FALLBACKS ============
 @pest_bp.route('/detect', methods=['POST'])
 def detect_pests():
@@ -1054,12 +1054,12 @@ def detect_pests():
                             pest_counts[class_name] = pest_counts.get(class_name, 0) + 1
                 
                 detection_source = "Roboflow SDK"
-                print(f"✅ SDK detected {len(detections)} pests")
+                print(f"SDK detected {len(detections)} pests")
                 
         except ImportError:
-            print("⚠️ Roboflow SDK not installed")
+            print(" Roboflow SDK not installed")
         except Exception as e:
-            print(f"⚠️ Roboflow SDK error: {e}")
+            print(f" Roboflow SDK error: {e}")
         
         # METHOD 2: If SDK failed, try direct API
         if not detections:
@@ -1087,10 +1087,10 @@ def detect_pests():
                         pest_counts[class_name] = pest_counts.get(class_name, 0) + 1
                     
                     detection_source = "Roboflow Direct API"
-                    print(f"✅ Direct API detected {len(detections)} pests")
+                    print(f" Direct API detected {len(detections)} pests")
                     
             except Exception as e:
-                print(f"⚠️ Direct API error: {e}")
+                print(f" Direct API error: {e}")
         
         # METHOD 3: If both API methods failed, try YOLO
         if not detections and hasattr(current_app, 'yolo_pest') and current_app.yolo_pest:
@@ -1124,10 +1124,10 @@ def detect_pests():
                             pest_counts[class_name] = pest_counts.get(class_name, 0) + 1
                 
                 detection_source = "YOLO"
-                print(f"✅ YOLO detected {len(detections)} pests")
+                print(f" YOLO detected {len(detections)} pests")
                 
             except Exception as e:
-                print(f"⚠️ YOLO error: {e}")
+                print(f" YOLO error: {e}")
         
         # METHOD 4: Last resort - mock detection
         if not detections:
@@ -1150,7 +1150,7 @@ def detect_pests():
                 pest_counts[pest] = pest_counts.get(pest, 0) + 1
             
             detection_source = "Mock (Fallback)"
-            print(f"✅ Mock generated {len(detections)} pests")
+            print(f" Mock generated {len(detections)} pests")
         
         # Draw bounding boxes on image (if we have detections)
         if detections and os.path.exists(filepath):
@@ -1166,10 +1166,10 @@ def detect_pests():
                 
                 img_with_boxes_path = os.path.join(UPLOAD_FOLDER, f"detected_{filename}")
                 cv2.imwrite(img_with_boxes_path, img)
-                print(f"✅ Saved annotated image")
+                print(f" Saved annotated image")
                 
             except Exception as e:
-                print(f"⚠️ Error drawing boxes: {e}")
+                print(f" Error drawing boxes: {e}")
                 img_with_boxes_path = None
         
         # Determine severity
@@ -1225,7 +1225,7 @@ def detect_pests():
         })
         
     except Exception as e:
-        print(f"❌ Fatal detection error: {e}")
+        print(f" Fatal detection error: {e}")
         return jsonify({'error': str(e)}), 500
     
 def fallback_detection(filepath, filename, current_app):
