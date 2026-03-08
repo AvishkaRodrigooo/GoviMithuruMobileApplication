@@ -112,7 +112,6 @@ const WeatherForecastScreen = () => {
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(30));
 
-  // ✅ ADDED: New content properties
   const content = {
     sinhala: {
       title: "කාලගුණ පුරෝකථනය",
@@ -135,7 +134,6 @@ const WeatherForecastScreen = () => {
       today: "අද",
       goodDay: "වගාවට හොඳයි",
       riskyDay: "අවදානම් දිනක්",
-      // ✅ ADDED: New properties
       excellentTemp: "🌤️ ඉතා හොඳ උෂ්ණත්වය",
       lowHumidity: "💧 ආර්ද්‍රතාව අඩුයි",
       dontPlantToday: "– අද වගා කරන්න එපා",
@@ -168,7 +166,6 @@ const WeatherForecastScreen = () => {
       today: "Today",
       goodDay: "Good for farming",
       riskyDay: "Risky day",
-      // ✅ ADDED: New properties
       excellentTemp: "🌤️ Excellent temperature",
       lowHumidity: "💧 Low humidity",
       dontPlantToday: "– Don't plant today",
@@ -204,14 +201,14 @@ const WeatherForecastScreen = () => {
     const date = new Date(dateStr + "T00:00:00");
     const si = short
       ? ["ඉරි", "සඳු", "අඟ", "බදා", "බ්‍රහ", "සිකු", "සෙන"]
-      : ["ඉරිදා", "සඳුදා", "අඟහරුවා", "බදාදා", "බ්‍රහස්පතින්දා", "සිකුරාදා", "සෙනසුරාදා"];
+      : ["ඉරිදා", "සඳුදා", "අඟහරුවාදා", "බදාදා", "බ්‍රහස්පතින්දා", "සිකුරාදා", "සෙනසුරාදා"];
     const en = short
       ? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
       : ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     return language === "sinhala" ? si[date.getDay()] : en[date.getDay()];
   };
 
-  // ✅ ADDED: Get first rain hour helper
+  // Get first rain hour helper
   const getFirstRainHour = () => {
     if (!hourlyData || hourlyData.length === 0) return null;
 
@@ -224,7 +221,7 @@ const WeatherForecastScreen = () => {
     };
   };
 
-  // ✅ ADDED: Hourly Action Banner Component
+  // Hourly Action Banner Component
   const HourlyActionBanner = () => {
     if (!hourlyData || hourlyData.length === 0) return null;
 
@@ -261,7 +258,7 @@ const WeatherForecastScreen = () => {
       timeZone: "Asia/Colombo",
     });
 
-    // ⏱️ Decision levels
+    // Decision levels
     let bg = "#FFFBEB";
     let border = "#f59e0b";
     let text =
@@ -305,7 +302,7 @@ const WeatherForecastScreen = () => {
     );
   };
 
-  // ✅ ADDED: Hourly Risk Helper
+  // Hourly Risk Helper
   const getHourlyRisk = (mm) => {
     if (mm >= 3) return "red";
     if (mm >= 1) return "yellow";
@@ -318,7 +315,7 @@ const WeatherForecastScreen = () => {
     return language === "sinhala" ? "හොඳයි" : "Good";
   };
 
-  // ✅ ADDED: Hourly Rain Strip Component
+  // Hourly Rain Strip Component
   const HourlyRainStrip = () => {
     if (!hourlyData || hourlyData.length === 0) return null;
 
@@ -432,7 +429,7 @@ const WeatherForecastScreen = () => {
     return "yellow";
   };
 
-  // ✅ UPDATED: Enhanced getDailySummaryText function
+  // Enhanced getDailySummaryText function
   const getDailySummaryText = (day) => {
     const rain = day.rain_mm || 0;
     const temp = day.temperature;
@@ -493,7 +490,7 @@ const WeatherForecastScreen = () => {
     );
   };
 
-  // ✅ UPDATED: Enhanced Farming Advice function
+  // Enhanced Farming Advice function
   const getFarmingAdvice = (predictions) => {
     const advice = [];
     const currentContent = getContent();
@@ -536,7 +533,7 @@ const WeatherForecastScreen = () => {
     return advice;
   };
 
-  // ✅ ADDED: Enhanced Farm Action Card Component
+  // Enhanced Farm Action Card Component
   const EnhancedFarmActionCard = ({ predictions }) => {
     const goodDaysCount = predictions.filter(
       (d) =>
@@ -628,7 +625,7 @@ const WeatherForecastScreen = () => {
     );
   };
 
-  // ✅ ADDED: Animated Weekly Strip Component
+  // Animated Weekly Strip Component
   const AnimatedWeeklyStrip = ({ predictions }) => {
     return (
       <View
@@ -680,7 +677,7 @@ const WeatherForecastScreen = () => {
     );
   };
 
-  // ✅ ADDED: Beautiful Day Card Header Component
+  // Beautiful Day Card Header Component
   const BeautifulDayCardHeader = ({ day, trafficColor }) => {
     return (
       <View
@@ -712,7 +709,7 @@ const WeatherForecastScreen = () => {
     );
   };
 
-  // ✅ ADDED: Beautiful Metrics Grid Component
+  // Beautiful Metrics Grid Component
   const BeautifulMetricsGrid = ({ day }) => {
     const metrics = [
       {
@@ -765,13 +762,15 @@ const WeatherForecastScreen = () => {
     );
   };
 
+  // ✅ FIXED: fetchWeatherData with current_weather parameter
   const fetchWeatherData = async (lat, lon, isRefresh = false) => {
     try {
       if (isRefresh) setRefreshing(true);
       else setLoading(true);
       setError(null);
 
-      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_min,temperature_2m_max,relative_humidity_2m_mean,cloudcover_mean,uv_index_max,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_direction_10m_dominant&forecast_days=8&timezone=Asia/Colombo`;
+      // Added current_weather parameter to get real-time temperature
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true&daily=temperature_2m_min,temperature_2m_max,relative_humidity_2m_mean,cloudcover_mean,uv_index_max,precipitation_probability_max,precipitation_sum,wind_speed_10m_max,wind_direction_10m_dominant&forecast_days=8&timezone=Asia/Colombo`;
 
       const res = await fetch(url);
       const data = await res.json();
@@ -803,11 +802,14 @@ const WeatherForecastScreen = () => {
         };
       });
 
+      // Get current temperature from API response
+      const currentTemp = data?.current_weather?.temperature || temperature || predictions[0]?.temperature || 26;
+
       setWeatherData({
         success: true,
         city: locationName || "Sri Lanka",
         predictions,
-        last_actual_temp: temperature || predictions[0]?.temperature || 26,
+        last_actual_temp: currentTemp,
         advice: [],
       });
     } catch (e) {
@@ -820,7 +822,7 @@ const WeatherForecastScreen = () => {
     }
   };
 
-  // ✅ ADDED: Fetch hourly data
+  // Fetch hourly data
   useEffect(() => {
     if (latitude == null || longitude == null) return;
 
@@ -846,11 +848,12 @@ const WeatherForecastScreen = () => {
     fetchHourlyRain();
   }, [latitude, longitude]);
 
+  // Fetch weather data when location changes
   useEffect(() => {
     if (latitude != null && longitude != null) {
       fetchWeatherData(latitude, longitude);
     }
-  }, [latitude, longitude]);
+  }, [latitude, longitude, temperature]); // Added temperature dependency
 
   useEffect(() => {
     if (!loading && weatherData) {
@@ -906,8 +909,13 @@ const WeatherForecastScreen = () => {
     );
   };
 
+  // ✅ FIXED: EnhancedCurrentWeatherCard with proper temperature display
   const EnhancedCurrentWeatherCard = () => {
     const currentContent = getContent();
+    
+    // Get current temperature from weatherData
+    const currentTemp = weatherData?.last_actual_temp || temperature || 26;
+    const feelsLike = temperature ? Math.round(temperature) : Math.round(currentTemp);
 
     return (
       <Animated.View style={[styles.currentWeatherCard, { opacity: fadeAnim }]}>
@@ -924,11 +932,18 @@ const WeatherForecastScreen = () => {
           </View>
           <View>
             <Text style={styles.currentTemp}>
-              {Math.round(temperature || 26)}°C
+              {Math.round(currentTemp)}°C
             </Text>
             <Text style={styles.currentLabel}>
               {language === "sinhala" ? "දැන් තියෙන උෂ්ණත්වය" : "Current Temperature"}
             </Text>
+            {temperature && (
+              <Text style={styles.feelsLikeText}>
+                {language === "sinhala" 
+                  ? `හැඟෙන උෂ්ණත්වය: ${Math.round(temperature)}°C` 
+                  : `Feels like: ${Math.round(temperature)}°C`}
+              </Text>
+            )}
           </View>
         </View>
       </Animated.View>
@@ -1009,10 +1024,10 @@ const WeatherForecastScreen = () => {
       >
         <EnhancedCurrentWeatherCard />
 
-        {/* ✅ ADDED: Hourly Rain Strip */}
+        {/* Hourly Rain Strip */}
         <HourlyRainStrip />
 
-        {/* ✅ ADDED: Hourly Action Banner */}
+        {/* Hourly Action Banner */}
         <HourlyActionBanner />
 
         {predictions.length > 0 && (
@@ -1029,21 +1044,21 @@ const WeatherForecastScreen = () => {
           </Animated.View>
         )}
 
-        {/* ✅ ADDED: Animated Weekly Strip */}
+        {/* Animated Weekly Strip */}
         {predictions.length > 0 && (
           <Animated.View style={{ opacity: fadeAnim }}>
             <AnimatedWeeklyStrip predictions={predictions} />
           </Animated.View>
         )}
 
-        {/* ✅ ADDED: Enhanced Farm Action Card */}
+        {/* Enhanced Farm Action Card */}
         {predictions.length > 0 && (
           <Animated.View style={{ opacity: fadeAnim }}>
             <EnhancedFarmActionCard predictions={predictions} />
           </Animated.View>
         )}
 
-        {/* ✅ ADDED: Farming Advice Section */}
+        {/* Farming Advice Section */}
         {farmingAdvice.length > 0 && (
           <Animated.View style={[styles.adviceSection, { opacity: fadeAnim }]}>
             <View style={styles.adviceHeader}>
@@ -1145,14 +1160,14 @@ const WeatherForecastScreen = () => {
                 },
               ]}
             >
-              {/* ✅ UPDATED: Using BeautifulDayCardHeader */}
+              {/* Using BeautifulDayCardHeader */}
               <BeautifulDayCardHeader day={d} trafficColor={trafficColor} />
               
               <Text style={styles.dailyReasonText}>
                 {getDailySummaryText(d)}
               </Text>
               
-              {/* ✅ UPDATED: Using BeautifulMetricsGrid */}
+              {/* Using BeautifulMetricsGrid */}
               <BeautifulMetricsGrid day={d} />
             </Animated.View>
           );
@@ -1278,6 +1293,13 @@ const styles = StyleSheet.create({
     color: "#6B7280",
     marginTop: 4,
   },
+  // ✅ ADDED: feelsLikeText style
+  feelsLikeText: {
+    fontSize: 11,
+    color: "#6B7280",
+    marginTop: 4,
+    fontStyle: "italic",
+  },
   dailySummaryBanner: {
     marginHorizontal: 20,
     marginBottom: 12,
@@ -1303,7 +1325,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     marginTop: 4,
   },
-  // ✅ ADDED: Advice Section Styles
   adviceSection: {
     marginHorizontal: 20,
     marginBottom: 15,

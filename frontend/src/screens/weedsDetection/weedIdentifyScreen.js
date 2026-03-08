@@ -64,7 +64,7 @@ export default function WeedIdentifyScreen() {
 
   try {
     // Use your PC's IP address here
-    const SERVER_URL = 'http://192.168.8.156:5000'; // Change this!
+    const SERVER_URL = 'http://192.168.94.163:5000'; // Change this!
     
     console.log('Sending to:', `${SERVER_URL}/predict`);
     
