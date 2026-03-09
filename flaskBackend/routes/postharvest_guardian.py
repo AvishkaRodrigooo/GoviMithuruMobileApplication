@@ -153,6 +153,8 @@ ALL_VARIETIES = list(PRICE_FORECASTS.keys())
 
 # ─── Model paths ──────────────────────────────────────────────────────────────
 MODEL_DIR        = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'models', 'postharvest')
+ROOT_MODEL_DIR   = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'models')
+
 STORAGE_MODEL    = os.path.join(MODEL_DIR, 'storage_model.pkl')
 ENCODERS_FILE    = os.path.join(MODEL_DIR, 'label_encoders.pkl')
 METADATA_FILE    = os.path.join(MODEL_DIR, 'model_metadata.json')
@@ -161,27 +163,60 @@ HUMID_MODEL_FILE = os.path.join(MODEL_DIR, 'storage_humid_model.pkl')
 TEMP_ENC_FILE    = os.path.join(MODEL_DIR, 'storage_temp_encoders.pkl')
 TEMP_META_FILE   = os.path.join(MODEL_DIR, 'storage_temp_metadata.json')
 
+# Root-level fallback scalers (if not found in postharvest)
+XGB_PRICE_SCALER   = os.path.join(ROOT_MODEL_DIR, 'price_scaler.pkl')
+
 _models = {}
 
 def load_models():
     global _models
     if _models.get('loaded'):
         return _models
-    try:
-        with open(STORAGE_MODEL, 'rb') as f:
-            _models['storage'] = pickle.load(f)
-        with open(ENCODERS_FILE, 'rb') as f:
-            _models['encoders'] = pickle.load(f)
-        print("[PostHarvest] ✅ XGBoost storage model loaded")
-    except Exception:
-        _models['storage'] = None
-        _models['encoders'] = None
-        print("[PostHarvest] ℹ️ ML model files missing — using physics-based prediction")
+
+    # 1. model_metadata.json
     try:
         with open(METADATA_FILE) as f:
             _models['metadata'] = json.load(f)
     except Exception:
         _models['metadata'] = {}
+
+    # 2. postharvest/storage_model.pkl (XGBoost Storage Life) + scalers
+    try:
+        if os.path.exists(STORAGE_MODEL):
+            try:
+                _models['xgb_storage'] = joblib.load(STORAGE_MODEL)
+            except Exception:
+                with open(STORAGE_MODEL, 'rb') as f:
+                    _models['xgb_storage'] = pickle.load(f)
+
+            if os.path.exists(ENCODERS_FILE):
+                try:
+                    _models['xgb_label_enc'] = joblib.load(ENCODERS_FILE)
+                except Exception:
+                    with open(ENCODERS_FILE, 'rb') as f:
+                        _models['xgb_label_enc'] = pickle.load(f)
+            else:
+                _models['xgb_label_enc'] = None
+
+            price_sc_path = os.path.join(MODEL_DIR, 'price_scaler.pkl')
+            if not os.path.exists(price_sc_path) and os.path.exists(XGB_PRICE_SCALER):
+                price_sc_path = XGB_PRICE_SCALER
+
+            if os.path.exists(price_sc_path):
+                _models['xgb_price_sc'] = joblib.load(price_sc_path)
+            else:
+                _models['xgb_price_sc'] = None
+            
+            _models['xgb_loaded'] = True
+            print("[PostHarvest] ✅ postharvest/storage_model.pkl loaded")
+        else:
+            _models['xgb_loaded'] = False
+            print("[PostHarvest] ℹ️ postharvest/storage_model.pkl missing — using physics")
+    except Exception as exc:
+        print(f"[PostHarvest] ⚠️ XGBoost load error: {exc}")
+        _models['xgb_loaded'] = False
+
+    # 3. Temp/Humid models
     try:
         if os.path.exists(TEMP_MODEL_FILE):
             _models['temp_ml']       = joblib.load(TEMP_MODEL_FILE)
@@ -196,6 +231,7 @@ def load_models():
     except Exception as exc:
         print(f"[PostHarvest] ⚠️ Temp/humid ML error: {exc}")
         _models['temp_ml_loaded'] = False
+
     _models['loaded'] = True
     return _models
 
@@ -528,17 +564,22 @@ def _compute_risk_score(moisture_pct, bag_type, duration_months,
 
 
 def _get_price_forecast(variety):
-    """Get price forecast with fuzzy matching fallback."""
-    if variety in PRICE_FORECASTS:
-        pf = dict(PRICE_FORECASTS[variety])
+    """Get price forecast from model metadata or fallback."""
+    meta = load_models().get('metadata', {})
+    price_map = meta.get('price_forecasts', PRICE_FORECASTS)
+
+    if variety in price_map:
+        pf = dict(price_map[variety])
         pf['gain_lkr_per_kg'] = round(pf['peak_lkr'] - pf['current_lkr'], 2)
         return pf
-    for key in PRICE_FORECASTS:
+    for key in price_map:
         if key.lower() in variety.lower() or variety.lower() in key.lower():
-            pf = dict(PRICE_FORECASTS[key])
+            pf = dict(price_map[key])
             pf['gain_lkr_per_kg'] = round(pf['peak_lkr'] - pf['current_lkr'], 2)
             return pf
-    pf = dict(PRICE_FORECASTS['Bg 300'])
+    
+    fallback_key = next(iter(price_map.keys()), 'Bg 300')
+    pf = dict(price_map.get('Bg 300') or price_map[fallback_key] or PRICE_FORECASTS['Bg 300'])
     pf['gain_lkr_per_kg'] = round(pf['peak_lkr'] - pf['current_lkr'], 2)
     return pf
 
@@ -809,6 +850,26 @@ def _compute_dealer_score(dealer, distance_km, base_price_lkr, quantity_kg, harv
     return round(max(0, min(100, score)))
 
 
+def _normalize_location(storage_location: str) -> str:
+    """Map arbitrary storage_location string to storage_type expected by ML models."""
+    s = (storage_location or '').lower().strip()
+    if 'warehouse' in s or 'store' in s:   return 'warehouse'
+    if 'shed' in s:                         return 'shed'
+    if 'silo' in s:                         return 'silo'
+    if 'coop' in s or 'co-op' in s:        return 'co-op'
+    return 'home'
+
+
+def _normalize_bag_type(bag_type: str) -> str:
+    """Normalize bag/container type string to a canonical key."""
+    s = (bag_type or '').lower().strip()
+    if 'hermetic' in s:  return 'hermetic'
+    if 'poly' in s:      return 'polythene'
+    if 'woven' in s or 'pp' in s: return 'woven'
+    if 'metal' in s or 'silo' in s or 'bin' in s: return 'metalbin'
+    return 'gunny'
+
+
 def _get_best_sell_windows(harvest_date_str, storage_days, base_price_lkr):
     try:
         harvest_date = datetime.strptime(harvest_date_str, '%Y-%m-%d')
@@ -871,6 +932,8 @@ def predict():
     """
     POST /api/guardian/predict
     Main prediction engine: storage + price + risk + economics in one call.
+    Now uses root XGBoost model (storage_model_xgboost.pkl + price_scaler + label_encoders)
+    with physics fallback. Optionally fetches real 24h weather for lat/lon.
     """
     try:
         data             = request.get_json() or {}
@@ -883,13 +946,193 @@ def predict():
         storage_location = data.get('storage_location', 'home')
         duration_months  = float(data.get('duration_months', 3.0))
         has_pest_history = data.get('has_pest_history', False)
+        lat              = data.get('lat') or data.get('latitude')
+        lon              = data.get('lon') or data.get('longitude')
+        # Storage config for indoor temp prediction
+        storage_cfg      = {
+            'storage_type':    data.get('storage_type', _normalize_location(storage_location)),
+            'roof_material':   data.get('roof_material', 'tile'),
+            'roof_color':      data.get('roof_color', 'red'),
+            'insulation':      bool(data.get('insulation', False)),
+            'ventilation':     data.get('ventilation', 'natural'),
+            'ceiling_height':  data.get('ceiling_height', '3-4m'),
+            'rice_quantity_kg':quantity_kg,
+        }
 
         if moisture_pct < 0 or moisture_pct > 30:
             return jsonify({'error': f'Invalid moisture: {moisture_pct}%. Must be 0–30%.'}), 400
         if temp_c < 15 or temp_c > 50:
             return jsonify({'error': f'Invalid temperature: {temp_c}°C.'}), 400
 
-        storage  = _compute_storage_life(bag_type, moisture_pct, temp_c)
+        m = load_models()
+
+        # ── Step 1: Fetch real 24h outdoor weather if lat/lon provided ─────────
+        weather_24h       = None
+        outdoor_avg_temp  = temp_c - 3  # rough reverse of +3 indoor gain
+        outdoor_avg_humid = humidity_pct
+        weather_source    = 'manual_input'
+        indoor_temp_pred  = temp_c
+        indoor_humid_pred = humidity_pct
+        hourly_profile    = []
+        storage_alerts    = []
+
+        if lat and lon:
+            try:
+                lat_f = float(lat)
+                lon_f = float(lon)
+                wx_url = (
+                    f"https://api.open-meteo.com/v1/forecast"
+                    f"?latitude={lat_f}&longitude={lon_f}"
+                    f"&hourly=temperature_2m,relative_humidity_2m"
+                    f"&current=temperature_2m,relative_humidity_2m"
+                    f"&past_days=1&forecast_days=0&timezone=Asia%2FColombo"
+                )
+                wx_resp    = requests.get(wx_url, timeout=10)
+                wx_resp.raise_for_status()
+                wx_data    = wx_resp.json()
+                hourly     = wx_data.get('hourly', {})
+                cur        = wx_data.get('current', {})
+                temps_raw  = (hourly.get('temperature_2m') or [])[-24:]
+                humids_raw = (hourly.get('relative_humidity_2m') or [])[-24:]
+                while len(temps_raw)  < 24: temps_raw.append(cur.get('temperature_2m', temp_c - 3))
+                while len(humids_raw) < 24: humids_raw.append(cur.get('relative_humidity_2m', humidity_pct))
+                weather_24h       = [{'hour': i, 'temp': temps_raw[i], 'humidity': humids_raw[i]}
+                                     for i in range(24)]
+                outdoor_avg_temp  = round(sum(temps_raw) / 24, 1)
+                outdoor_avg_humid = round(sum(humids_raw) / 24, 1)
+                weather_source    = 'Open-Meteo Realtime'
+                # Fine-tune indoor storage conditions with ML + physics hybrid
+                indoor_result, pred_method = _ml_predict_storage_conditions(
+                    weather_24h, storage_cfg, moisture_pct, lat_f, lon_f
+                )
+                indoor_temp_pred  = indoor_result['avg_temperature']
+                indoor_humid_pred = indoor_result['avg_humidity']
+                hourly_profile    = indoor_result.get('hourly_profile', [])
+                storage_alerts    = indoor_result.get('alerts', [])
+                # Override temp_c with ML-predicted indoor temp for all downstream calculations
+                temp_c = indoor_temp_pred
+            except Exception as wx_exc:
+                print(f"[predict] Weather fetch skipped: {wx_exc}")
+
+        # ── Step 2: ML storage life prediction (XGBoost) ──────────
+        ml_storage_days  = None
+        ml_prediction_used = False
+        ml_debug = {}
+
+        if m.get('xgb_loaded') and m.get('xgb_storage') is not None:
+            try:
+                enc         = m.get('xgb_label_enc') or {}
+                meta        = m.get('metadata', {})
+                feat_cols   = (meta.get('xgboost', {}).get('feature_cols') or
+                               meta.get('feature_cols', []))
+
+                variety_key = variety
+                var_enc     = 0
+                if isinstance(enc, dict) and any(hasattr(v, 'transform') for v in enc.values()):
+                    le_var = enc.get('Variety') or enc.get('variety') or enc.get('Variety_Enc')
+                    if le_var is not None:
+                        try:
+                            var_enc = int(le_var.transform([variety_key])[0])
+                        except Exception:
+                            classes = list(le_var.classes_)
+                            matched = next((c for c in classes if variety_key.lower() in c.lower()), classes[0])
+                            var_enc = int(le_var.transform([matched])[0])
+                else:
+                    var_list = meta.get('label_encoders', {}).get('varieties', [])
+                    var_enc  = next((i for i, v in enumerate(var_list) if variety_key.lower() in v.lower()), 0)
+
+                type_enc   = 0
+                method_enc = 0
+                if isinstance(enc, dict) and any(hasattr(v, 'transform') for v in enc.values()):
+                    le_type = enc.get('Type') or enc.get('type')
+                    if le_type is not None:
+                        try: type_enc = int(le_type.transform(['Improved'])[0])
+                        except Exception: pass
+                    le_meth = enc.get('Method') or enc.get('method')
+                    if le_meth is not None:
+                        bag_label_map = {
+                            'hermetic': 'Hermetic bag', 'gunny': 'Gunny bag',
+                            'polythene': 'Polythene bag', 'woven': 'Gunny bag',
+                            'metalbin': 'Gunny bag'
+                        }
+                        bag_label = bag_label_map.get(_normalize_bag_type(bag_type), 'Gunny bag')
+                        try: method_enc = int(le_meth.transform([bag_label])[0])
+                        except Exception: pass
+                else:
+                    typ_list = meta.get('label_encoders', {}).get('types', [])
+                    meth_list = meta.get('label_encoders', {}).get('methods', [])
+                    type_enc = next((i for i, v in enumerate(typ_list) if 'Improved' in v), 0)
+                    bag_label_map = {
+                        'hermetic': 'Hermetic bag', 'gunny': 'Gunny bag',
+                        'polythene': 'Polythene bag', 'woven': 'Gunny bag',
+                        'metalbin': 'Gunny bag'
+                    }
+                    bag_label = bag_label_map.get(_normalize_bag_type(bag_type), 'Gunny bag')
+                    method_enc = next((i for i, v in enumerate(meth_list) if bag_label.lower() in v.lower()), 0)
+
+                high_moisture = int(moisture_pct > 14)
+                high_temp     = int(temp_c > 30)
+                mc_temp_inter = moisture_pct * temp_c
+
+                row = {
+                    'Variety_Enc':          var_enc,
+                    'Type_Enc':             type_enc,
+                    'Method_Enc':           method_enc,
+                    'MC (%)':               moisture_pct,
+                    'Temp (C)':             temp_c,
+                    'High_Moisture':        high_moisture,
+                    'High_Temp':            high_temp,
+                    'MC_Temp_Interaction':  mc_temp_inter,
+                }
+
+                if feat_cols:
+                    X = pd.DataFrame([[row.get(c, 0) for c in feat_cols]], columns=feat_cols)
+                else:
+                    X = pd.DataFrame([row])
+
+                scaler = m.get('xgb_scaler')
+                if scaler is not None:
+                    try:
+                        X_vals = scaler.transform(X)
+                        X = pd.DataFrame(X_vals, columns=X.columns)
+                    except Exception: pass
+
+                raw_pred = float(m['xgb_storage'].predict(X)[0])
+
+                # De-scale price if price_scaler was applied to target
+                price_sc = m.get('xgb_price_sc')
+                if price_sc is not None:
+                    try:
+                        raw_pred = float(price_sc.inverse_transform([[raw_pred]])[0][0])
+                    except Exception: pass
+
+                # XGBoost may predict storage_days or price — treat as days if in range
+                if 7 <= raw_pred <= 1000:
+                    ml_storage_days   = int(round(raw_pred))
+                    ml_prediction_used = True
+                    ml_debug = {'raw_xgb': raw_pred, 'features': row}
+            except Exception as ml_exc:
+                print(f"[predict] XGBoost ML error: {ml_exc}")
+
+        # ── Step 3: Physics-based storage life (always computed as reference) ─
+        physics_storage = _compute_storage_life(bag_type, moisture_pct, temp_c)
+
+        # ── Step 4: Final storage = ML if available, else physics ─────────────
+        if ml_prediction_used and ml_storage_days:
+            # Blend: 60% ML, 40% physics for robustness
+            blended_days = int(round(ml_storage_days * 0.6 + physics_storage['storage_days'] * 0.4))
+            blended_days = max(7, blended_days)
+            storage = dict(physics_storage)
+            storage['storage_days']   = blended_days
+            storage['storage_months'] = round(blended_days / 30.0, 1)
+            storage['prediction_method'] = 'XGBoost Hybrid'
+            storage['ml_days']        = ml_storage_days
+            storage['physics_days']   = physics_storage['storage_days']
+        else:
+            storage = physics_storage
+            storage['prediction_method'] = 'Physics Model'
+
+        # ── Step 5: Price, risk, costs ────────────────────────────────────────
         price    = _get_price_forecast(variety)
         risk     = _compute_risk_score(
             moisture_pct, bag_type, duration_months,
@@ -920,6 +1163,16 @@ def predict():
             'signal':        signal,
             'buffer_days':   buf,
             'next_festival': festival,
+            # Indoor environment (ML fine-tuned)
+            'indoor_environment': {
+                'indoor_temp_c':      round(indoor_temp_pred, 1),
+                'indoor_humidity_pct':round(indoor_humid_pred, 1),
+                'outdoor_avg_temp':   outdoor_avg_temp,
+                'outdoor_avg_humid':  outdoor_avg_humid,
+                'weather_source':     weather_source,
+                'storage_alerts':     storage_alerts,
+                'hourly_profile':     hourly_profile,   # 24 entries: {hour, temp, humidity}
+            },
             'risk_reward': {
                 'signal':               signal,
                 'buffer_days':          buf,

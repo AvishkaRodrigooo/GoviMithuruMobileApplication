@@ -1,13 +1,22 @@
-import React, { useState, useEffect } from 'react';
+/**
+ * WarehouseAnalysisScreen.js  —  GoviMithuru
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Shows storage details, stock inventory, and real-time 24h indoor temperature
+ * fine-tuned via ML + physics hybrid from the storage location coordinates.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+import React, { useState, useEffect, useRef } from 'react';
 import {
     View, Text, StyleSheet, Dimensions,
     SafeAreaView, TouchableOpacity, ScrollView,
-    StatusBar, ActivityIndicator, Platform
+    StatusBar, ActivityIndicator, Platform, Animated,
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { db, auth } from '../../firebase/firebaseConfig';
+import { BASE_URL } from '../../utils/apiConfig';
 
 const { width: SW } = Dimensions.get('window');
 
@@ -42,6 +51,39 @@ const WarehouseModel = ({ fillPercent, color, storageType }) => {
 const statusColor = p => (p >= 90 ? '#ef4444' : p >= 70 ? '#f59e0b' : '#16a34a');
 const statusLabel = p => (p >= 90 ? 'FULL ALERT' : p >= 70 ? 'GETTING FULL' : 'GOOD SPACE');
 
+// 24h temperature bar chart
+const TempChart = ({ data, label, unit = '°C', colorHigh = '#ef4444', colorNormal = '#16a34a' }) => {
+    if (!data || data.length === 0) return null;
+    const vals = data.map(d => d.value);
+    const maxV = Math.max(...vals) || 1;
+    const minV = Math.min(...vals);
+    const danger = unit === '°C' ? 30 : 80;
+
+    return (
+        <View style={s.chartContainer}>
+            <Text style={s.chartLabel}>{label}</Text>
+            <View style={s.chartBars}>
+                {data.map((d, i) => {
+                    const pct = Math.max(10, ((d.value - minV) / (maxV - minV + 1)) * 100);
+                    const hot = d.value > danger;
+                    return (
+                        <View key={i} style={s.chartBarWrap}>
+                            <Text style={[s.chartBarVal, { color: hot ? colorHigh : '#374151' }]}>
+                                {d.value.toFixed(0)}
+                            </Text>
+                            <View style={[s.chartBar, { height: Math.max(pct * 0.6, 6), backgroundColor: hot ? colorHigh : colorNormal }]} />
+                            {i % 4 === 0 && (
+                                <Text style={s.chartBarHour}>{d.hour}h</Text>
+                            )}
+                        </View>
+                    );
+                })}
+            </View>
+            <Text style={s.chartUnit}>{unit}</Text>
+        </View>
+    );
+};
+
 // ─── MAIN SCREEN ──────────────────────────────────────────────────────────────
 export default function WarehouseAnalysisScreen({ navigation, route }) {
     const [loading, setLoading] = useState(true);
@@ -49,8 +91,20 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
     const [totalKg, setTotalKg] = useState(0);
     const [harvests, setHarvests] = useState([]);
 
+    // Weather / indoor environment state
+    const [weatherLoading, setWeatherLoading] = useState(false);
+    const [indoorEnv, setIndoorEnv] = useState(null);    // from /weather/predict-storage
+    const [outdoorWeather, setOutdoorWeather] = useState(null); // from /weather
+    const [hourlyTempData, setHourlyTempData] = useState([]);
+    const [hourlyHumidData, setHourlyHumidData] = useState([]);
+    const [weatherError, setWeatherError] = useState(null);
+    const [fineTuneAccuracy, setFineTuneAccuracy] = useState(null);
+
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+
     const locationId = route.params?.locationId;
 
+    // Firestore: load location + harvests
     useEffect(() => {
         (async () => {
             try {
@@ -82,10 +136,119 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
         })();
     }, [locationId]);
 
+    // Fetch weather + fine-tuned indoor conditions when locData is ready
+    useEffect(() => {
+        if (!locData) return;
+        const lat = locData.latitude || locData.lat;
+        const lon = locData.longitude || locData.lon;
+        if (lat && lon) {
+            fetchEnvironmentData(lat, lon);
+        } else {
+            // No coordinates — use simple weather endpoint without location
+            fetchSimpleWeather();
+        }
+    }, [locData]);
+
+    // Fade in on load
+    useEffect(() => {
+        if (!loading) {
+            Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+        }
+    }, [loading]);
+
+    const fetchEnvironmentData = async (lat, lon) => {
+        setWeatherLoading(true);
+        setWeatherError(null);
+        try {
+            // 1. Get 24h outdoor weather (past 24 hours)
+            const wxRes = await fetch(`${BASE_URL}/api/guardian/weather?lat=${lat}&lon=${lon}`);
+            const wxData = await wxRes.json();
+
+            if (wxData.success || wxData.weather_24h) {
+                setOutdoorWeather(wxData);
+                const raw24h = wxData.weather_24h || [];
+                setHourlyTempData(raw24h.map(h => ({ hour: h.hour, value: h.temp })));
+                setHourlyHumidData(raw24h.map(h => ({ hour: h.hour, value: h.humidity })));
+            }
+
+            // 2. Get fine-tuned indoor storage prediction
+            const storType = (locData?.storageType || 'home').toLowerCase().replace(/[^a-z]/g, '');
+            const stMap = { home: 'home', warehouse: 'warehouse', shed: 'shed', coop: 'co-op', 'co-op': 'co-op', private: 'warehouse', government: 'warehouse' };
+            const stype = Object.keys(stMap).find(k => storType.includes(k)) ? stMap[Object.keys(stMap).find(k => storType.includes(k))] : 'warehouse';
+
+            const body = {
+                lat, lon,
+                rice_moisture_pct: harvests.length > 0
+                    ? (harvests.reduce((s, h) => s + (parseFloat(h.moisture) || 13.5), 0) / harvests.length)
+                    : 13.5,
+                storage_type: stype,
+                roof_material: locData?.roofMaterial || 'tile',
+                roof_color: locData?.roofColor || 'red',
+                ventilation: locData?.ventilation || 'natural',
+                ceiling_height: locData?.ceilingHeight || '3-4m',
+                insulation: locData?.insulation || false,
+                rice_quantity_kg: totalKg || 500,
+            };
+
+            const indoorRes = await fetch(`${BASE_URL}/api/guardian/weather/predict-storage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body),
+            });
+            const indoorData = await indoorRes.json();
+
+            if (indoorData.success) {
+                setIndoorEnv(indoorData);
+                setFineTuneAccuracy(indoorData.indoor?.accuracy_label || null);
+                // Override hourly temp data with indoor prediction profile if available
+                if (indoorData.indoor?.hourly_profile?.length > 0) {
+                    setHourlyTempData(indoorData.indoor.hourly_profile.map(h => ({
+                        hour: h.hour, value: h.temp
+                    })));
+                    setHourlyHumidData(indoorData.indoor.hourly_profile.map(h => ({
+                        hour: h.hour, value: h.humidity
+                    })));
+                }
+            }
+        } catch (e) {
+            console.error('[WarehouseAnalysis] Weather error:', e);
+            setWeatherError('Weather data unavailable');
+        } finally {
+            setWeatherLoading(false);
+        }
+    };
+
+    const fetchSimpleWeather = async () => {
+        setWeatherLoading(true);
+        try {
+            const res = await fetch(`${BASE_URL}/api/guardian/weather`);
+            const data = await res.json();
+            if (data.success || data.weather_24h) {
+                setOutdoorWeather(data);
+                const raw = data.weather_24h || [];
+                setHourlyTempData(raw.map(h => ({ hour: h.hour, value: h.temp })));
+                setHourlyHumidData(raw.map(h => ({ hour: h.hour, value: h.humidity })));
+            }
+        } catch (e) {
+            setWeatherError('Weather unavailable');
+        } finally {
+            setWeatherLoading(false);
+        }
+    };
+
     const capacity = (locData?.storageArea || 100) * 10;
     const fillPercent = Math.min(100, (totalKg / capacity) * 100);
     const color = statusColor(fillPercent);
     const label = statusLabel(fillPercent);
+
+    // Current display values
+    const dispIndoorTemp = indoorEnv?.indoor?.avg_temperature ?? outdoorWeather?.temp_c ?? 28.5;
+    const dispIndoorHumid = indoorEnv?.indoor?.avg_humidity ?? outdoorWeather?.humidity_pct ?? 62;
+    const dispPeakTemp = indoorEnv?.indoor?.peak_temperature ?? dispIndoorTemp;
+    const tempStatus = dispIndoorTemp > 32 ? 'DANGER' : dispIndoorTemp > 29 ? 'WARNING' : 'SAFE';
+    const humidStatus = dispIndoorHumid > 80 ? 'DANGER' : dispIndoorHumid > 70 ? 'WARNING' : 'SAFE';
+    const tempStatusColor = tempStatus === 'DANGER' ? '#ef4444' : tempStatus === 'WARNING' ? '#f59e0b' : '#16a34a';
+    const humidStatusColor = humidStatus === 'DANGER' ? '#ef4444' : humidStatus === 'WARNING' ? '#f59e0b' : '#16a34a';
 
     if (loading) {
         return (
@@ -186,13 +349,161 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                     ))}
                 </View>
 
+                {/* ─── LIVE CONDITIONS (Real 24h + Fine-tuned ML) ─── */}
+                <View style={s.sectionRow}>
+                    <Text style={s.sectionTitle}>LIVE INDOOR CONDITIONS</Text>
+                    {weatherLoading
+                        ? <ActivityIndicator size="small" color="#16a34a" />
+                        : <TouchableOpacity onPress={() => {
+                            const lat = locData?.latitude || locData?.lat;
+                            const lon = locData?.longitude || locData?.lon;
+                            if (lat && lon) fetchEnvironmentData(lat, lon);
+                            else fetchSimpleWeather();
+                        }}>
+                            <MaterialCommunityIcons name="refresh" size={18} color="#3b82f6" />
+                        </TouchableOpacity>
+                    }
+                </View>
+
+                {/* Fine-tune badge */}
+                {fineTuneAccuracy && (
+                    <View style={s.fineTuneBadge}>
+                        <MaterialCommunityIcons name="brain" size={14} color="#7c3aed" />
+                        <Text style={s.fineTuneText}>
+                            ML Fine-Tuned: {fineTuneAccuracy}
+                        </Text>
+                    </View>
+                )}
+
+                <View style={s.envGrid}>
+                    {/* Indoor Temperature */}
+                    <View style={s.envCard}>
+                        <View style={s.envHeader}>
+                            <View style={[s.envIcon, { backgroundColor: '#fee2e2' }]}>
+                                <MaterialCommunityIcons name="thermometer" size={20} color="#ef4444" />
+                            </View>
+                            <Text style={s.envLabel}>INDOOR TEMP</Text>
+                        </View>
+                        <Text style={[s.envValue, { color: dispIndoorTemp > 30 ? '#ef4444' : '#111827' }]}>
+                            {dispIndoorTemp.toFixed(1)} <Text style={s.envUnit}>°C</Text>
+                        </Text>
+                        <Text style={[s.envStatus, { color: tempStatusColor }]}>{tempStatus}</Text>
+                        {indoorEnv?.indoor?.peak_temperature && (
+                            <Text style={s.envPeak}>Peak: {indoorEnv.indoor.peak_temperature.toFixed(1)}°C</Text>
+                        )}
+                    </View>
+                    {/* Indoor Humidity */}
+                    <View style={s.envCard}>
+                        <View style={s.envHeader}>
+                            <View style={[s.envIcon, { backgroundColor: '#dbeafe' }]}>
+                                <MaterialCommunityIcons name="water-percent" size={20} color="#3b82f6" />
+                            </View>
+                            <Text style={s.envLabel}>INDOOR HUMID.</Text>
+                        </View>
+                        <Text style={[s.envValue, { color: dispIndoorHumid > 80 ? '#ef4444' : '#111827' }]}>
+                            {dispIndoorHumid.toFixed(0)} <Text style={s.envUnit}>%</Text>
+                        </Text>
+                        <Text style={[s.envStatus, { color: humidStatusColor }]}>{humidStatus}</Text>
+                        {indoorEnv?.indoor?.peak_humidity && (
+                            <Text style={s.envPeak}>Peak: {indoorEnv.indoor.peak_humidity.toFixed(0)}%</Text>
+                        )}
+                    </View>
+                </View>
+
+                {/* Outdoor vs Indoor comparison row */}
+                {indoorEnv && (
+                    <View style={s.compareRow}>
+                        <View style={s.compareItem}>
+                            <Text style={s.compareLabel}>OUTDOOR AVG</Text>
+                            <Text style={s.compareVal}>{indoorEnv.outdoor?.avg_temperature?.toFixed(1) ?? '—'}°C</Text>
+                        </View>
+                        <MaterialCommunityIcons name="arrow-right" size={18} color="#9ca3af" />
+                        <View style={s.compareItem}>
+                            <Text style={s.compareLabel}>INDOOR PRED.</Text>
+                            <Text style={[s.compareVal, { color: '#ef4444' }]}>{dispIndoorTemp.toFixed(1)}°C</Text>
+                        </View>
+                        <View style={s.compareItem}>
+                            <Text style={s.compareLabel}>TEMP GAIN</Text>
+                            <Text style={[s.compareVal, { color: '#f59e0b' }]}>
+                                +{(dispIndoorTemp - (indoorEnv.outdoor?.avg_temperature || dispIndoorTemp - 3)).toFixed(1)}°C
+                            </Text>
+                        </View>
+                    </View>
+                )}
+
+                {/* Storage alerts */}
+                {indoorEnv?.indoor?.alerts?.length > 0 && (
+                    <View style={s.alertsBox}>
+                        {indoorEnv.indoor.alerts.map((al, i) => (
+                            <View key={i} style={[s.alertRow, { backgroundColor: al.level === 'critical' ? '#fef2f2' : '#fffbeb', borderColor: al.level === 'critical' ? '#fecaca' : '#fde68a' }]}>
+                                <MaterialCommunityIcons
+                                    name={al.level === 'critical' ? 'alert-octagon' : 'alert'}
+                                    size={16}
+                                    color={al.level === 'critical' ? '#ef4444' : '#f59e0b'}
+                                />
+                                <Text style={[s.alertText, { color: al.level === 'critical' ? '#991b1b' : '#92400e' }]}>
+                                    {al.message}
+                                </Text>
+                            </View>
+                        ))}
+                    </View>
+                )}
+
+                {/* 24h Temperature Chart */}
+                {!weatherLoading && hourlyTempData.length > 0 && (
+                    <View style={s.chartCard}>
+                        <View style={s.chartCardHeader}>
+                            <MaterialCommunityIcons name="chart-bell-curve" size={18} color="#16a34a" />
+                            <Text style={s.chartCardTitle}>PAST 24H — INDOOR TEMPERATURE</Text>
+                            {outdoorWeather && (
+                                <View style={s.liveDot}>
+                                    <View style={s.liveDotInner} />
+                                    <Text style={s.liveDotText}>LIVE</Text>
+                                </View>
+                            )}
+                        </View>
+                        <TempChart
+                            data={hourlyTempData}
+                            label=""
+                            unit="°C"
+                            colorHigh="#ef4444"
+                            colorNormal="#16a34a"
+                        />
+                    </View>
+                )}
+
+                {/* 24h Humidity Chart */}
+                {!weatherLoading && hourlyHumidData.length > 0 && (
+                    <View style={s.chartCard}>
+                        <View style={s.chartCardHeader}>
+                            <MaterialCommunityIcons name="water-percent" size={18} color="#3b82f6" />
+                            <Text style={s.chartCardTitle}>PAST 24H — INDOOR HUMIDITY</Text>
+                        </View>
+                        <TempChart
+                            data={hourlyHumidData}
+                            label=""
+                            unit="%"
+                            colorHigh="#3b82f6"
+                            colorNormal="#93c5fd"
+                        />
+                    </View>
+                )}
+
+                {weatherError && !weatherLoading && (
+                    <View style={s.errorBox}>
+                        <MaterialCommunityIcons name="wifi-off" size={16} color="#9ca3af" />
+                        <Text style={s.errorText}>{weatherError} — showing defaults</Text>
+                    </View>
+                )}
+
                 {/* Helpful Guides */}
                 <Text style={s.sectionTitle}>HELPFUL GUIDES</Text>
 
                 <TouchableOpacity
                     style={s.guideBtnMain}
                     onPress={() => navigation.navigate('StorageStepGuide', {
-                        temp: 28.5, humidity: 62,
+                        temp: dispIndoorTemp,
+                        humidity: dispIndoorHumid,
                         storageType: locData?.storageType || 'Home',
                         subCategory: locData?.subCategory
                     })}
@@ -211,7 +522,10 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
 
                 <TouchableOpacity
                     style={s.guideBtnSecondary}
-                    onPress={() => navigation.navigate('StorageExpertGuide', { temp: 28.5, humidity: 62 })}
+                    onPress={() => navigation.navigate('StorageExpertGuide', {
+                        temp: dispIndoorTemp,
+                        humidity: dispIndoorHumid
+                    })}
                 >
                     <View style={[s.guideIconBoxLight, { backgroundColor: '#fef9c3' }]}>
                         <MaterialCommunityIcons name="lightbulb-on" size={22} color="#f59e0b" />
@@ -222,37 +536,6 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                     </View>
                     <MaterialCommunityIcons name="chevron-right" size={22} color="#9ca3af" />
                 </TouchableOpacity>
-
-                {/* Live Conditions */}
-                <View style={s.sectionRow}>
-                    <Text style={s.sectionTitle}>LIVE CONDITIONS</Text>
-                    <TouchableOpacity onPress={() => navigation.navigate('ConnectSensors')}>
-                        <Text style={s.linkText}>Setup Sensors</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <View style={s.envGrid}>
-                    <View style={s.envCard}>
-                        <View style={s.envHeader}>
-                            <View style={[s.envIcon, { backgroundColor: '#fee2e2' }]}>
-                                <MaterialCommunityIcons name="thermometer" size={20} color="#ef4444" />
-                            </View>
-                            <Text style={s.envLabel}>TEMPERATURE</Text>
-                        </View>
-                        <Text style={s.envValue}>28.5 <Text style={s.envUnit}>°C</Text></Text>
-                        <Text style={s.envStatusGood}>Normal Range</Text>
-                    </View>
-                    <View style={s.envCard}>
-                        <View style={s.envHeader}>
-                            <View style={[s.envIcon, { backgroundColor: '#dbeafe' }]}>
-                                <MaterialCommunityIcons name="water-percent" size={20} color="#3b82f6" />
-                            </View>
-                            <Text style={s.envLabel}>HUMIDITY</Text>
-                        </View>
-                        <Text style={s.envValue}>62 <Text style={s.envUnit}>%</Text></Text>
-                        <Text style={s.envStatusGood}>Safe Level</Text>
-                    </View>
-                </View>
 
                 {/* Quality Standards */}
                 <Text style={s.sectionTitle}>QUALITY STANDARDS (SLR 603)</Text>
@@ -288,14 +571,27 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                             <TouchableOpacity
                                 key={item.id}
                                 style={s.stockItem}
-                                onPress={() => navigation.navigate('PostHarvestAdvisor', { batch: item, location: locData })}
+                                onPress={() => navigation.navigate('PostHarvestAdvisor', {
+                                    batch: item,
+                                    location: locData,
+                                    locationId,
+                                    indoorTemp: dispIndoorTemp,
+                                    indoorHumid: dispIndoorHumid,
+                                    lat: locData?.latitude || locData?.lat,
+                                    lon: locData?.longitude || locData?.lon,
+                                })}
                             >
                                 <View style={[s.stockAvatar, { backgroundColor: idx % 2 === 0 ? '#dcfce7' : '#dbeafe' }]}>
                                     <MaterialCommunityIcons name="sack" size={20} color={idx % 2 === 0 ? '#16a34a' : '#3b82f6'} />
                                 </View>
                                 <View style={{ flex: 1, marginLeft: 12 }}>
                                     <Text style={s.stockName}>{item.riceVariety || item.variety || 'Paddy'}</Text>
-                                    <Text style={s.stockDate}>Stored: {item.harvestDate || 'Recently'}</Text>
+                                    <Text style={s.stockDate}>{item.harvestDate ? `Stored: ${item.harvestDate}` : 'Recently stored'}</Text>
+                                    {item.moisture && (
+                                        <Text style={[s.stockMC, { color: parseFloat(item.moisture) > 14 ? '#ef4444' : '#16a34a' }]}>
+                                            MC: {item.moisture}%
+                                        </Text>
+                                    )}
                                 </View>
                                 <View style={{ alignItems: 'flex-end' }}>
                                     <Text style={s.stockWeight}>{item.quantityKg?.toLocaleString()} kg</Text>
@@ -306,6 +602,13 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                         ))
                     )}
                 </View>
+
+                {/* Setup sensors link */}
+                <TouchableOpacity onPress={() => navigation.navigate('ConnectSensors')} style={s.sensorBtn}>
+                    <MaterialCommunityIcons name="access-point" size={18} color="#3b82f6" />
+                    <Text style={s.sensorBtnText}>Setup IoT Sensors for Realtime Monitoring</Text>
+                    <MaterialCommunityIcons name="chevron-right" size={16} color="#9ca3af" />
+                </TouchableOpacity>
 
             </ScrollView>
         </SafeAreaView>
@@ -333,7 +636,7 @@ const s = StyleSheet.create({
     statusPillText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
 
     // Section
-    sectionTitle: { color: '#9ca3af', fontSize: 11, fontWeight: '800', letterSpacing: 1.2, marginBottom: 12 },
+    sectionTitle: { color: '#9ca3af', fontSize: 11, fontWeight: '800', letterSpacing: 1.2, marginBottom: 12, marginTop: 8 },
     sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 8 },
     linkText: { color: '#3b82f6', fontSize: 12, fontWeight: '700' },
 
@@ -369,6 +672,54 @@ const s = StyleSheet.create({
     statLabel: { color: '#9ca3af', fontSize: 10, fontWeight: '700', letterSpacing: 0.3, marginBottom: 4 },
     statVal: { color: '#111827', fontSize: 14, fontWeight: '800' },
 
+    // Fine-tune badge
+    fineTuneBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#f5f3ff', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 10, borderWidth: 1, borderColor: '#ddd6fe' },
+    fineTuneText: { color: '#7c3aed', fontSize: 12, fontWeight: '700', flex: 1 },
+
+    // Env cards
+    envGrid: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+    envCard: { flex: 1, backgroundColor: 'white', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#e5e7eb', elevation: 1 },
+    envHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
+    envIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+    envLabel: { color: '#6b7280', fontSize: 10, fontWeight: '700', letterSpacing: 0.3, flex: 1 },
+    envValue: { color: '#111827', fontSize: 24, fontWeight: '800' },
+    envUnit: { fontSize: 14, color: '#9ca3af' },
+    envStatus: { fontSize: 12, fontWeight: '700', marginTop: 4 },
+    envPeak: { color: '#9ca3af', fontSize: 11, marginTop: 2 },
+
+    // Compare row
+    compareRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: 'white', borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#e5e7eb', gap: 8 },
+    compareItem: { alignItems: 'center', flex: 1 },
+    compareLabel: { color: '#9ca3af', fontSize: 9, fontWeight: '700', letterSpacing: 0.5, marginBottom: 4 },
+    compareVal: { color: '#111827', fontSize: 15, fontWeight: '800' },
+
+    // Alerts
+    alertsBox: { marginBottom: 12, gap: 6 },
+    alertRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12, borderRadius: 12, borderWidth: 1 },
+    alertText: { flex: 1, fontSize: 12, lineHeight: 18, fontWeight: '600' },
+
+    // Chart card
+    chartCard: { backgroundColor: 'white', borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#e5e7eb', elevation: 1 },
+    chartCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+    chartCardTitle: { color: '#374151', fontSize: 11, fontWeight: '800', letterSpacing: 0.5, flex: 1 },
+    liveDot: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    liveDotInner: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#16a34a' },
+    liveDotText: { color: '#16a34a', fontSize: 10, fontWeight: '800' },
+
+    // Chart
+    chartContainer: {},
+    chartLabel: { color: '#9ca3af', fontSize: 10, fontWeight: '700', marginBottom: 6 },
+    chartBars: { flexDirection: 'row', alignItems: 'flex-end', height: 80, gap: 1 },
+    chartBarWrap: { flex: 1, alignItems: 'center', justifyContent: 'flex-end' },
+    chartBar: { width: '90%', borderRadius: 2 },
+    chartBarVal: { fontSize: 7, fontWeight: '700', marginBottom: 1 },
+    chartBarHour: { fontSize: 7, color: '#9ca3af', marginTop: 2 },
+    chartUnit: { color: '#9ca3af', fontSize: 9, textAlign: 'right', marginTop: 4 },
+
+    // Error
+    errorBox: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#f9fafb', padding: 10, borderRadius: 10, marginBottom: 10 },
+    errorText: { color: '#9ca3af', fontSize: 12 },
+
     // Guides
     guideBtnMain: { marginBottom: 10, borderRadius: 16, overflow: 'hidden', elevation: 2 },
     guideGrad: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14 },
@@ -379,16 +730,6 @@ const s = StyleSheet.create({
     guideIconBoxLight: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
     guideTitleLight: { color: '#111827', fontSize: 15, fontWeight: '700' },
     guideSubLight: { color: '#6b7280', fontSize: 12, marginTop: 2 },
-
-    // Env
-    envGrid: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-    envCard: { flex: 1, backgroundColor: 'white', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#e5e7eb', elevation: 1 },
-    envHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
-    envIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-    envLabel: { color: '#6b7280', fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
-    envValue: { color: '#111827', fontSize: 24, fontWeight: '800' },
-    envUnit: { fontSize: 14, color: '#9ca3af' },
-    envStatusGood: { color: '#16a34a', fontSize: 12, fontWeight: '600', marginTop: 4 },
 
     // Rules
     rulesCard: { backgroundColor: 'white', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 20, elevation: 1 },
@@ -403,8 +744,13 @@ const s = StyleSheet.create({
     stockAvatar: { width: 42, height: 42, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
     stockName: { color: '#111827', fontSize: 15, fontWeight: '700' },
     stockDate: { color: '#9ca3af', fontSize: 12, marginTop: 2 },
+    stockMC: { fontSize: 11, fontWeight: '700', marginTop: 2 },
     stockWeight: { color: '#111827', fontSize: 15, fontWeight: '800' },
     stockBags: { color: '#9ca3af', fontSize: 12, marginTop: 2 },
     emptyBox: { padding: 30, alignItems: 'center' },
     emptyText: { color: '#9ca3af', fontSize: 14, marginTop: 10 },
+
+    // Sensor button
+    sensorBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff6ff', padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#bfdbfe', gap: 10, marginBottom: 8 },
+    sensorBtnText: { flex: 1, color: '#1d4ed8', fontSize: 13, fontWeight: '600' },
 });

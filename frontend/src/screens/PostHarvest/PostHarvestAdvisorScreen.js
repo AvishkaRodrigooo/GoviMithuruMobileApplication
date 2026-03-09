@@ -121,16 +121,24 @@ const SignalBadge = ({ signal }) => {
 // ─── MAIN SCREEN ──────────────────────────────────────────────────────────────
 export default function PostHarvestAdvisorScreen({ navigation, route }) {
   const initialBatch = route.params?.batch;
+  const locationData = route.params?.location;   // storage location details from Warehouse
+  const locationId = route.params?.locationId;
+  // ML fine-tuned indoor values passed from WarehouseAnalysisScreen
+  const passedIndoorTemp = route.params?.indoorTemp;
+  const passedIndoorHumid = route.params?.indoorHumid;
+  const passedLat = route.params?.lat;
+  const passedLon = route.params?.lon;
 
   // ── Tab State
   const [activeTab, setActiveTab] = useState('analyze');
 
   // ── Form State
-  const [variety, setVariety] = useState(initialBatch?.variety || 'Bg 300');
-  const [method, setMethod] = useState(initialBatch?.storageType || 'gunny');
+  const [variety, setVariety] = useState(initialBatch?.variety || initialBatch?.riceVariety || 'Bg 300');
+  const [method, setMethod] = useState(initialBatch?.storageType || initialBatch?.storageMethod || 'gunny');
   const [moisture, setMoisture] = useState(parseFloat(initialBatch?.moisture) || 13.5);
-  const [temp, setTemp] = useState(28.0);
-  const [humidity, setHumidity] = useState(65.0);
+  // Use ML-fine-tuned indoor temp if available, else default
+  const [temp, setTemp] = useState(passedIndoorTemp ? parseFloat(passedIndoorTemp.toFixed(1)) : 28.0);
+  const [humidity, setHumidity] = useState(passedIndoorHumid ? parseFloat(passedIndoorHumid.toFixed(0)) : 65.0);
   const [quantity, setQuantity] = useState(initialBatch?.quantityKg?.toString() || '1000');
 
   // ── Prediction + Advice State
@@ -141,12 +149,16 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
   const [loadingAdvice, setLoadingAdvice] = useState(false);
 
   // ── Weather Sync
-  const [syncStatus, setSyncStatus] = useState('idle');
-  const [calibMsg, setCalibMsg] = useState('');
+  const [syncStatus, setSyncStatus] = useState(passedIndoorTemp ? 'synced' : 'idle');
+  const [calibMsg, setCalibMsg] = useState(
+    passedIndoorTemp
+      ? `Storage location temp: ${passedIndoorTemp.toFixed(1)}°C (ML fine-tuned from 24h weather data)`
+      : ''
+  );
   const location = useUniversalLocation('en');
 
   // ── Modals
-  const [modalType, setModalType] = useState(null);  // 'variety' | 'method'
+  const [modalType, setModalType] = useState(null);
 
   // ── Advisor expand
   const [adviceExpanded, setAdviceExpanded] = useState(true);
@@ -159,12 +171,20 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
   useEffect(() => {
     if (route.params?.batch) {
       const b = route.params.batch;
-      setVariety(b.variety || 'Bg 300');
-      setMethod(b.storageType || 'gunny');
+      setVariety(b.variety || b.riceVariety || 'Bg 300');
+      setMethod(b.storageType || b.storageMethod || 'gunny');
       setMoisture(parseFloat(b.moisture) || 13.5);
       setQuantity(b.quantityKg?.toString() || '1000');
     }
-  }, [route.params?.batch]);
+    if (route.params?.indoorTemp) {
+      setTemp(parseFloat(route.params.indoorTemp.toFixed(1)));
+      setSyncStatus('synced');
+      setCalibMsg(`Storage location temp: ${route.params.indoorTemp.toFixed(1)}°C (ML fine-tuned from 24h weather)`);
+    }
+    if (route.params?.indoorHumid) {
+      setHumidity(parseFloat(route.params.indoorHumid.toFixed(0)));
+    }
+  }, [route.params?.batch, route.params?.indoorTemp]);
 
   useEffect(() => {
     Animated.parallel([
@@ -173,10 +193,10 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
     ]).start();
   }, [activeTab]);
 
-  // ── Auto weather sync on location ready
+  // ── Auto weather sync — skipped if already synced from WarehouseAnalysis
   useEffect(() => {
-    const lat = location.latitude;
-    const lon = location.longitude;
+    const lat = passedLat || location.latitude;
+    const lon = passedLon || location.longitude;
     if (lat && lon && syncStatus === 'idle') {
       syncWeather(lat, lon);
     }
@@ -187,12 +207,27 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
     try {
       const res = await fetch(`${BASE_URL}/api/guardian/weather?lat=${lat}&lon=${lon}`);
       const data = await res.json();
-      if (data.success) {
-        const indoorTemp = (data.temp_c || 28) + 3;  // +3°C indoor thermal gain
-        setTemp(parseFloat(indoorTemp.toFixed(1)));
+      if (data.weather_24h?.length > 0) {
+        const w24 = data.weather_24h;
+        const avgT = w24.reduce((s, h) => s + h.temp, 0) / w24.length;
+        const avgH = w24.reduce((s, h) => s + h.humidity, 0) / w24.length;
+        const peakT = Math.max(...w24.map(h => h.temp));
+        const gain = peakT > 34 ? 4.0 : peakT > 30 ? 3.5 : 2.5;
+        const indoorT = parseFloat((avgT + gain).toFixed(1));
+        const indoorH = parseFloat(Math.min(95, avgH + 5).toFixed(0));
+        setTemp(indoorT);
+        setHumidity(indoorH);
+        setSyncStatus('synced');
+        setCalibMsg(
+          `24h avg outdoor: ${avgT.toFixed(1)}°C → Indoor: ${indoorT}°C (+${gain}°C). ` +
+          `Humidity: ${indoorH}%. Source: Open-Meteo`
+        );
+      } else if (data.temp_c) {
+        const indoorTemp = parseFloat(((data.temp_c || 28) + 3).toFixed(1));
+        setTemp(indoorTemp);
         setHumidity(data.humidity_pct || 65);
         setSyncStatus('synced');
-        setCalibMsg(`Weather synced. Outdoor: ${data.temp_c?.toFixed(1)}°C. Indoor estimated: ${indoorTemp.toFixed(1)}°C.`);
+        setCalibMsg(`Outdoor: ${data.temp_c?.toFixed(1)}°C → Indoor est: ${indoorTemp}°C.`);
       } else {
         setSyncStatus('error');
       }
@@ -215,25 +250,59 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
     setAdvice(null);
     setAdviceLang(null);
     try {
+      // Resolve lat/lon: prefer passed from WarehouseAnalysis, then useUniversalLocation
+      const lat = passedLat || location.latitude;
+      const lon = passedLon || location.longitude;
+
+      // Normalize storage location type for backend
+      const slocRaw = (locationData?.storageType || 'home').toLowerCase();
+      const slocMap = { home: 'home', warehouse: 'warehouse', shed: 'shed', coop: 'coop', 'co-op': 'coop', private: 'warehouse', government: 'warehouse' };
+      const sloc = Object.keys(slocMap).find(k => slocRaw.includes(k)) ? slocMap[Object.keys(slocMap).find(k => slocRaw.includes(k))] : 'home';
+
+      const body = {
+        variety,
+        bag_type: method,
+        storage_method: method,
+        moisture_pct: moisture,
+        temp_c: temp,
+        humidity_pct: humidity,
+        quantity_kg: parseFloat(quantity),
+        duration_months: 3,
+        has_pest_history: false,
+        storage_location: sloc,
+        storage_type: sloc,
+        // Pass lat/lon so backend fetches real 24h weather + runs ML fine-tuning
+        ...(lat && lon ? { lat, lon } : {}),
+        // Storage building properties from location data
+        ...(locationData?.roofMaterial ? { roof_material: locationData.roofMaterial } : {}),
+        ...(locationData?.roofColor ? { roof_color: locationData.roofColor } : {}),
+        ...(locationData?.ventilation ? { ventilation: locationData.ventilation } : {}),
+        ...(locationData?.ceilingHeight ? { ceiling_height: locationData.ceilingHeight } : {}),
+        ...(locationData?.insulation ? { insulation: locationData.insulation } : {}),
+      };
+
       const res = await fetch(`${BASE_URL}/api/guardian/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          variety,
-          bag_type: method,
-          storage_method: method,           // backward compat
-          moisture_pct: moisture,
-          temp_c: temp,
-          humidity_pct: humidity,
-          quantity_kg: parseFloat(quantity),
-          duration_months: 3,
-          has_pest_history: false,
-          storage_location: 'home',
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (data.success) {
         setPrediction(data);
+        // Update temp/humidity display if backend returned ML-refined values
+        if (data.indoor_environment?.indoor_temp_c) {
+          setTemp(data.indoor_environment.indoor_temp_c);
+          setSyncStatus('synced');
+          const src = data.indoor_environment.weather_source || 'ML Model';
+          setCalibMsg(
+            `Indoor temp refined: ${data.indoor_environment.indoor_temp_c}°C · ` +
+            `Outdoor avg: ${data.indoor_environment.outdoor_avg_temp}°C · ` +
+            `Source: ${src}`
+          );
+        }
+        if (data.indoor_environment?.indoor_humidity_pct) {
+          setHumidity(data.indoor_environment.indoor_humidity_pct);
+        }
       } else {
         Alert.alert('Prediction Error', data.error || 'Prediction failed.');
       }
@@ -340,10 +409,48 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
         <View style={styles.batchNotice}>
           <MaterialCommunityIcons name="layers-outline" size={18} color={C.green} />
           <Text style={styles.batchNoticeText}>
-            Analyzing: <Text style={{ fontWeight: '700', color: C.green }}>{initialBatch.variety}</Text>
-            {initialBatch.location ? ` · ${initialBatch.location}` : ''}
+            Analyzing: <Text style={{ fontWeight: '700', color: C.green }}>{initialBatch.variety || initialBatch.riceVariety || 'Batch'}</Text>
+            {initialBatch.harvestDate ? ` · ${initialBatch.harvestDate}` : ''}
           </Text>
           <View style={styles.preFilledTag}><Text style={styles.preFilledTagText}>PRE-FILLED</Text></View>
+        </View>
+      )}
+
+      {/* Storage Location Info Card */}
+      {locationData && (
+        <View style={styles.locationCard}>
+          <View style={styles.locationCardHeader}>
+            <MaterialCommunityIcons name="warehouse" size={16} color={C.blue} />
+            <Text style={styles.locationCardTitle}>Storage Location</Text>
+            {passedIndoorTemp && (
+              <View style={styles.mlBadge}>
+                <MaterialCommunityIcons name="brain" size={10} color="#7c3aed" />
+                <Text style={styles.mlBadgeText}>ML Fine-Tuned</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.locationGrid}>
+            <View style={styles.locationItem}>
+              <Text style={styles.locationItemLabel}>Store Name</Text>
+              <Text style={styles.locationItemValue}>{locationData.locationName || locationData.name || '—'}</Text>
+            </View>
+            <View style={styles.locationItem}>
+              <Text style={styles.locationItemLabel}>Type</Text>
+              <Text style={styles.locationItemValue}>{locationData.storageType || '—'}</Text>
+            </View>
+            <View style={styles.locationItem}>
+              <Text style={styles.locationItemLabel}>Indoor Temp</Text>
+              <Text style={[styles.locationItemValue, { color: temp > 30 ? C.red : C.green }]}>
+                {temp.toFixed(1)}°C
+              </Text>
+            </View>
+            <View style={styles.locationItem}>
+              <Text style={styles.locationItemLabel}>Humidity</Text>
+              <Text style={[styles.locationItemValue, { color: humidity > 80 ? C.red : C.blue }]}>
+                {humidity.toFixed(0)}%
+              </Text>
+            </View>
+          </View>
         </View>
       )}
 
@@ -516,7 +623,11 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
 
         {/* Storage Details */}
         <SectionCard>
-          <CardHeader icon="package-variant-closed" title="Storage Analysis" />
+          <CardHeader
+            icon="package-variant-closed"
+            title="Storage Analysis"
+            subtitle={stor.prediction_method ? `Prediction: ${stor.prediction_method}` : null}
+          />
           <View style={styles.storageGrid}>
             <View style={styles.storageItem}>
               <Text style={styles.storageItemLabel}>Container</Text>
@@ -540,7 +651,48 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
                 {stor.weevil_risk || '—'}
               </Text>
             </View>
+            {stor.ml_days && (
+              <View style={styles.storageItem}>
+                <Text style={styles.storageItemLabel}>ML Prediction</Text>
+                <Text style={[styles.storageItemValue, { color: '#7c3aed' }]}>{stor.ml_days} days</Text>
+              </View>
+            )}
+            {stor.physics_days && (
+              <View style={styles.storageItem}>
+                <Text style={styles.storageItemLabel}>Physics Model</Text>
+                <Text style={styles.storageItemValue}>{stor.physics_days} days</Text>
+              </View>
+            )}
           </View>
+          {/* Indoor environment info from ML prediction */}
+          {prediction.indoor_environment && (
+            <View style={styles.indoorEnvBox}>
+              <View style={styles.indoorEnvRow}>
+                <MaterialCommunityIcons name="thermometer" size={14} color="#ef4444" />
+                <Text style={styles.indoorEnvLabel}>Indoor Temp:</Text>
+                <Text style={[styles.indoorEnvVal, { color: prediction.indoor_environment.indoor_temp_c > 30 ? '#ef4444' : '#16a34a' }]}>
+                  {prediction.indoor_environment.indoor_temp_c}°C
+                </Text>
+                <Text style={styles.indoorEnvSrc}>(outdoor: {prediction.indoor_environment.outdoor_avg_temp}°C)</Text>
+              </View>
+              <View style={styles.indoorEnvRow}>
+                <MaterialCommunityIcons name="water-percent" size={14} color="#3b82f6" />
+                <Text style={styles.indoorEnvLabel}>Indoor Humid.:</Text>
+                <Text style={styles.indoorEnvVal}>{prediction.indoor_environment.indoor_humidity_pct}%</Text>
+                <Text style={styles.indoorEnvSrc}>Source: {prediction.indoor_environment.weather_source || '—'}</Text>
+              </View>
+              {prediction.indoor_environment.storage_alerts?.length > 0 && (
+                prediction.indoor_environment.storage_alerts.map((al, i) => (
+                  <View key={i} style={[styles.inlineAlert, { backgroundColor: al.level === 'critical' ? '#fef2f2' : '#fffbeb' }]}>
+                    <MaterialCommunityIcons name="alert" size={12} color={al.level === 'critical' ? '#ef4444' : '#f59e0b'} />
+                    <Text style={[styles.inlineAlertText, { color: al.level === 'critical' ? '#991b1b' : '#92400e' }]}>
+                      {al.message}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
+          )}
           {stor.explanation ? (
             <View style={styles.explanationBox}>
               <MaterialCommunityIcons name="information-outline" size={14} color={C.textSecondary} />
@@ -2015,5 +2167,120 @@ const styles = StyleSheet.create({
   modalItemTextActive: {
     color: C.green,
     fontWeight: '700',
+  },
+
+  // ── Storage Location Card
+  locationCard: {
+    backgroundColor: C.blueBg,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  locationCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  locationCardTitle: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '800',
+    color: C.blue,
+    letterSpacing: 0.3,
+  },
+  locationGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  locationItem: {
+    width: (width - 32 - 36 - 8) / 2 - 4,
+    backgroundColor: C.white,
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  locationItemLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: C.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 3,
+  },
+  locationItemValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: C.textPrimary,
+  },
+
+  // ── ML Badge
+  mlBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F3FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 3,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+  },
+  mlBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#7C3AED',
+    letterSpacing: 0.3,
+  },
+
+  // ── Indoor Environment inline display
+  indoorEnvBox: {
+    backgroundColor: C.bg,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    gap: 6,
+  },
+  indoorEnvRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  indoorEnvLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: C.textSecondary,
+  },
+  indoorEnvVal: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: C.textPrimary,
+  },
+  indoorEnvSrc: {
+    fontSize: 10,
+    color: C.textMuted,
+    flex: 1,
+  },
+
+  // ── Inline alert
+  inlineAlert: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    padding: 8,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  inlineAlertText: {
+    flex: 1,
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '600',
   },
 });

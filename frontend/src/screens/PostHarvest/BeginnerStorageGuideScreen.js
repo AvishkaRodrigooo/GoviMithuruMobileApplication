@@ -7,7 +7,6 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Speech from 'expo-speech';
-import { BlurView } from 'expo-blur';
 import { BASE_URL, API_ENDPOINTS } from '../../utils/apiConfig';
 
 const { width, height } = Dimensions.get('window');
@@ -292,10 +291,10 @@ export default function BeginnerStorageGuideScreen({ navigation }) {
                 ]}>
                     {item.content}
                 </Text>
-                
+
                 <View style={styles.messageMeta}>
                     <Text style={styles.timestampText}>{item.timestamp}</Text>
-                    
+
                     {item.role === 'assistant' && (
                         <TouchableOpacity
                             onPress={() => speakText(item.content, item.language, item.id)}
@@ -330,14 +329,14 @@ export default function BeginnerStorageGuideScreen({ navigation }) {
     return (
         <SafeAreaView style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-            
+
             {/* Header */}
-            <BlurView intensity={100} tint="light" style={styles.header}>
+            <View style={styles.header}>
                 <View style={styles.headerContent}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
                         <MaterialCommunityIcons name="arrow-left" size={24} color="#374151" />
                     </TouchableOpacity>
-                    
+
                     <View style={styles.headerInfo}>
                         <Text style={styles.headerTitle}>🌾 Farm Assistant</Text>
                         <View style={styles.statusContainer}>
@@ -345,8 +344,8 @@ export default function BeginnerStorageGuideScreen({ navigation }) {
                             <Text style={styles.statusText}>AI Expert • Online</Text>
                         </View>
                     </View>
-                    
-                    <TouchableOpacity 
+
+                    <TouchableOpacity
                         style={styles.languageButton}
                         onPress={() => {
                             Alert.alert(
@@ -369,7 +368,7 @@ export default function BeginnerStorageGuideScreen({ navigation }) {
                         </Text>
                     </TouchableOpacity>
                 </View>
-            </BlurView>
+            </View>
 
             {/* Chat Area */}
             <FlatList
@@ -421,7 +420,7 @@ export default function BeginnerStorageGuideScreen({ navigation }) {
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             >
-                <BlurView intensity={100} tint="light" style={styles.inputContainer}>
+                <View style={styles.inputContainer}>
                     <View style={styles.inputWrapper}>
                         <TextInput
                             ref={inputRef}
@@ -434,7 +433,7 @@ export default function BeginnerStorageGuideScreen({ navigation }) {
                             maxLength={500}
                             onFocus={() => setShowQuickActions(false)}
                         />
-                        
+
                         <TouchableOpacity
                             onPress={() => sendMessage()}
                             style={[styles.sendButton, !inputText.trim() && styles.sendButtonDisabled]}
@@ -447,16 +446,16 @@ export default function BeginnerStorageGuideScreen({ navigation }) {
                                 {loading ? (
                                     <ActivityIndicator size="small" color="#fff" />
                                 ) : (
-                                    <MaterialCommunityIcons 
-                                        name="send" 
-                                        size={20} 
-                                        color={inputText.trim() ? "#fff" : "#9ca3af"} 
+                                    <MaterialCommunityIcons
+                                        name="send"
+                                        size={20}
+                                        color={inputText.trim() ? "#fff" : "#9ca3af"}
                                     />
                                 )}
                             </LinearGradient>
                         </TouchableOpacity>
                     </View>
-                </BlurView>
+                </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
     );
@@ -466,18 +465,20 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#f9fafb',
+        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
     },
     header: {
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(229, 231, 235, 0.5)',
-        overflow: 'hidden',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        zIndex: 10,
     },
     headerContent: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 12,
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
+        backgroundColor: 'transparent',
     },
     backButton: {
         width: 40,
@@ -692,14 +693,14 @@ const styles = StyleSheet.create({
     inputContainer: {
         borderTopWidth: 1,
         borderTopColor: 'rgba(229, 231, 235, 0.5)',
-        overflow: 'hidden',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
     },
     inputWrapper: {
         flexDirection: 'row',
         alignItems: 'flex-end',
         paddingHorizontal: 16,
         paddingVertical: 12,
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+        backgroundColor: 'transparent',
     },
     input: {
         flex: 1,

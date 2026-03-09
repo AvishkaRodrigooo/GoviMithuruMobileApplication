@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
     View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
     ScrollView, Dimensions, Animated, Alert, TextInput,
-    ActivityIndicator, Modal, StatusBar
+    ActivityIndicator, Modal, StatusBar, Platform, KeyboardAvoidingView
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -246,375 +246,377 @@ export default function StorageStepGuideScreen({ navigation, route }) {
     // ─────────────────────────────────────────────────────────────────────────
     return (
         <SafeAreaView style={styles.root}>
-            <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
+            <KeyboardAvoidingView style={{ flex: 1, paddingBottom: Platform.OS === 'ios' ? 70 : 0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+                <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
 
-            {/* ── Header ── */}
-            <View style={styles.header}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <MaterialCommunityIcons name="chevron-left" size={28} color="#16a34a" />
-                </TouchableOpacity>
-                <View style={{ flex: 1 }}>
-                    <Text style={styles.headerTitle} numberOfLines={1}>
-                        {guideData.title || subCategory}
-                    </Text>
-                    <Text style={styles.headerSub}>{storageType} Specialist Guide</Text>
-                </View>
-
-                {/* Language Switcher */}
-                <View style={styles.langRow}>
-                    {['en', 'si', 'ta'].map(l => (
-                        <TouchableOpacity
-                            key={l}
-                            onPress={() => setLang(l)}
-                            style={[styles.langBtn, lang === l && styles.langBtnActive]}
-                        >
-                            <Text style={[styles.langText, lang === l && styles.langTextActive]}>
-                                {l.toUpperCase()}
-                            </Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
-
-                <TouchableOpacity onPress={() => setShowCalendar(true)} style={styles.calBtn}>
-                    <MaterialCommunityIcons name="calendar-clock" size={24} color="#16a34a" />
-                </TouchableOpacity>
-            </View>
-
-            {/* ── Banner ── */}
-            <View style={styles.welcomeBanner}>
-                <LinearGradient colors={['#064e3b', '#065f46']} style={styles.welcomeGrad}>
-                    <MaterialCommunityIcons name="shield-check" size={24} color="#34d399" />
-                    <View style={{ marginLeft: 12 }}>
-                        <Text style={styles.welcomeTitle}>{UI.auditorActive}</Text>
-                        <Text style={styles.welcomeSub}>{UI.standards}</Text>
+                {/* ── Header ── */}
+                <View style={styles.header}>
+                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                        <MaterialCommunityIcons name="chevron-left" size={28} color="#16a34a" />
+                    </TouchableOpacity>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.headerTitle} numberOfLines={1}>
+                            {guideData.title || subCategory}
+                        </Text>
+                        <Text style={styles.headerSub}>{storageType} Specialist Guide</Text>
                     </View>
-                </LinearGradient>
-            </View>
 
-            {/* ── Progress ── */}
-            <View style={styles.progressSection}>
-                <View style={styles.progressRow}>
-                    <Text style={styles.progressText}>
-                        {UI.stepOf} {currentStep + 1} {UI.of} {steps.length}
-                    </Text>
-                    <Text style={styles.progressPct}>
-                        {Math.round(((currentStep + 1) / steps.length) * 100)}%
-                    </Text>
-                </View>
-                <View style={styles.track}>
-                    <Animated.View
-                        style={[
-                            styles.fill,
-                            {
-                                width: progressAnim.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: ['0%', '100%'],
-                                }),
-                            },
-                        ]}
-                    />
-                </View>
-            </View>
+                    {/* Language Switcher */}
+                    <View style={styles.langRow}>
+                        {['en', 'si', 'ta'].map(l => (
+                            <TouchableOpacity
+                                key={l}
+                                onPress={() => setLang(l)}
+                                style={[styles.langBtn, lang === l && styles.langBtnActive]}
+                            >
+                                <Text style={[styles.langText, lang === l && styles.langTextActive]}>
+                                    {l.toUpperCase()}
+                                </Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
 
-            {/* ── Main content ── */}
-            <ScrollView contentContainerStyle={styles.scroll}>
-                <View style={styles.card}>
-                    {/* Step Icon */}
-                    <View style={styles.iconCircle}>
-                        {step.icon && /[^\x00-\x7F]/.test(step.icon) ? (
-                            <Text style={{ fontSize: 32 }}>{step.icon}</Text>
-                        ) : (
-                            <MaterialCommunityIcons
-                                name={step.icon || 'bullseye-arrow'}
-                                size={35}
-                                color="#10b981"
-                            />
+                    <TouchableOpacity onPress={() => setShowCalendar(true)} style={styles.calBtn}>
+                        <MaterialCommunityIcons name="calendar-clock" size={24} color="#16a34a" />
+                    </TouchableOpacity>
+                </View>
+
+                {/* ── Banner ── */}
+                <View style={styles.welcomeBanner}>
+                    <LinearGradient colors={['#064e3b', '#065f46']} style={styles.welcomeGrad}>
+                        <MaterialCommunityIcons name="shield-check" size={24} color="#34d399" />
+                        <View style={{ marginLeft: 12 }}>
+                            <Text style={styles.welcomeTitle}>{UI.auditorActive}</Text>
+                            <Text style={styles.welcomeSub}>{UI.standards}</Text>
+                        </View>
+                    </LinearGradient>
+                </View>
+
+                {/* ── Progress ── */}
+                <View style={styles.progressSection}>
+                    <View style={styles.progressRow}>
+                        <Text style={styles.progressText}>
+                            {UI.stepOf} {currentStep + 1} {UI.of} {steps.length}
+                        </Text>
+                        <Text style={styles.progressPct}>
+                            {Math.round(((currentStep + 1) / steps.length) * 100)}%
+                        </Text>
+                    </View>
+                    <View style={styles.track}>
+                        <Animated.View
+                            style={[
+                                styles.fill,
+                                {
+                                    width: progressAnim.interpolate({
+                                        inputRange: [0, 1],
+                                        outputRange: ['0%', '100%'],
+                                    }),
+                                },
+                            ]}
+                        />
+                    </View>
+                </View>
+
+                {/* ── Main content ── */}
+                <ScrollView contentContainerStyle={styles.scroll}>
+                    <View style={styles.card}>
+                        {/* Step Icon */}
+                        <View style={styles.iconCircle}>
+                            {step.icon && /[^\x00-\x7F]/.test(step.icon) ? (
+                                <Text style={{ fontSize: 32 }}>{step.icon}</Text>
+                            ) : (
+                                <MaterialCommunityIcons
+                                    name={step.icon || 'bullseye-arrow'}
+                                    size={35}
+                                    color="#10b981"
+                                />
+                            )}
+                        </View>
+
+                        <Text style={styles.stepTitle}>{step.title}</Text>
+
+                        {step.cost && (
+                            <View style={styles.costBadge}>
+                                <MaterialCommunityIcons name="currency-rupee" size={16} color="#10b981" />
+                                <Text style={styles.costText}>{step.cost}</Text>
+                            </View>
                         )}
-                    </View>
 
-                    <Text style={styles.stepTitle}>{step.title}</Text>
+                        {/* Details */}
+                        {step.details && (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>{UI.details}</Text>
+                                <Text style={styles.listText}>{step.details}</Text>
+                            </View>
+                        )}
 
-                    {step.cost && (
-                        <View style={styles.costBadge}>
-                            <MaterialCommunityIcons name="currency-rupee" size={16} color="#10b981" />
-                            <Text style={styles.costText}>{step.cost}</Text>
-                        </View>
-                    )}
-
-                    {/* Details */}
-                    {step.details && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>{UI.details}</Text>
-                            <Text style={styles.listText}>{step.details}</Text>
-                        </View>
-                    )}
-
-                    {/* Process */}
-                    {step.process && Array.isArray(step.process) && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>{UI.process}</Text>
-                            {step.process.map((item, i) => (
-                                <View key={i} style={styles.listItem}>
-                                    <View style={styles.bullet} />
-                                    <Text style={styles.listText}>{item}</Text>
-                                </View>
-                            ))}
-                        </View>
-                    )}
-
-                    {/* Infrastructure items */}
-                    {step.items && Array.isArray(step.items) && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>{UI.infra}</Text>
-                            {step.items.map((item, i) => (
-                                <View key={i} style={styles.checkRow}>
-                                    <MaterialCommunityIcons name="tools" size={18} color="#10b981" />
-                                    <Text style={styles.listText}>{item}</Text>
-                                </View>
-                            ))}
-                        </View>
-                    )}
-
-                    {/* Logic rules */}
-                    {step.logic && Array.isArray(step.logic) && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>{UI.monitoring}</Text>
-                            {step.logic.map((rule, i) => (
-                                <View key={i} style={styles.logicRow}>
-                                    <MaterialCommunityIcons name="brain" size={18} color="#34d399" />
-                                    <Text style={styles.listText}>{rule}</Text>
-                                </View>
-                            ))}
-                        </View>
-                    )}
-
-                    {/* Container options */}
-                    {step.options && Array.isArray(step.options) && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>{UI.containers}</Text>
-                            {step.options.map((opt, i) => (
-                                <View key={i} style={styles.optionBox}>
-                                    <View style={styles.optHeader}>
-                                        <Text style={styles.optName}>{opt.name}</Text>
-                                        <Text style={styles.optCost}>{opt.cost}</Text>
-                                    </View>
-                                    <Text style={styles.optDesc}>
-                                        <Text style={{ color: '#10b981' }}>{UI.pros}: </Text>
-                                        {opt.pros}
-                                    </Text>
-                                    <Text style={styles.optDesc}>
-                                        <Text style={{ color: '#ef4444' }}>{UI.cons}: </Text>
-                                        {opt.cons}
-                                    </Text>
-                                </View>
-                            ))}
-                        </View>
-                    )}
-
-                    {/* Checklist */}
-                    {step.checklist && Array.isArray(step.checklist) && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>{UI.checklist}</Text>
-                            {step.checklist.map((item, i) => (
-                                <View key={i} style={styles.checkRow}>
-                                    <MaterialCommunityIcons name="check-box-outline" size={20} color="#10b981" />
-                                    <Text style={styles.listText}>{item}</Text>
-                                </View>
-                            ))}
-                        </View>
-                    )}
-
-                    {/* Mandatory rules */}
-                    {step.rules && Array.isArray(step.rules) && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>{UI.mandatory}</Text>
-                            {step.rules.map((rule, i) => (
-                                <View key={i} style={styles.ruleRow}>
-                                    <MaterialCommunityIcons name="shield-alert" size={18} color="#f59e0b" />
-                                    <Text style={styles.listText}>{rule}</Text>
-                                </View>
-                            ))}
-                        </View>
-                    )}
-
-                    {/* Maintenance routines */}
-                    {step.routines && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>{UI.maintenance}</Text>
-                            {step.routines.daily && (
-                                <View style={styles.routineBlock}>
-                                    <Text style={styles.routineHeader}>{UI.daily}</Text>
-                                    {step.routines.daily.map((r, i) => (
-                                        <View key={i} style={styles.listItem}>
-                                            <View style={styles.bullet} />
-                                            <Text style={styles.listText}>{r}</Text>
-                                        </View>
-                                    ))}
-                                </View>
-                            )}
-                            {step.routines.weekly && (
-                                <View style={styles.routineBlock}>
-                                    <Text style={styles.routineHeader}>{UI.weekly}</Text>
-                                    {step.routines.weekly.map((r, i) => (
-                                        <View key={i} style={styles.listItem}>
-                                            <View style={styles.bullet} />
-                                            <Text style={styles.listText}>{r}</Text>
-                                        </View>
-                                    ))}
-                                </View>
-                            )}
-                            {step.routines.monthly && (
-                                <View style={styles.routineBlock}>
-                                    <Text style={styles.routineHeader}>{UI.monthly}</Text>
-                                    {step.routines.monthly.map((r, i) => (
-                                        <View key={i} style={styles.listItem}>
-                                            <View style={styles.bullet} />
-                                            <Text style={styles.listText}>{r}</Text>
-                                        </View>
-                                    ))}
-                                </View>
-                            )}
-                            {step.routines.quarterly && (
-                                <View style={styles.routineBlock}>
-                                    <Text style={styles.routineHeader}>{UI.quarterly}</Text>
-                                    {step.routines.quarterly.map((r, i) => (
-                                        <View key={i} style={styles.listItem}>
-                                            <View style={styles.bullet} />
-                                            <Text style={styles.listText}>{r}</Text>
-                                        </View>
-                                    ))}
-                                </View>
-                            )}
-                        </View>
-                    )}
-
-                    {/* Quick stats */}
-                    {guideData.guideContent.quickStats && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>{UI.stats}</Text>
-                            <View style={styles.statsRow}>
-                                {guideData.guideContent.quickStats.map((stat, i) => (
-                                    <View key={i} style={styles.statChip}>
-                                        <Text style={styles.statLabel}>{stat.label}</Text>
-                                        <Text style={styles.statValue}>{stat.value}</Text>
+                        {/* Process */}
+                        {step.process && Array.isArray(step.process) && (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>{UI.process}</Text>
+                                {step.process.map((item, i) => (
+                                    <View key={i} style={styles.listItem}>
+                                        <View style={styles.bullet} />
+                                        <Text style={styles.listText}>{item}</Text>
                                     </View>
                                 ))}
                             </View>
-                        </View>
-                    )}
+                        )}
 
-                    {/* Warnings */}
-                    {guideData.guideContent.warnings && (
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>{UI.warnings}</Text>
-                            {guideData.guideContent.warnings.map((w, i) => (
-                                <View key={i} style={styles.warningBox}>
-                                    <MaterialCommunityIcons name="alert-circle" size={18} color="#ef4444" />
-                                    <Text style={styles.warningText}>{w}</Text>
-                                </View>
-                            ))}
-                        </View>
-                    )}
-                </View>
+                        {/* Infrastructure items */}
+                        {step.items && Array.isArray(step.items) && (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>{UI.infra}</Text>
+                                {step.items.map((item, i) => (
+                                    <View key={i} style={styles.checkRow}>
+                                        <MaterialCommunityIcons name="tools" size={18} color="#10b981" />
+                                        <Text style={styles.listText}>{item}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
 
-                {/* ── Ollama qwen2.5:7b Multilingual Chat ── */}
-                <View style={styles.chatSection}>
-                    <View style={styles.chatHeader}>
-                        <MaterialCommunityIcons name="robot-outline" size={22} color="#10b981" />
-                        <Text style={styles.chatTitle}>{UI.chatTitle}</Text>
-                    </View>
+                        {/* Logic rules */}
+                        {step.logic && Array.isArray(step.logic) && (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>{UI.monitoring}</Text>
+                                {step.logic.map((rule, i) => (
+                                    <View key={i} style={styles.logicRow}>
+                                        <MaterialCommunityIcons name="brain" size={18} color="#34d399" />
+                                        <Text style={styles.listText}>{rule}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
 
-                    <View style={styles.chatBox}>
-                        <ScrollView
-                            ref={chatScrollRef}
-                            style={styles.chatScroll}
-                            nestedScrollEnabled
-                            onContentSizeChange={() =>
-                                chatScrollRef.current?.scrollToEnd({ animated: true })
-                            }
-                        >
-                            {chatMessages.map(m => (
-                                <View
-                                    key={m.id}
-                                    style={[styles.message, m.isBot ? styles.botMsg : styles.userMsg]}
-                                >
-                                    {m.isBot && (
-                                        <View style={styles.botIcon}>
-                                            <MaterialCommunityIcons
-                                                name="robot-outline"
-                                                size={14}
-                                                color="#10b981"
-                                            />
+                        {/* Container options */}
+                        {step.options && Array.isArray(step.options) && (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>{UI.containers}</Text>
+                                {step.options.map((opt, i) => (
+                                    <View key={i} style={styles.optionBox}>
+                                        <View style={styles.optHeader}>
+                                            <Text style={styles.optName}>{opt.name}</Text>
+                                            <Text style={styles.optCost}>{opt.cost}</Text>
                                         </View>
-                                    )}
-                                    <Text
-                                        style={[
-                                            styles.msgText,
-                                            !m.isBot && { color: '#fff' },
-                                        ]}
-                                    >
-                                        {m.text}
-                                    </Text>
-                                </View>
-                            ))}
-                            {isTyping && (
-                                <View style={[styles.message, styles.botMsg]}>
-                                    <ActivityIndicator color="#10b981" size="small" />
-                                    <Text style={[styles.msgText, { color: '#9ca3af', marginLeft: 8 }]}>
-                                        {lang === 'si'
-                                            ? 'ටයිප් කරමින් ...'
-                                            : lang === 'ta'
-                                            ? 'தட்டச்சு செய்கிறது...'
-                                            : 'Advisor is thinking...'}
-                                    </Text>
-                                </View>
-                            )}
-                        </ScrollView>
+                                        <Text style={styles.optDesc}>
+                                            <Text style={{ color: '#10b981' }}>{UI.pros}: </Text>
+                                            {opt.pros}
+                                        </Text>
+                                        <Text style={styles.optDesc}>
+                                            <Text style={{ color: '#ef4444' }}>{UI.cons}: </Text>
+                                            {opt.cons}
+                                        </Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
 
-                        <View style={styles.inputRow}>
-                            <TextInput
-                                style={styles.input}
-                                placeholder={UI.placeholder}
-                                value={chatInput}
-                                onChangeText={setChatInput}
-                                placeholderTextColor="#94a3b8"
-                                onSubmitEditing={handleSendMessage}
-                                returnKeyType="send"
-                                multiline={false}
-                            />
-                            <TouchableOpacity
-                                onPress={handleSendMessage}
-                                style={[styles.sendBtn, !chatInput.trim() && { opacity: 0.5 }]}
-                                disabled={!chatInput.trim()}
+                        {/* Checklist */}
+                        {step.checklist && Array.isArray(step.checklist) && (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>{UI.checklist}</Text>
+                                {step.checklist.map((item, i) => (
+                                    <View key={i} style={styles.checkRow}>
+                                        <MaterialCommunityIcons name="check-box-outline" size={20} color="#10b981" />
+                                        <Text style={styles.listText}>{item}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+
+                        {/* Mandatory rules */}
+                        {step.rules && Array.isArray(step.rules) && (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>{UI.mandatory}</Text>
+                                {step.rules.map((rule, i) => (
+                                    <View key={i} style={styles.ruleRow}>
+                                        <MaterialCommunityIcons name="shield-alert" size={18} color="#f59e0b" />
+                                        <Text style={styles.listText}>{rule}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+
+                        {/* Maintenance routines */}
+                        {step.routines && (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>{UI.maintenance}</Text>
+                                {step.routines.daily && (
+                                    <View style={styles.routineBlock}>
+                                        <Text style={styles.routineHeader}>{UI.daily}</Text>
+                                        {step.routines.daily.map((r, i) => (
+                                            <View key={i} style={styles.listItem}>
+                                                <View style={styles.bullet} />
+                                                <Text style={styles.listText}>{r}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                                {step.routines.weekly && (
+                                    <View style={styles.routineBlock}>
+                                        <Text style={styles.routineHeader}>{UI.weekly}</Text>
+                                        {step.routines.weekly.map((r, i) => (
+                                            <View key={i} style={styles.listItem}>
+                                                <View style={styles.bullet} />
+                                                <Text style={styles.listText}>{r}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                                {step.routines.monthly && (
+                                    <View style={styles.routineBlock}>
+                                        <Text style={styles.routineHeader}>{UI.monthly}</Text>
+                                        {step.routines.monthly.map((r, i) => (
+                                            <View key={i} style={styles.listItem}>
+                                                <View style={styles.bullet} />
+                                                <Text style={styles.listText}>{r}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                                {step.routines.quarterly && (
+                                    <View style={styles.routineBlock}>
+                                        <Text style={styles.routineHeader}>{UI.quarterly}</Text>
+                                        {step.routines.quarterly.map((r, i) => (
+                                            <View key={i} style={styles.listItem}>
+                                                <View style={styles.bullet} />
+                                                <Text style={styles.listText}>{r}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                )}
+                            </View>
+                        )}
+
+                        {/* Quick stats */}
+                        {guideData.guideContent.quickStats && (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>{UI.stats}</Text>
+                                <View style={styles.statsRow}>
+                                    {guideData.guideContent.quickStats.map((stat, i) => (
+                                        <View key={i} style={styles.statChip}>
+                                            <Text style={styles.statLabel}>{stat.label}</Text>
+                                            <Text style={styles.statValue}>{stat.value}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Warnings */}
+                        {guideData.guideContent.warnings && (
+                            <View style={styles.section}>
+                                <Text style={styles.sectionTitle}>{UI.warnings}</Text>
+                                {guideData.guideContent.warnings.map((w, i) => (
+                                    <View key={i} style={styles.warningBox}>
+                                        <MaterialCommunityIcons name="alert-circle" size={18} color="#ef4444" />
+                                        <Text style={styles.warningText}>{w}</Text>
+                                    </View>
+                                ))}
+                            </View>
+                        )}
+                    </View>
+
+                    {/* ── Ollama qwen2.5:7b Multilingual Chat ── */}
+                    <View style={styles.chatSection}>
+                        <View style={styles.chatHeader}>
+                            <MaterialCommunityIcons name="robot-outline" size={22} color="#10b981" />
+                            <Text style={styles.chatTitle}>{UI.chatTitle}</Text>
+                        </View>
+
+                        <View style={styles.chatBox}>
+                            <ScrollView
+                                ref={chatScrollRef}
+                                style={styles.chatScroll}
+                                nestedScrollEnabled
+                                onContentSizeChange={() =>
+                                    chatScrollRef.current?.scrollToEnd({ animated: true })
+                                }
                             >
-                                <MaterialCommunityIcons name="send" size={18} color="#fff" />
-                            </TouchableOpacity>
+                                {chatMessages.map(m => (
+                                    <View
+                                        key={m.id}
+                                        style={[styles.message, m.isBot ? styles.botMsg : styles.userMsg]}
+                                    >
+                                        {m.isBot && (
+                                            <View style={styles.botIcon}>
+                                                <MaterialCommunityIcons
+                                                    name="robot-outline"
+                                                    size={14}
+                                                    color="#10b981"
+                                                />
+                                            </View>
+                                        )}
+                                        <Text
+                                            style={[
+                                                styles.msgText,
+                                                !m.isBot && { color: '#fff' },
+                                            ]}
+                                        >
+                                            {m.text}
+                                        </Text>
+                                    </View>
+                                ))}
+                                {isTyping && (
+                                    <View style={[styles.message, styles.botMsg]}>
+                                        <ActivityIndicator color="#10b981" size="small" />
+                                        <Text style={[styles.msgText, { color: '#9ca3af', marginLeft: 8 }]}>
+                                            {lang === 'si'
+                                                ? 'ටයිප් කරමින් ...'
+                                                : lang === 'ta'
+                                                    ? 'தட்டச்சு செய்கிறது...'
+                                                    : 'Advisor is thinking...'}
+                                        </Text>
+                                    </View>
+                                )}
+                            </ScrollView>
+
+                            <View style={styles.inputRow}>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder={UI.placeholder}
+                                    value={chatInput}
+                                    onChangeText={setChatInput}
+                                    placeholderTextColor="#94a3b8"
+                                    onSubmitEditing={handleSendMessage}
+                                    returnKeyType="send"
+                                    multiline={false}
+                                />
+                                <TouchableOpacity
+                                    onPress={handleSendMessage}
+                                    style={[styles.sendBtn, !chatInput.trim() && { opacity: 0.5 }]}
+                                    disabled={!chatInput.trim()}
+                                >
+                                    <MaterialCommunityIcons name="send" size={18} color="#fff" />
+                                </TouchableOpacity>
+                            </View>
                         </View>
                     </View>
-                </View>
-            </ScrollView>
+                </ScrollView>
 
-            {/* ── Footer Buttons ── */}
-            <View style={styles.footer}>
-                <TouchableOpacity
-                    onPress={() => currentStep > 0 && setCurrentStep(currentStep - 1)}
-                    style={[styles.prevBtn, currentStep === 0 && { opacity: 0.4 }]}
-                    disabled={currentStep === 0}
-                >
-                    <Text style={styles.prevText}>{UI.back}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleStepComplete} style={styles.completeBtn}>
-                    <LinearGradient
-                        colors={['#10b981', '#059669']}
-                        style={styles.completeGrad}
+                {/* ── Footer Buttons ── */}
+                <View style={styles.footer}>
+                    <TouchableOpacity
+                        onPress={() => currentStep > 0 && setCurrentStep(currentStep - 1)}
+                        style={[styles.prevBtn, currentStep === 0 && { opacity: 0.4 }]}
+                        disabled={currentStep === 0}
                     >
-                        <Text style={styles.completeText}>
-                            {currentStep === steps.length - 1 ? UI.finish : UI.complete}
-                        </Text>
-                        <MaterialCommunityIcons name="check-all" size={20} color="#fff" />
-                    </LinearGradient>
-                </TouchableOpacity>
-            </View>
+                        <Text style={styles.prevText}>{UI.back}</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleStepComplete} style={styles.completeBtn}>
+                        <LinearGradient
+                            colors={['#10b981', '#059669']}
+                            style={styles.completeGrad}
+                        >
+                            <Text style={styles.completeText}>
+                                {currentStep === steps.length - 1 ? UI.finish : UI.complete}
+                            </Text>
+                            <MaterialCommunityIcons name="check-all" size={20} color="#fff" />
+                        </LinearGradient>
+                    </TouchableOpacity>
+                </View>
+            </KeyboardAvoidingView>
 
             {/* ── Completion History Modal ── */}
             <Modal visible={showCalendar} transparent animationType="slide">
@@ -657,7 +659,7 @@ export default function StorageStepGuideScreen({ navigation, route }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-    root: { flex: 1, backgroundColor: '#f9fafb' },
+    root: { flex: 1, backgroundColor: '#f9fafb', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
 
     // Header
     header: {
