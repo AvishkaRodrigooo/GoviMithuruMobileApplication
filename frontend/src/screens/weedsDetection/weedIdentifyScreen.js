@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import { BASE_URL } from '../../utils/apiConfig';
 
 export default function WeedIdentifyScreen() {
   const [image, setImage] = useState(null);
@@ -52,53 +53,53 @@ export default function WeedIdentifyScreen() {
 
   // Send image to backend
   const sendToBackend = async (uri) => {
-  setIsAnalyzing(true);
-  setShowResults(false);
+    setIsAnalyzing(true);
+    setShowResults(false);
 
-  const formData = new FormData();
-  formData.append('image', {
-    uri,
-    name: 'weed.jpg',
-    type: 'image/jpeg',
-  });
-
-  try {
-    // Use your PC's IP address here
-    const SERVER_URL = 'http://192.168.8.156:5000'; // Change this!
-    
-    console.log('Sending to:', `${SERVER_URL}/predict`);
-    
-    const response = await fetch(`${SERVER_URL}/predict`, {
-      method: 'POST',
-      body: formData,
+    const formData = new FormData();
+    formData.append('image', {
+      uri,
+      name: 'weed.jpg',
+      type: 'image/jpeg',
     });
 
-    console.log('Response status:', response.status);
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Server error: ${response.status} - ${errorText}`);
-    }
+    try {
+      // Use your PC's IP address here
+      const SERVER_URL = BASE_URL;
 
-    const json = await response.json();
-    console.log('Response received:', json);
-    
-    setResultImage(`data:image/jpeg;base64,${json.image}`);
-    setBoxCount(json.box_count);
-    setAccuracy(json.accuracy);
-    setShowResults(true);
-    
-  } catch (err) {
-    console.error('Error details:', err);
-    Alert.alert(
-      'Connection Error',
-      `Cannot connect to server.\nError: ${err.message}\n\nMake sure:\n1. Backend is running\n2. Correct IP address\n3. Same WiFi network`,
-      [{ text: 'OK' }]
-    );
-  } finally {
-    setIsAnalyzing(false);
-  }
-};
+      console.log('Sending to:', `${SERVER_URL}/predict`);
+
+      const response = await fetch(`${SERVER_URL}/predict`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      console.log('Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Server error: ${response.status} - ${errorText}`);
+      }
+
+      const json = await response.json();
+      console.log('Response received:', json);
+
+      setResultImage(`data:image/jpeg;base64,${json.image}`);
+      setBoxCount(json.box_count);
+      setAccuracy(json.accuracy);
+      setShowResults(true);
+
+    } catch (err) {
+      console.error('Error details:', err);
+      Alert.alert(
+        'Connection Error',
+        `Cannot connect to server.\nError: ${err.message}\n\nMake sure:\n1. Backend is running\n2. Correct IP address\n3. Same WiFi network`,
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   return (
     <ScrollView style={styles.container}>

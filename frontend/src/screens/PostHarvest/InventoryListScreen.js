@@ -4,7 +4,6 @@ import {
   TextInput, ActivityIndicator, Alert, SafeAreaView, Dimensions, StatusBar
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { db, auth } from '../../firebase/firebaseConfig';
 
 const { width } = Dimensions.get('window');
@@ -19,128 +18,144 @@ export default function InventoryListScreen({ navigation }) {
     const unsubscribe = db.collection('harvests')
       .where('userId', '==', auth.currentUser?.uid)
       .onSnapshot(snapshot => {
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setInventory(data);
         setFilteredData(data);
         setLoading(false);
       }, error => {
-        console.error("Firestore Error:", error);
+        console.error('Firestore Error:', error);
         setLoading(false);
       });
-
     return () => unsubscribe();
   }, []);
 
   const handleSearch = (text) => {
     setSearch(text);
     if (text) {
-      const newData = inventory.filter(item => {
-        const itemData = item.variety ? item.variety.toUpperCase() : '';
-        const textData = text.toUpperCase();
-        return itemData.indexOf(textData) > -1;
-      });
-      setFilteredData(newData);
+      setFilteredData(inventory.filter(item =>
+        (item.variety || '').toUpperCase().includes(text.toUpperCase())
+      ));
     } else {
       setFilteredData(inventory);
     }
   };
 
   const confirmDelete = (id) => {
-    Alert.alert("Remove Stock", "Delete this record from inventory?", [
-      { text: "Cancel", style: "cancel" },
-      { text: "Delete", style: 'destructive', onPress: () => db.collection('harvests').doc(id).delete() }
+    Alert.alert('Remove Stock', 'Delete this record from inventory?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => db.collection('harvests').doc(id).delete() }
     ]);
   };
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity
-      activeOpacity={0.9}
-      onLongPress={() => confirmDelete(item.id)}
-      style={styles.cardContainer}
-    >
-      <LinearGradient
-        colors={['#1e293b', '#0f172a']}
-        style={styles.inventoryCard}
+  const gradeColors = { A: '#16a34a', B: '#f59e0b', C: '#ef4444' };
+  const gradeBgColors = { A: '#dcfce7', B: '#fef9c3', C: '#fee2e2' };
+
+  const renderItem = ({ item }) => {
+    const gradeColor = gradeColors[item.grade] || '#6b7280';
+    const gradeBg = gradeBgColors[item.grade] || '#f3f4f6';
+
+    return (
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={() => navigation.navigate('RegisterHarvest', { editData: item, docId: item.id })}
+        style={styles.card}
       >
         <View style={styles.cardTop}>
-          <View style={[styles.iconBox, { backgroundColor: '#064e3b30' }]}>
-            <MaterialCommunityIcons name="rice" size={24} color="#34d399" />
+          <View style={styles.cardIconBox}>
+            <MaterialCommunityIcons name="rice" size={22} color="#16a34a" />
           </View>
-          <View style={styles.gradeBadge}>
-            <Text style={styles.gradeText}>GRADE {item.grade || 'A'}</Text>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.varietyName}>{item.variety}</Text>
+            <Text style={styles.seasonText}>{item.season} • {item.locationName || 'Storage'}</Text>
           </View>
-        </View>
-
-        <View style={styles.cardMain}>
-          <Text style={styles.varietyName}>{item.variety}</Text>
-          <View style={styles.qtyRow}>
-            <Text style={styles.qtyValue}>{item.quantityKg}</Text>
-            <Text style={styles.qtyUnit}>KG</Text>
+          <View style={[styles.gradeBadge, { backgroundColor: gradeBg }]}>
+            <Text style={[styles.gradeText, { color: gradeColor }]}>GRADE {item.grade || 'A'}</Text>
           </View>
         </View>
 
-        <View style={styles.cardMeta}>
-          <View style={styles.metaCol}>
-            <MaterialCommunityIcons name="map-marker-outline" size={14} color="#64748b" />
-            <Text style={styles.metaValue}>{item.location}</Text>
+        <View style={styles.cardStats}>
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{item.quantityKg}</Text>
+            <Text style={styles.statLabel}>KG</Text>
           </View>
-          <View style={styles.metaCol}>
-            <MaterialCommunityIcons name="calendar-month-outline" size={14} color="#64748b" />
-            <Text style={styles.metaValue}>{item.season}</Text>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{item.bags || (item.quantityKg / 50).toFixed(1)}</Text>
+            <Text style={styles.statLabel}>BAGS</Text>
+          </View>
+          <View style={styles.statDivider} />
+          <View style={styles.statItem}>
+            <Text style={styles.statValue}>{item.moisture || '—'}</Text>
+            <Text style={styles.statLabel}>MC%</Text>
           </View>
         </View>
 
-        <View style={styles.cardActions}>
-          <Text style={styles.dateText}>Added: {item.harvestDate}</Text>
-          <View style={styles.actionButtons}>
+        <View style={styles.cardFooter}>
+          <Text style={styles.dateText}>
+            {item.harvestDate ? `Stored: ${item.harvestDate}` : 'Recently stored'}
+          </Text>
+          <View style={styles.actionBtns}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('PostHarvestAdvisor', { batch: item })}
+              style={[styles.miniBtn, { borderColor: '#bbf7d0' }]}
+            >
+              <MaterialCommunityIcons name="brain" size={16} color="#16a34a" />
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={() => navigation.navigate('RegisterHarvest', { editData: item, docId: item.id })}
               style={styles.miniBtn}
             >
-              <MaterialCommunityIcons name="pencil" size={16} color="#34d399" />
+              <MaterialCommunityIcons name="pencil" size={16} color="#6b7280" />
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => confirmDelete(item.id)}
-              style={[styles.miniBtn, { borderColor: '#ef4444' }]}
+              style={[styles.miniBtn, { borderColor: '#fecaca' }]}
             >
               <MaterialCommunityIcons name="trash-can" size={16} color="#ef4444" />
             </TouchableOpacity>
           </View>
         </View>
-      </LinearGradient>
-    </TouchableOpacity>
-  );
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
 
+      {/* Header */}
       <View style={styles.header}>
-        <View style={styles.topRow}>
+        <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+            <MaterialCommunityIcons name="arrow-left" size={22} color="#16a34a" />
           </TouchableOpacity>
-          <Text style={styles.title}>Inventory List</Text>
+          <View>
+            <Text style={styles.title}>Inventory List</Text>
+            <Text style={styles.subtitle}>{filteredData.length} batches stored</Text>
+          </View>
         </View>
 
         <View style={styles.searchBox}>
-          <MaterialCommunityIcons name="magnify" size={20} color="#64748b" />
+          <MaterialCommunityIcons name="magnify" size={20} color="#9ca3af" />
           <TextInput
-            placeholder="Search variety..."
-            placeholderTextColor="#475569"
+            placeholder="Search by variety..."
+            placeholderTextColor="#9ca3af"
             style={styles.searchInput}
             value={search}
             onChangeText={handleSearch}
           />
+          {search.length > 0 && (
+            <TouchableOpacity onPress={() => handleSearch('')}>
+              <MaterialCommunityIcons name="close-circle" size={18} color="#9ca3af" />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
       {loading ? (
         <View style={styles.center}>
-          <ActivityIndicator size="large" color="#34d399" />
+          <ActivityIndicator size="large" color="#16a34a" />
+          <Text style={styles.loadingText}>Loading inventory...</Text>
         </View>
       ) : (
         <FlatList
@@ -151,74 +166,84 @@ export default function InventoryListScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <MaterialCommunityIcons name="database-off" size={60} color="#334155" />
-              <Text style={styles.emptyText}>No stocks found.</Text>
+              <MaterialCommunityIcons name="database-off" size={60} color="#d1d5db" />
+              <Text style={styles.emptyText}>No stocks found</Text>
               <Text style={styles.emptySub}>Register your first harvest to see it here.</Text>
+              <TouchableOpacity
+                style={styles.addBtn}
+                onPress={() => navigation.navigate('RegisterHarvest')}
+              >
+                <MaterialCommunityIcons name="plus" size={18} color="#fff" />
+                <Text style={styles.addBtnText}>Add First Stock</Text>
+              </TouchableOpacity>
             </View>
           }
         />
       )}
 
+      {/* FAB */}
       <TouchableOpacity
         style={styles.fab}
         onPress={() => navigation.navigate('RegisterHarvest')}
       >
-        <LinearGradient colors={['#059669', '#16a34a']} style={styles.fabGrad}>
-          <MaterialCommunityIcons name="plus" size={30} color="#fff" />
-        </LinearGradient>
+        <MaterialCommunityIcons name="plus" size={28} color="#fff" />
       </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0f172a' },
-  header: { padding: 20 },
-  topRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  backBtn: { backgroundColor: 'rgba(255,255,255,0.08)', padding: 10, borderRadius: 14, marginRight: 16 },
-  title: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  root: { flex: 1, backgroundColor: '#f9fafb' },
 
-  searchBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1e293b',
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    height: 52,
-    borderWidth: 1,
-    borderColor: '#334155'
-  },
-  searchInput: { flex: 1, marginLeft: 12, fontSize: 15, color: '#fff' },
+  // Header
+  header: { backgroundColor: 'white', padding: 16, elevation: 2, borderBottomWidth: 1, borderBottomColor: '#e5e7eb' },
+  headerTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 12 },
+  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#f0fdf4', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#bbf7d0' },
+  title: { fontSize: 20, fontWeight: '800', color: '#111827' },
+  subtitle: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+
+  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f9fafb', paddingHorizontal: 14, borderRadius: 12, height: 48, borderWidth: 1, borderColor: '#e5e7eb', gap: 10 },
+  searchInput: { flex: 1, fontSize: 14, color: '#111827' },
 
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  listContent: { padding: 20, paddingBottom: 100 },
+  loadingText: { color: '#6b7280', marginTop: 12, fontSize: 14 },
+  listContent: { padding: 16, paddingBottom: 100 },
 
-  cardContainer: { marginBottom: 16, borderRadius: 24, overflow: 'hidden' },
-  inventoryCard: { padding: 20, borderWidth: 1, borderColor: '#334155' },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  iconBox: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
-  gradeBadge: { backgroundColor: '#334155', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  gradeText: { color: '#94a3b8', fontSize: 10, fontWeight: '800' },
+  // Card
+  card: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    elevation: 1,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  cardTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  cardIconBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#f0fdf4', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#bbf7d0' },
+  varietyName: { fontSize: 17, fontWeight: '700', color: '#111827' },
+  seasonText: { fontSize: 12, color: '#9ca3af', marginTop: 2 },
+  gradeBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  gradeText: { fontSize: 11, fontWeight: '800' },
 
-  cardMain: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 20 },
-  varietyName: { color: '#fff', fontSize: 20, fontWeight: '800', flex: 1 },
-  qtyRow: { flexDirection: 'row', alignItems: 'baseline' },
-  qtyValue: { color: '#34d399', fontSize: 28, fontWeight: '900' },
-  qtyUnit: { color: '#34d399', fontSize: 14, fontWeight: '600', marginLeft: 4 },
+  cardStats: { flexDirection: 'row', backgroundColor: '#f9fafb', borderRadius: 12, padding: 12, marginBottom: 14 },
+  statItem: { flex: 1, alignItems: 'center' },
+  statValue: { fontSize: 18, fontWeight: '800', color: '#111827' },
+  statLabel: { fontSize: 10, fontWeight: '700', color: '#9ca3af', marginTop: 2 },
+  statDivider: { width: 1, backgroundColor: '#e5e7eb' },
 
-  cardMeta: { flexDirection: 'row', gap: 20, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#334155', marginBottom: 16 },
-  metaCol: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  metaValue: { color: '#64748b', fontSize: 12, fontWeight: '600' },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  dateText: { fontSize: 12, color: '#9ca3af' },
+  actionBtns: { flexDirection: 'row', gap: 8 },
+  miniBtn: { width: 34, height: 34, borderRadius: 10, borderWidth: 1.5, borderColor: '#e5e7eb', justifyContent: 'center', alignItems: 'center', backgroundColor: '#f9fafb' },
 
-  cardActions: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  dateText: { color: '#475569', fontSize: 11 },
-  actionButtons: { flexDirection: 'row', gap: 10 },
-  miniBtn: { width: 36, height: 36, borderRadius: 10, borderWidth: 1.5, borderColor: '#334155', justifyContent: 'center', alignItems: 'center' },
+  // FAB
+  fab: { position: 'absolute', bottom: 28, right: 20, width: 56, height: 56, borderRadius: 18, backgroundColor: '#16a34a', justifyContent: 'center', alignItems: 'center', elevation: 6, shadowColor: '#16a34a', shadowOpacity: 0.3, shadowRadius: 8 },
 
-  fab: { position: 'absolute', bottom: 30, right: 25, borderRadius: 20, overflow: 'hidden', elevation: 8, shadowColor: '#16a34a', shadowOpacity: 0.3, shadowRadius: 10 },
-  fabGrad: { width: 60, height: 60, justifyContent: 'center', alignItems: 'center' },
-
-  empty: { flex: 1, alignItems: 'center', marginTop: 100 },
-  emptyText: { color: '#94a3b8', fontSize: 18, fontWeight: '700', marginTop: 20 },
-  emptySub: { color: '#475569', fontSize: 13, marginTop: 6 },
+  // Empty
+  empty: { flex: 1, alignItems: 'center', marginTop: 80 },
+  emptyText: { color: '#374151', fontSize: 17, fontWeight: '700', marginTop: 16 },
+  emptySub: { color: '#9ca3af', fontSize: 13, marginTop: 4, marginBottom: 20 },
+  addBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#16a34a', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, gap: 8 },
+  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });

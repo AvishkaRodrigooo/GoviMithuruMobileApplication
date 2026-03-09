@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    View, Text, StyleSheet, Animated, Dimensions,
+    View, Text, StyleSheet, Dimensions,
     SafeAreaView, TouchableOpacity, ScrollView,
-    StatusBar, ActivityIndicator, Easing, Platform
+    StatusBar, ActivityIndicator, Platform
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -11,53 +11,43 @@ import { db, auth } from '../../firebase/firebaseConfig';
 
 const { width: SW } = Dimensions.get('window');
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  3D MODEL COMPONENT
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── 3D MODEL COMPONENT ───────────────────────────────────────────────────────
 const WarehouseModel = ({ fillPercent, color, storageType }) => {
-    // Dynamic Model Selection based on Storage Type
     const getModelId = () => {
         const type = storageType || '';
-        if (type === 'Home') return 'b480ce383ac4425a9bf3694842d3937e'; // Simple House
-        if (type === 'Co-op') return '477e9b2971a44bfdbe82468e0a93cd15'; // Co-op Building
-        if (type === 'Government Store') return '2030da9105da4cbb8a5cb5432690eaaf'; // Govt Store
-        if (type === 'Private Store') return 'd9951bb80c8b433a95d0edfaa7f74d5e'; // Private Store
-
-        // Default: Small Warehouse
+        if (type === 'Home') return 'b480ce383ac4425a9bf3694842d3937e';
+        if (type === 'Co-op') return '477e9b2971a44bfdbe82468e0a93cd15';
+        if (type === 'Government Store') return '2030da9105da4cbb8a5cb5432690eaaf';
+        if (type === 'Private Store') return 'd9951bb80c8b433a95d0edfaa7f74d5e';
         return '3211d9abfcd7420099e51b8cb3cceacc';
     };
-
-    const modelId = getModelId();
 
     return (
         <View style={s.modelContainer}>
             <View style={s.webViewWrapper}>
                 <WebView
-                    source={{ uri: `https://sketchfab.com/models/${modelId}/embed?autostart=1&ui_controls=0&ui_infos=0&transparent=1&preload=1` }}
+                    source={{ uri: `https://sketchfab.com/models/${getModelId()}/embed?autostart=1&ui_controls=0&ui_infos=0&transparent=1&preload=1` }}
                     style={s.webView}
                     scrollEnabled={false}
                 />
             </View>
-            <View style={[s.visualBadge, { borderColor: color + '44', backgroundColor: color + '12' }]}>
-                <Text style={{ color, fontSize: 10, fontWeight: '900' }}>{fillPercent.toFixed(0)}% FULL</Text>
+            <View style={[s.visualBadge, { borderColor: color + '50', backgroundColor: color + '15' }]}>
+                <Text style={{ color, fontSize: 11, fontWeight: '900', letterSpacing: 0.5 }}>{fillPercent.toFixed(0)}% FULL</Text>
             </View>
         </View>
     );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  MAIN SCREEN
-// ─────────────────────────────────────────────────────────────────────────────
-const statusColor = p => (p >= 90 ? '#ef4444' : p >= 70 ? '#f59e0b' : '#10b981');
-const statusLabel = p => (p >= 90 ? 'CRITICAL' : p >= 70 ? 'CAUTION' : 'HEALTHY');
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+const statusColor = p => (p >= 90 ? '#ef4444' : p >= 70 ? '#f59e0b' : '#16a34a');
+const statusLabel = p => (p >= 90 ? 'FULL ALERT' : p >= 70 ? 'GETTING FULL' : 'GOOD SPACE');
 
+// ─── MAIN SCREEN ──────────────────────────────────────────────────────────────
 export default function WarehouseAnalysisScreen({ navigation, route }) {
     const [loading, setLoading] = useState(true);
     const [locData, setLocData] = useState(null);
     const [totalKg, setTotalKg] = useState(0);
     const [harvests, setHarvests] = useState([]);
-    const [aiInsight, setAiInsight] = useState(null);
-    const [reportingPest, setReportingPest] = useState(false);
 
     const locationId = route.params?.locationId;
 
@@ -84,9 +74,6 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                 });
                 setTotalKg(kg);
                 setHarvests(items);
-
-                // Generate AI Insights based on location data
-                generateAIInsight(kg, doc.data()?.storageArea || 100);
             } catch (e) {
                 console.error(e);
             } finally {
@@ -95,41 +82,6 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
         })();
     }, [locationId]);
 
-    const generateAIInsight = (kg, area) => {
-        const capacity = area * 10;
-        const fill = (kg / capacity) * 100;
-
-        let insight = {
-            strategy: "Maintain consistent air-flow patterns.",
-            warning: "Ensure stack height does not exceed 10 feet.",
-            pestRisk: "Low - Dry conditions detected."
-        };
-
-        if (fill > 80) {
-            insight.strategy = "Critical: Prioritize cross-ventilation. Shift bags to avoid 'hot-spots' in center stacks.";
-            insight.warning = "High utilization reduces airflow. Risk of weevil (ghun) infestation increases in stagnant areas.";
-            insight.pestRisk = "Elevated - Compact storage facilitates pest migration between bags.";
-        } else if (fill > 50) {
-            insight.strategy = "Optimization: Use a 1-2-1 stacking pattern for better temperature dissipation.";
-            insight.warning = "Monitor corners for moisture accumulation.";
-            insight.pestRisk = "Moderate - Regular inspections recommended weekly.";
-        }
-
-        setAiInsight(insight);
-    };
-
-    const handleReportPest = () => {
-        setReportingPest(true);
-        setTimeout(() => {
-            setReportingPest(false);
-            Alert.alert(
-                "AI Pest Report Sent",
-                "Your report has been analyzed. Strategy: Seal the affected bags immediately. Use Hermetic liners to suffocate pests. The Post-Harvest Guardian has logged this incidence.",
-                [{ text: "View Proper Guide", onPress: () => navigation.navigate('PostHarvestAdvisor') }]
-            );
-        }, 1500);
-    };
-
     const capacity = (locData?.storageArea || 100) * 10;
     const fillPercent = Math.min(100, (totalKg / capacity) * 100);
     const color = statusColor(fillPercent);
@@ -137,549 +89,322 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
 
     if (loading) {
         return (
-            <View style={s.centered}>
-                <ActivityIndicator size="large" color="#10b981" />
-                <Text style={s.loadingText}>BUILDING 3D MODEL…</Text>
-            </View>
+            <SafeAreaView style={s.root}>
+                <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
+                <View style={s.centered}>
+                    <ActivityIndicator size="large" color="#16a34a" />
+                    <Text style={s.loadingText}>Loading storage data...</Text>
+                </View>
+            </SafeAreaView>
         );
     }
 
     const STATS = [
-        { icon: 'floor-plan', label: 'TOTAL AREA', val: `${locData?.storageArea ?? '—'} ${locData?.areaUnit ?? ''}` },
-        { icon: 'office-building', label: 'FACILITY TYPE', val: locData?.storageType ?? '—' },
-        { icon: 'package-variant', label: 'TOTAL STOCK', val: `${totalKg.toLocaleString()} kg`, hi: true },
-        { icon: 'bag-personal', label: 'EST. BAGS', val: `${(totalKg / 50).toFixed(0)} bags` },
-        { icon: 'database', label: 'MAX CAPACITY', val: `${capacity.toLocaleString()} kg` },
-        { icon: 'chart-donut', label: 'UTILIZATION', val: `${fillPercent.toFixed(1)}%`, hi: true },
+        { icon: 'floor-plan', label: 'TOTAL SIZE', val: `${locData?.storageArea ?? '—'} ${locData?.areaUnit ?? ''}` },
+        { icon: 'home-modern', label: 'STORE TYPE', val: locData?.storageType ?? '—' },
+        { icon: 'sack', label: 'STORED CROP', val: `${totalKg.toLocaleString()} kg`, hi: true },
+        { icon: 'bag-personal', label: 'TOTAL BAGS', val: `${(totalKg / 50).toFixed(0)} bags` },
+        { icon: 'scale-balance', label: 'MAX SPACE', val: `${capacity.toLocaleString()} kg` },
+        { icon: 'chart-pie', label: 'SPACE USED', val: `${fillPercent.toFixed(1)}%`, hi: true },
     ];
 
     return (
-        <View style={s.root}>
-            <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-            <LinearGradient colors={['#030810', '#081425', '#030810']} style={{ flex: 1 }}>
-                <SafeAreaView style={{ flex: 1 }}>
-                    <View style={s.header}>
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
-                            <MaterialCommunityIcons name="chevron-left" size={32} color="#ffffff" />
-                        </TouchableOpacity>
-                        <View style={s.headerMain}>
-                            <Text style={s.hTitle}>Facility Intel</Text>
-                            <View style={s.hLocRow}>
-                                <MaterialCommunityIcons name="map-marker" size={14} color={color} />
-                                <Text style={[s.hSub, { color: '#ffffff' }]}>{locData?.locationName ?? 'Primary Storage'}</Text>
-                            </View>
-                        </View>
-                        <LinearGradient
-                            colors={[color, color + '99']}
-                            style={s.statusPill}
-                        >
-                            <Text style={s.statusPillText}>{label}</Text>
-                        </LinearGradient>
+        <SafeAreaView style={s.root}>
+            <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
+
+            {/* Header */}
+            <View style={s.header}>
+                <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
+                    <MaterialCommunityIcons name="arrow-left" size={22} color="#16a34a" />
+                </TouchableOpacity>
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                    <Text style={s.hTitle}>Storage Details</Text>
+                    <View style={s.hLocRow}>
+                        <MaterialCommunityIcons name="map-marker" size={13} color="#6b7280" />
+                        <Text style={s.hSub}>{locData?.locationName ?? 'Main Store'}</Text>
                     </View>
+                </View>
+                <View style={[s.statusPill, { backgroundColor: color + '15', borderColor: color + '40' }]}>
+                    <View style={[s.statusDot, { backgroundColor: color }]} />
+                    <Text style={[s.statusPillText, { color }]}>{label}</Text>
+                </View>
+            </View>
 
-                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 36 }}>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40, padding: 16 }}>
 
-                        {/* MODEL CARD */}
-                        <View style={s.card}>
-                            <View style={s.cardTop}>
-                                <View>
-                                    <Text style={s.cardLabel}>VIRTUAL FACILITY TWIN</Text>
-                                    <Text style={s.cardHint}>Touch and drag to explore facility</Text>
-                                </View>
-                                <View style={[s.pctBox, { borderColor: color + '55' }]}>
-                                    <Text style={[s.pctN, { color }]}>{fillPercent.toFixed(1)}</Text>
-                                    <Text style={s.pctU}>% FULL</Text>
-                                </View>
-                            </View>
-
-                            {/* Stage with ambient glow */}
-                            <View style={s.stage}>
-                                <LinearGradient colors={[color + '08', 'transparent', color + '05']} style={StyleSheet.absoluteFillObject} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
-                                <View style={[s.glow, { backgroundColor: color + '20' }]} />
-                                <WarehouseModel
-                                    fillPercent={fillPercent}
-                                    color={color}
-                                    storageType={locData?.storageType}
-                                />
-                            </View>
-
-                            {/* Progress */}
-                            <View style={s.progWrap}>
-                                <View style={s.progRow}>
-                                    <Text style={s.progLabel}>Storage Occupancy</Text>
-                                    <Text style={[s.progVal, { color }]}>{totalKg.toLocaleString()} KG</Text>
-                                </View>
-                                <View style={s.track}>
-                                    {[25, 50, 75].map(t => <View key={t} style={[s.tick, { left: `${t}%` }]} />)}
-                                    <View style={[s.fill, { width: `${fillPercent}%`, backgroundColor: color, shadowColor: color, shadowOpacity: 0.9, shadowRadius: 12, shadowOffset: { width: 0, height: 0 }, elevation: 10 }]} />
-                                </View>
-                                <View style={s.limits}>
-                                    <Text style={s.lim}>0</Text>
-                                    <Text style={s.lim}>{(capacity / 2).toLocaleString()} KG</Text>
-                                    <Text style={s.lim}>{capacity.toLocaleString()} KG MAX</Text>
-                                </View>
-                            </View>
+                {/* 3D View Card */}
+                <View style={s.card}>
+                    <View style={s.cardTop}>
+                        <View>
+                            <Text style={s.cardLabel}>3D STORAGE VIEW</Text>
+                            <Text style={s.cardHint}>Touch and drag to look around</Text>
                         </View>
-
-                        {/* STATS GRID */}
-                        <View style={s.grid}>
-                            {STATS.map(st => (
-                                <View key={st.label} style={s.statCard}>
-                                    <View style={s.statIconBox}>
-                                        <MaterialCommunityIcons name={st.icon} size={18} color={st.hi ? color : '#4b6b8a'} />
-                                    </View>
-                                    <Text style={s.statLabel}>{st.label}</Text>
-                                    <Text style={[s.statVal, st.hi && { color, fontWeight: '900' }]}>{st.val}</Text>
-                                </View>
-                            ))}
+                    </View>
+                    <View style={s.stage}>
+                        <WarehouseModel fillPercent={fillPercent} color={color} storageType={locData?.storageType} />
+                    </View>
+                    <View style={s.progWrap}>
+                        <View style={s.progRow}>
+                            <Text style={s.progLabel}>Space Filled</Text>
+                            <Text style={[s.progVal, { color }]}>{totalKg.toLocaleString()} KG</Text>
                         </View>
-
-                        {/* AI STRATEGY CENTER - RE-IMAGINED */}
-                        <View style={s.strategyHeader}>
-                            <View>
-                                <Text style={s.strategyTitle}>STRATEGIC INTEL</Text>
-                                <Text style={s.strategySub}>Autonomous Storage Optimization</Text>
-                            </View>
-                            <View style={s.aiLiveBadge}>
-                                <View style={s.pulse} />
-                                <Text style={s.aiLiveText}>AI LIVE</Text>
-                            </View>
+                        <View style={s.track}>
+                            <View style={[s.fill, { width: `${fillPercent}%`, backgroundColor: color }]} />
                         </View>
-
-                        <View style={s.strategyGrid}>
-                            <View style={[s.strategyCard, { borderLeftColor: color }]}>
-                                <View style={s.strategyCardHeader}>
-                                    <MaterialCommunityIcons name="shield-check-outline" size={20} color={color} />
-                                    <Text style={s.strategyCardTitle}>Stability Plan</Text>
-                                </View>
-                                <Text style={s.strategyCardText}>{aiInsight?.strategy}</Text>
-                                <View style={s.executionMeta}>
-                                    <Text style={s.executionLabel}>EXECUTION STATUS:</Text>
-                                    <Text style={[s.executionVal, { color }]}>RUNNING</Text>
-                                </View>
-                            </View>
-
-                            <View style={[s.strategyCard, { borderLeftColor: '#f87171' }]}>
-                                <View style={s.strategyCardHeader}>
-                                    <MaterialCommunityIcons name="alert-decagram-outline" size={20} color="#f87171" />
-                                    <Text style={s.strategyCardTitle}>Risk Mitigation</Text>
-                                </View>
-                                <Text style={s.strategyCardText}>{aiInsight?.warning}</Text>
-                                <TouchableOpacity
-                                    style={s.mitigationBtn}
-                                    onPress={() => navigation.navigate('StorageStepGuide', {
-                                        temp: 28.5,
-                                        humidity: 62,
-                                        storageType: locData?.storageType || 'Home',
-                                        subCategory: locData?.subCategory
-                                    })}
-                                >
-                                    <Text style={s.mitigationBtnText}>DEPLOY PROTOCOL</Text>
-                                    <MaterialCommunityIcons name="chevron-right" size={14} color="#fff" />
-                                </TouchableOpacity>
-                            </View>
+                        <View style={s.limits}>
+                            <Text style={s.lim}>Empty</Text>
+                            <Text style={s.lim}>{capacity.toLocaleString()} KG Max</Text>
                         </View>
+                    </View>
+                </View>
 
-                        {/* STORAGE PROTOCOL WIZARD */}
-                        <TouchableOpacity
-                            style={s.protocolBtn}
-                            onPress={() => navigation.navigate('StorageStepGuide', {
-                                temp: 28.5,
-                                humidity: 62,
-                                storageType: locData?.storageType || 'Home',
-                                subCategory: locData?.subCategory
-                            })}
-                        >
-                            <LinearGradient colors={['#064e3b', '#065f46']} style={s.protocolGrad}>
-                                <View style={s.protocolIcon}>
-                                    <MaterialCommunityIcons name="clipboard-check-multiple" size={22} color="#34d399" />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={s.protocolTitle}>SAFE STORAGE PROTOCOL</Text>
-                                    <Text style={s.protocolSub}>Step-by-step specialist guide</Text>
-                                </View>
-                                <View style={s.protocolAction}>
-                                    <Text style={s.protocolActionText}>START</Text>
-                                </View>
-                            </LinearGradient>
-                        </TouchableOpacity>
+                {/* Insight */}
+                <View style={[s.insight, { borderLeftColor: color, backgroundColor: color + '08' }]}>
+                    <View style={[s.insightIconBox, { backgroundColor: color + '15' }]}>
+                        <MaterialCommunityIcons
+                            name={fillPercent >= 90 ? 'alert' : fillPercent >= 70 ? 'alert-circle-outline' : 'check-all'}
+                            size={22} color={color}
+                        />
+                    </View>
+                    <Text style={s.insightTxt}>
+                        {fillPercent >= 90
+                            ? 'Warning: Your storage is almost totally full! Ensure enough space is left for air to flow so the paddy does not spoil or heat up.'
+                            : fillPercent >= 70
+                                ? 'Note: Your storage is getting full. Remember to keep bags at least 1 foot away from the walls to stop moisture damage.'
+                                : 'Great! Your storage has plenty of space. Keep up the good work keeping the area dry and clean.'}
+                    </Text>
+                </View>
 
-                        <TouchableOpacity
-                            style={s.expertHacksBtn}
-                            onPress={() => navigation.navigate('StorageExpertGuide', { temp: 28.5, humidity: 62 })}
-                        >
-                            <View style={s.expertHacksBody}>
-                                <View style={s.expertHacksIcon}>
-                                    <MaterialCommunityIcons name="lightbulb-on-outline" size={24} color="#fca5a5" />
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    <Text style={s.expertHacksTitle}>LOW-COST MASTERY</Text>
-                                    <Text style={s.expertHacksSub}>View traditional hacks to optimize XGBoost variables</Text>
-                                </View>
-                                <MaterialCommunityIcons name="chevron-right" size={20} color="#4b6b8a" />
-                            </View>
-                        </TouchableOpacity>
-
-                        {/* PEST MANAGEMENT */}
-                        <View style={s.pestCard}>
-                            <View style={s.pestHeader}>
-                                <MaterialCommunityIcons name="bug-stop" size={22} color="#f87171" />
-                                <Text style={s.pestTitle}>PEST PROTECTION</Text>
-                            </View>
-                            <View style={s.pestBody}>
-                                <View style={s.pestRiskBox}>
-                                    <Text style={s.pestRiskLabel}>CURRENT RISK</Text>
-                                    <Text style={[s.pestRiskValue, { color: fillPercent > 70 ? '#f87171' : '#34d399' }]}>
-                                        {aiInsight?.pestRisk}
-                                    </Text>
-                                </View>
-                                <TouchableOpacity
-                                    style={[s.reportBtn, reportingPest && { opacity: 0.7 }]}
-                                    onPress={handleReportPest}
-                                    disabled={reportingPest}
-                                >
-                                    {reportingPest ? <ActivityIndicator color="#fff" size="small" /> : (
-                                        <>
-                                            <MaterialCommunityIcons name="alert-octagon" size={16} color="#fff" />
-                                            <Text style={s.reportBtnText}>REPORT PEST ATTACK</Text>
-                                        </>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
+                {/* Stats Grid */}
+                <View style={s.grid}>
+                    {STATS.map(st => (
+                        <View key={st.label} style={s.statCard}>
+                            <MaterialCommunityIcons name={st.icon} size={20} color={st.hi ? color : '#9ca3af'} style={{ marginBottom: 6 }} />
+                            <Text style={s.statLabel}>{st.label}</Text>
+                            <Text style={[s.statVal, st.hi && { color, fontSize: 17 }]}>{st.val}</Text>
                         </View>
+                    ))}
+                </View>
 
-                        {/* ENVIRONMENTAL MONITORING */}
-                        <View style={s.sectionHeader}>
-                            <Text style={s.sectionTitle}>MONITORING SENSORS</Text>
+                {/* Helpful Guides */}
+                <Text style={s.sectionTitle}>HELPFUL GUIDES</Text>
+
+                <TouchableOpacity
+                    style={s.guideBtnMain}
+                    onPress={() => navigation.navigate('StorageStepGuide', {
+                        temp: 28.5, humidity: 62,
+                        storageType: locData?.storageType || 'Home',
+                        subCategory: locData?.subCategory
+                    })}
+                >
+                    <LinearGradient colors={['#16a34a', '#064e3b']} style={s.guideGrad}>
+                        <View style={s.guideIconBox}>
+                            <MaterialCommunityIcons name="book-open-page-variant" size={22} color="#fff" />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                            <Text style={s.guideTitle}>Safe Storage Guide</Text>
+                            <Text style={s.guideSub}>Step-by-step instructions for your crop</Text>
+                        </View>
+                        <MaterialCommunityIcons name="arrow-right" size={22} color="rgba(255,255,255,0.8)" />
+                    </LinearGradient>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                    style={s.guideBtnSecondary}
+                    onPress={() => navigation.navigate('StorageExpertGuide', { temp: 28.5, humidity: 62 })}
+                >
+                    <View style={[s.guideIconBoxLight, { backgroundColor: '#fef9c3' }]}>
+                        <MaterialCommunityIcons name="lightbulb-on" size={22} color="#f59e0b" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={s.guideTitleLight}>Clever Storage Hacks</Text>
+                        <Text style={s.guideSubLight}>Low-cost tricks to protect your harvest</Text>
+                    </View>
+                    <MaterialCommunityIcons name="chevron-right" size={22} color="#9ca3af" />
+                </TouchableOpacity>
+
+                {/* Live Conditions */}
+                <View style={s.sectionRow}>
+                    <Text style={s.sectionTitle}>LIVE CONDITIONS</Text>
+                    <TouchableOpacity onPress={() => navigation.navigate('ConnectSensors')}>
+                        <Text style={s.linkText}>Setup Sensors</Text>
+                    </TouchableOpacity>
+                </View>
+
+                <View style={s.envGrid}>
+                    <View style={s.envCard}>
+                        <View style={s.envHeader}>
+                            <View style={[s.envIcon, { backgroundColor: '#fee2e2' }]}>
+                                <MaterialCommunityIcons name="thermometer" size={20} color="#ef4444" />
+                            </View>
+                            <Text style={s.envLabel}>TEMPERATURE</Text>
+                        </View>
+                        <Text style={s.envValue}>28.5 <Text style={s.envUnit}>°C</Text></Text>
+                        <Text style={s.envStatusGood}>Normal Range</Text>
+                    </View>
+                    <View style={s.envCard}>
+                        <View style={s.envHeader}>
+                            <View style={[s.envIcon, { backgroundColor: '#dbeafe' }]}>
+                                <MaterialCommunityIcons name="water-percent" size={20} color="#3b82f6" />
+                            </View>
+                            <Text style={s.envLabel}>HUMIDITY</Text>
+                        </View>
+                        <Text style={s.envValue}>62 <Text style={s.envUnit}>%</Text></Text>
+                        <Text style={s.envStatusGood}>Safe Level</Text>
+                    </View>
+                </View>
+
+                {/* Quality Standards */}
+                <Text style={s.sectionTitle}>QUALITY STANDARDS (SLR 603)</Text>
+                <View style={s.rulesCard}>
+                    {[
+                        'Keep room temperature below 30°C',
+                        'Paddy moisture must be under 14%',
+                        'Leave a 15cm (6 inch) gap from all walls',
+                    ].map((rule, i) => (
+                        <View key={i} style={s.ruleRow}>
+                            <MaterialCommunityIcons name="check-circle" size={18} color="#16a34a" />
+                            <Text style={s.ruleText}>{rule}</Text>
+                        </View>
+                    ))}
+                </View>
+
+                {/* Stock Inventory */}
+                <View style={s.sectionRow}>
+                    <Text style={s.sectionTitle}>MY HARVEST BATCHES</Text>
+                    <View style={s.badgeBox}>
+                        <Text style={s.badgeText}>{harvests.length} Batches</Text>
+                    </View>
+                </View>
+
+                <View style={s.stockList}>
+                    {harvests.length === 0 ? (
+                        <View style={s.emptyBox}>
+                            <MaterialCommunityIcons name="leaf" size={40} color="#d1d5db" />
+                            <Text style={s.emptyText}>No harvest added to this store yet.</Text>
+                        </View>
+                    ) : (
+                        harvests.map((item, idx) => (
                             <TouchableOpacity
-                                style={s.configLink}
-                                onPress={() => navigation.navigate('ConnectSensors')}
+                                key={item.id}
+                                style={s.stockItem}
+                                onPress={() => navigation.navigate('PostHarvestAdvisor', { batch: item, location: locData })}
                             >
-                                <Text style={s.configLinkText}>CONFIGURE</Text>
-                                <MaterialCommunityIcons name="cog" size={12} color="#10b981" />
+                                <View style={[s.stockAvatar, { backgroundColor: idx % 2 === 0 ? '#dcfce7' : '#dbeafe' }]}>
+                                    <MaterialCommunityIcons name="sack" size={20} color={idx % 2 === 0 ? '#16a34a' : '#3b82f6'} />
+                                </View>
+                                <View style={{ flex: 1, marginLeft: 12 }}>
+                                    <Text style={s.stockName}>{item.riceVariety || item.variety || 'Paddy'}</Text>
+                                    <Text style={s.stockDate}>Stored: {item.harvestDate || 'Recently'}</Text>
+                                </View>
+                                <View style={{ alignItems: 'flex-end' }}>
+                                    <Text style={s.stockWeight}>{item.quantityKg?.toLocaleString()} kg</Text>
+                                    <Text style={s.stockBags}>~{(item.quantityKg / 50).toFixed(0)} bags</Text>
+                                </View>
+                                <MaterialCommunityIcons name="chevron-right" size={18} color="#d1d5db" style={{ marginLeft: 8 }} />
                             </TouchableOpacity>
-                        </View>
-                        <View style={s.envGrid}>
-                            <View style={s.envCard}>
-                                <LinearGradient colors={['#FF6B6B22', '#Feca5722']} style={StyleSheet.absoluteFillObject} />
-                                <View style={s.envIconRow}>
-                                    <MaterialCommunityIcons name="thermometer" size={20} color="#FF6B6B" />
-                                    <Text style={s.envStatus}>OPTIMAL</Text>
-                                </View>
-                                <Text style={s.envValue}>28.5°C</Text>
-                                <Text style={s.envLabel}>WAREHOUSE TEMP</Text>
-                            </View>
-                            <View style={s.envCard}>
-                                <LinearGradient colors={['#48dbfb22', '#00d2d322']} style={StyleSheet.absoluteFillObject} />
-                                <View style={s.envIconRow}>
-                                    <MaterialCommunityIcons name="water-percent" size={20} color="#48dbfb" />
-                                    <Text style={[s.envStatus, { color: '#48dbfb' }]}>STABLE</Text>
-                                </View>
-                                <Text style={s.envValue}>62%</Text>
-                                <Text style={s.envLabel}>HUMIDITY INDEX</Text>
-                            </View>
-                        </View>
+                        ))
+                    )}
+                </View>
 
-                        {/* CERTIFICATION STANDARDS */}
-                        <View style={s.sectionHeader}>
-                            <Text style={s.sectionTitle}>CERTIFICATION STANDARDS (SLR 603)</Text>
-                            <Text style={s.stockCount}>MANDATORY</Text>
-                        </View>
-
-                        {/* Physical Parameters */}
-                        <View style={s.standardsCard}>
-                            <View style={s.standardsHeader}>
-                                <MaterialCommunityIcons name="cube-scan" size={20} color="#34d399" />
-                                <Text style={s.standardsTitle}>PHYSICAL PARAMETERS</Text>
-                            </View>
-                            <View style={s.parameterGrid}>
-                                <View style={s.paramBox}>
-                                    <Text style={s.paramLabel}>TEMP</Text>
-                                    <Text style={s.paramVal}>≤ 30°C</Text>
-                                </View>
-                                <View style={s.paramBox}>
-                                    <Text style={s.paramLabel}>HUMIDITY</Text>
-                                    <Text style={s.paramVal}>60-70%</Text>
-                                </View>
-                                <View style={s.paramBox}>
-                                    <Text style={s.paramLabel}>MOISTURE</Text>
-                                    <Text style={s.paramVal}>≤ 14%</Text>
-                                </View>
-                                <View style={s.paramBox}>
-                                    <Text style={s.paramLabel}>WALL GAP</Text>
-                                    <Text style={s.paramVal}>15cm MIN</Text>
-                                </View>
-                            </View>
-                        </View>
-
-                        {/* Grade Standards */}
-                        <View style={s.gradesContainer}>
-                            {/* GRADE A */}
-                            <View style={[s.gradeCard, { borderColor: '#10b981' }]}>
-                                <View style={[s.gradeBadge, { backgroundColor: '#10b981' }]}>
-                                    <Text style={s.gradeBadgeText}>GRADE A (PREMIUM)</Text>
-                                </View>
-                                <View style={s.gradeRow}><Text style={s.gradeText}>Moisture</Text><Text style={s.gradeReq}>≤ 14%</Text></View>
-                                <View style={s.gradeRow}><Text style={s.gradeText}>Broken Grains</Text><Text style={s.gradeReq}>≤ 5%</Text></View>
-                                <View style={s.gradeRow}><Text style={s.gradeText}>Discolored</Text><Text style={s.gradeReq}>≤ 1%</Text></View>
-                                <View style={s.gradeRow}><Text style={s.gradeText}>Foreign Matter</Text><Text style={s.gradeReq}>≤ 0.1%</Text></View>
-                            </View>
-
-                            {/* GRADE B */}
-                            <View style={[s.gradeCard, { borderColor: '#f59e0b' }]}>
-                                <View style={[s.gradeBadge, { backgroundColor: '#f59e0b' }]}>
-                                    <Text style={s.gradeBadgeText}>GRADE B (STANDARD)</Text>
-                                </View>
-                                <View style={s.gradeRow}><Text style={s.gradeText}>Moisture</Text><Text style={s.gradeReq}>≤ 14.5%</Text></View>
-                                <View style={s.gradeRow}><Text style={s.gradeText}>Broken Grains</Text><Text style={s.gradeReq}>≤ 10%</Text></View>
-                                <View style={s.gradeRow}><Text style={s.gradeText}>Discolored</Text><Text style={s.gradeReq}>≤ 2%</Text></View>
-                                <View style={s.gradeRow}><Text style={s.gradeText}>Foreign Matter</Text><Text style={s.gradeReq}>≤ 0.5%</Text></View>
-                            </View>
-
-                            {/* GRADE C */}
-                            <View style={[s.gradeCard, { borderColor: '#ef4444' }]}>
-                                <View style={[s.gradeBadge, { backgroundColor: '#ef4444' }]}>
-                                    <Text style={s.gradeBadgeText}>GRADE C (BELOW STD)</Text>
-                                </View>
-                                <View style={s.gradeRow}><Text style={s.gradeText}>Moisture</Text><Text style={s.gradeReq}>≤ 15%</Text></View>
-                                <View style={s.gradeRow}><Text style={s.gradeText}>Broken Grains</Text><Text style={s.gradeReq}>≤ 20%</Text></View>
-                                <View style={s.gradeRow}><Text style={s.gradeText}>Discolored</Text><Text style={s.gradeReq}>≤ 5%</Text></View>
-                                <View style={s.gradeRow}><Text style={s.gradeText}>Foreign Matter</Text><Text style={s.gradeReq}>≤ 1%</Text></View>
-                            </View>
-                        </View>
-
-                        {/* STOCK INVENTORY */}
-                        <View style={s.sectionHeader}>
-                            <Text style={s.sectionTitle}>STOCK INVENTORY</Text>
-                            <Text style={s.stockCount}>{harvests.length} BATCHES</Text>
-                        </View>
-                        <View style={s.stockList}>
-                            {harvests.length === 0 ? (
-                                <View style={s.emptyStock}>
-                                    <MaterialCommunityIcons name="package-variant" size={40} color="#1a2e46" />
-                                    <Text style={s.emptyStockText}>No stock records found</Text>
-                                </View>
-                            ) : (
-                                harvests.map((item, idx) => (
-                                    <TouchableOpacity
-                                        key={item.id}
-                                        style={s.stockItem}
-                                        onPress={() => navigation.navigate('PostHarvestAdvisor', {
-                                            batch: item,
-                                            location: locData
-                                        })}
-                                    >
-                                        <View style={[s.stockMarker, { backgroundColor: idx % 2 === 0 ? '#10b981' : '#3b82f6' }]} />
-                                        <View style={{ flex: 1 }}>
-                                            <Text style={s.stockVariety}>{item.riceVariety || 'Paddy'}</Text>
-                                            <Text style={s.stockDate}>{item.harvestDate || 'Fresh Stock'}</Text>
-                                        </View>
-                                        <View style={s.stockWeightBox}>
-                                            <Text style={s.stockWeight}>{item.quantityKg?.toLocaleString()} KG</Text>
-                                            <Text style={s.stockBags}>~{(item.quantityKg / 50).toFixed(0)} bags</Text>
-                                        </View>
-                                    </TouchableOpacity>
-                                ))
-                            )}
-                        </View>
-
-                        {/* INSIGHT */}
-                        <View style={[s.insight, { borderColor: color + '25', backgroundColor: color + '0a' }]}>
-                            <MaterialCommunityIcons
-                                name={fillPercent >= 90 ? 'alert-circle-outline' : fillPercent >= 70 ? 'alert-outline' : 'check-circle-outline'}
-                                size={24} color={color}
-                            />
-                            <Text style={[s.insightTxt, { color: color + 'ee' }]}>
-                                {fillPercent >= 90
-                                    ? 'Critical: Storage at maximum capacity. Risk of ventilation blockage and moisture damage to stored goods.'
-                                    : fillPercent >= 70
-                                        ? 'Caution: High utilization detected. Keep 1.5ft clearance from walls for heat and airflow management.'
-                                        : 'Healthy: Optimal conditions. Adequate airflow maintained between paddy stacks to prevent spoilage.'}
-                            </Text>
-                        </View>
-
-                        {/* BACK */}
-                        <TouchableOpacity style={s.cta} onPress={() => navigation.goBack()}>
-                            <MaterialCommunityIcons name="arrow-left" size={17} color="#253a50" style={{ marginRight: 8 }} />
-                            <Text style={s.ctaTxt}>Return to Dashboard</Text>
-                        </TouchableOpacity>
-
-                    </ScrollView>
-                </SafeAreaView>
-            </LinearGradient>
-        </View>
+            </ScrollView>
+        </SafeAreaView>
     );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  STYLES
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── STYLES ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-    root: { flex: 1, backgroundColor: '#030810' },
-    centered: { flex: 1, backgroundColor: '#030810', justifyContent: 'center', alignItems: 'center', gap: 14 },
-    loadingText: { color: '#4b6b8a', fontSize: 11, fontWeight: '900', letterSpacing: 3 },
+    root: { flex: 1, backgroundColor: '#f9fafb' },
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
+    loadingText: { color: '#6b7280', fontSize: 14 },
 
     // Header
     header: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingBottom: 15,
+        flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16,
         paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 10 : 10,
-        gap: 12,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(255,255,255,0.05)'
+        paddingBottom: 16, backgroundColor: 'white', elevation: 2, borderBottomWidth: 1, borderBottomColor: '#e5e7eb'
     },
-    backBtn: { width: 48, height: 48, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-    headerMain: { flex: 1, marginLeft: 4 },
-    hTitle: { color: '#ffffff', fontSize: 20, fontWeight: '900', letterSpacing: 0.5 },
-    hSub: { fontSize: 14, fontWeight: '700', marginLeft: 4 },
+    backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#f0fdf4', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#bbf7d0' },
+    hTitle: { color: '#111827', fontSize: 20, fontWeight: '800' },
+    hSub: { fontSize: 12, color: '#6b7280', marginLeft: 4 },
     hLocRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
-    statusPill: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, elevation: 10, shadowColor: '#000', shadowOpacity: 0.3, shadowRadius: 5 },
-    statusPillText: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+    statusPill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
+    statusDot: { width: 7, height: 7, borderRadius: 4, marginRight: 5 },
+    statusPillText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
 
-    // Card
-    card: { marginHorizontal: 16, marginBottom: 20, backgroundColor: '#0a1a2f', borderRadius: 28, padding: 20, borderWidth: 1, borderColor: '#1a2e46', elevation: 5 },
+    // Section
+    sectionTitle: { color: '#9ca3af', fontSize: 11, fontWeight: '800', letterSpacing: 1.2, marginBottom: 12 },
+    sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 8 },
+    linkText: { color: '#3b82f6', fontSize: 12, fontWeight: '700' },
+
+    // 3D Card
+    card: { backgroundColor: 'white', borderRadius: 20, padding: 16, marginBottom: 16, elevation: 2, borderWidth: 1, borderColor: '#e5e7eb' },
     cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
-    cardLabel: { color: '#4b6b8a', fontSize: 10, fontWeight: '900', letterSpacing: 2 },
-    cardHint: { color: '#8fa8c0', fontSize: 11, fontWeight: '600', marginTop: 3 },
-    pctBox: { borderWidth: 1.5, borderRadius: 14, paddingHorizontal: 14, paddingVertical: 8, alignItems: 'center' },
-    pctN: { fontSize: 24, fontWeight: '900' },
-    pctU: { fontSize: 9, fontWeight: '800', letterSpacing: 1, color: '#4b6b8a', marginTop: -2 },
-
-    // Stage
-    stage: { alignItems: 'center', justifyContent: 'center', minHeight: 300, borderRadius: 22, overflow: 'hidden', position: 'relative', paddingVertical: 10 },
-    glow: { position: 'absolute', bottom: 16, width: '60%', height: 30, borderRadius: 100 },
-    modelContainer: { width: SW - 72, height: 280, borderRadius: 24, overflow: 'hidden', backgroundColor: '#05101e', borderWidth: 1, borderColor: '#1a2e46' },
+    cardLabel: { color: '#111827', fontSize: 14, fontWeight: '700' },
+    cardHint: { color: '#9ca3af', fontSize: 12, marginTop: 2 },
+    stage: { alignItems: 'center', justifyContent: 'center', borderRadius: 16, overflow: 'hidden' },
+    modelContainer: { width: '100%', height: 240, borderRadius: 14, overflow: 'hidden', backgroundColor: '#f3f4f6' },
     webViewWrapper: { flex: 1 },
     webView: { flex: 1, backgroundColor: 'transparent' },
-    visualBadge: { position: 'absolute', top: 12, right: 12, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1 },
+    visualBadge: { position: 'absolute', top: 10, right: 10, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1 },
 
     // Progress
     progWrap: { marginTop: 20 },
-    progRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-    progLabel: { color: '#8fa8c0', fontSize: 13, fontWeight: '700' },
-    progVal: { fontSize: 20, fontWeight: '900' },
-    track: { height: 10, backgroundColor: '#132842', borderRadius: 5, overflow: 'visible', position: 'relative', marginBottom: 10 },
-    tick: { position: 'absolute', top: -4, width: 2, height: 18, backgroundColor: 'rgba(255,255,255,0.1)' },
-    fill: { position: 'absolute', top: 0, left: 0, height: '100%', borderRadius: 5 },
+    progRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 8 },
+    progLabel: { color: '#6b7280', fontSize: 14, fontWeight: '600' },
+    progVal: { fontSize: 20, fontWeight: '800' },
+    track: { height: 8, backgroundColor: '#f3f4f6', borderRadius: 4, marginBottom: 6, overflow: 'hidden' },
+    fill: { height: '100%', borderRadius: 4 },
     limits: { flexDirection: 'row', justifyContent: 'space-between' },
-    lim: { color: '#4b6b8a', fontSize: 10, fontWeight: '800' },
-
-    // Generic Section Header
-    sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 20, marginTop: 10, marginBottom: 12 },
-    sectionTitle: { color: '#4b6b8a', fontSize: 11, fontWeight: '900', letterSpacing: 1.5 },
-
-    // Stats Grid
-    grid: { flexDirection: 'row', flexWrap: 'wrap', marginHorizontal: 16, gap: 10, marginBottom: 20 },
-    statCard: { flex: 1, minWidth: '30%', backgroundColor: '#0a1a2f', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#1a2e46' },
-    statIconBox: { width: 32, height: 32, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.03)', justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
-    statLabel: { color: '#4b6b8a', fontSize: 9, fontWeight: '900', letterSpacing: 1, marginBottom: 4 },
-    statVal: { color: '#fff', fontSize: 16, fontWeight: '700' },
-
-    // Env Grid
-    envGrid: { flexDirection: 'row', marginHorizontal: 16, gap: 12, marginBottom: 22 },
-    envCard: { flex: 1, height: 90, borderRadius: 24, padding: 16, overflow: 'hidden', justifyContent: 'space-between', flexDirection: 'row', alignItems: 'center' },
-    envLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 9, fontWeight: '900', letterSpacing: 1 },
-    envValue: { color: '#fff', fontSize: 22, fontWeight: '900', marginTop: 2 },
-    envStatus: { color: '#fff', fontSize: 9, fontWeight: '900', opacity: 0.5, letterSpacing: 1, transform: [{ rotate: '-90deg' }], position: 'absolute', right: -10 },
-    liveTag: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(239,68,68,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-    liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#ef4444', marginRight: 6 },
-    liveText: { color: '#ef4444', fontSize: 9, fontWeight: '900' },
-
-    // Stock List
-    stockList: { marginHorizontal: 16, marginBottom: 20, backgroundColor: '#0a1a2f', borderRadius: 28, padding: 10, borderWidth: 1, borderColor: '#1a2e46' },
-    stockItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
-    stockMarker: { width: 4, height: 24, borderRadius: 2, marginRight: 14 },
-    stockVariety: { color: '#fff', fontSize: 15, fontWeight: '800' },
-    stockDate: { color: '#4b6b8a', fontSize: 12, fontWeight: '600', marginTop: 2 },
-    stockWeightBox: { alignItems: 'flex-end' },
-    stockWeight: { color: '#fff', fontSize: 16, fontWeight: '900' },
-    stockBags: { color: '#4b6b8a', fontSize: 11, fontWeight: '700' },
-    stockCount: { color: '#10b981', fontSize: 10, fontWeight: '900' },
-    emptyStock: { padding: 40, alignItems: 'center' },
-    emptyStockText: { color: '#4b6b8a', fontSize: 13, fontWeight: '600', marginTop: 10 },
+    lim: { color: '#9ca3af', fontSize: 11, fontWeight: '600' },
 
     // Insight
-    insight: { flexDirection: 'row', marginHorizontal: 16, padding: 20, borderRadius: 24, gap: 16, marginBottom: 24, borderWidth: 1, alignItems: 'flex-start' },
-    insightTxt: { flex: 1, fontSize: 13, lineHeight: 22, fontWeight: '600' },
+    insight: { flexDirection: 'row', padding: 14, borderRadius: 16, borderLeftWidth: 4, marginBottom: 16, alignItems: 'center', borderWidth: 1, borderColor: '#e5e7eb' },
+    insightIconBox: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12, flexShrink: 0 },
+    insightTxt: { flex: 1, fontSize: 13, color: '#374151', lineHeight: 20 },
 
-    // CTA
-    cta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginHorizontal: 16, backgroundColor: '#10b981', padding: 18, borderRadius: 20, elevation: 10 },
-    ctaTxt: { color: '#fff', fontWeight: '900', fontSize: 15, letterSpacing: 0.5 },
+    // Stats Grid
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+    statCard: { width: (SW - 32 - 16) / 3, backgroundColor: 'white', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', elevation: 1 },
+    statLabel: { color: '#9ca3af', fontSize: 10, fontWeight: '700', letterSpacing: 0.3, marginBottom: 4 },
+    statVal: { color: '#111827', fontSize: 14, fontWeight: '800' },
 
-    // New AI Advisor Styles
-    badgeSmall: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-    badgeTextSmall: { color: '#fff', fontSize: 8, fontWeight: '900' },
-    aiAdvisorCard: { marginHorizontal: 16, borderRadius: 24, overflow: 'hidden', marginBottom: 12, borderWidth: 1, borderColor: '#4c1d95' },
-    aiAdvisorGrad: { flexDirection: 'row', alignItems: 'center', padding: 20, gap: 16 },
-    aiIconWrapper: { width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(167,139,250,0.1)', justifyContent: 'center', alignItems: 'center' },
-    aiStrategyTitle: { color: '#a78bfa', fontSize: 13, fontWeight: '800', letterSpacing: 1 },
-    aiStrategyText: { color: '#fff', fontSize: 14, fontWeight: '600', marginTop: 4, lineHeight: 20 },
-    warningRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 6 },
-    warningText: { color: '#f87171', fontSize: 11, fontWeight: '600' },
+    // Guides
+    guideBtnMain: { marginBottom: 10, borderRadius: 16, overflow: 'hidden', elevation: 2 },
+    guideGrad: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 14 },
+    guideIconBox: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.2)', justifyContent: 'center', alignItems: 'center' },
+    guideTitle: { color: '#fff', fontSize: 15, fontWeight: '700' },
+    guideSub: { color: 'rgba(255,255,255,0.75)', fontSize: 12, marginTop: 2 },
+    guideBtnSecondary: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 20, gap: 14, elevation: 1 },
+    guideIconBoxLight: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    guideTitleLight: { color: '#111827', fontSize: 15, fontWeight: '700' },
+    guideSubLight: { color: '#6b7280', fontSize: 12, marginTop: 2 },
 
-    pestCard: { marginHorizontal: 16, backgroundColor: '#0a1a2f', borderRadius: 24, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: '#1a2e46' },
-    pestHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
-    pestTitle: { color: '#f87171', fontSize: 12, fontWeight: '900', letterSpacing: 1 },
-    pestBody: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-    pestRiskBox: { flex: 1 },
-    pestRiskLabel: { color: '#4b6b8a', fontSize: 9, fontWeight: '800', marginBottom: 4 },
-    pestRiskValue: { fontSize: 14, fontWeight: '800' },
-    reportBtn: { backgroundColor: '#dc2626', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12, gap: 8 },
-    reportBtnText: { color: '#fff', fontSize: 11, fontWeight: '900' },
+    // Env
+    envGrid: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+    envCard: { flex: 1, backgroundColor: 'white', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#e5e7eb', elevation: 1 },
+    envHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
+    envIcon: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+    envLabel: { color: '#6b7280', fontSize: 11, fontWeight: '700', letterSpacing: 0.3 },
+    envValue: { color: '#111827', fontSize: 24, fontWeight: '800' },
+    envUnit: { fontSize: 14, color: '#9ca3af' },
+    envStatusGood: { color: '#16a34a', fontSize: 12, fontWeight: '600', marginTop: 4 },
 
-    protocolBtn: { marginHorizontal: 16, marginBottom: 25, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: '#065f46' },
-    protocolGrad: { flexDirection: 'row', alignItems: 'center', padding: 15, gap: 15 },
-    protocolIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(52,211,153,0.1)', justifyContent: 'center', alignItems: 'center' },
-    protocolTitle: { color: '#fff', fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
-    protocolSub: { color: '#34d399', fontSize: 11, fontWeight: '600', marginTop: 2 },
-    protocolAction: { backgroundColor: '#34d399', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-    protocolActionText: { color: '#064e3b', fontSize: 10, fontWeight: '900' },
+    // Rules
+    rulesCard: { backgroundColor: 'white', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 20, elevation: 1 },
+    ruleRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 },
+    ruleText: { color: '#374151', fontSize: 13, flex: 1, lineHeight: 19 },
 
-    configLink: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-    configLinkText: { color: '#10b981', fontSize: 10, fontWeight: '800' },
-
-    expertHacksBtn: { marginHorizontal: 16, backgroundColor: '#0a1a2f', borderRadius: 20, padding: 16, marginBottom: 25, borderWidth: 1, borderColor: '#1a2e46' },
-    expertHacksBody: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-    expertHacksIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(252,165,165,0.1)', justifyContent: 'center', alignItems: 'center' },
-    expertHacksTitle: { color: '#fca5a5', fontSize: 11, fontWeight: '900', letterSpacing: 1 },
-    expertHacksSub: { color: '#8fa8c0', fontSize: 11, fontWeight: '600', marginTop: 2 },
-
-    strategyHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginHorizontal: 20, marginTop: 15, marginBottom: 15 },
-    strategyTitle: { color: '#fff', fontSize: 16, fontWeight: '900', letterSpacing: 1 },
-    strategySub: { color: '#4b6b8a', fontSize: 11, fontWeight: '700', marginTop: 2 },
-    aiLiveBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#7c3aed20', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1, borderColor: '#7c3aed44', gap: 6 },
-    pulse: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#7c3aed' },
-    aiLiveText: { color: '#a78bfa', fontSize: 9, fontWeight: '900' },
-
-    strategyGrid: { marginHorizontal: 16, gap: 12, marginBottom: 25 },
-    strategyCard: { backgroundColor: '#0a1a2f', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#1a2e46', borderLeftWidth: 4 },
-    strategyCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
-    strategyCardTitle: { color: '#fff', fontSize: 14, fontWeight: '800' },
-    strategyCardText: { color: '#8fa8c0', fontSize: 13, lineHeight: 20, fontWeight: '600' },
-    executionMeta: { flexDirection: 'row', alignItems: 'baseline', marginTop: 12, gap: 8 },
-    executionLabel: { color: '#4b6b8a', fontSize: 9, fontWeight: '900' },
-    executionVal: { fontSize: 11, fontWeight: '900' },
-    mitigationBtn: { backgroundColor: '#dc2626', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 15, marginTop: 12, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 8 },
-    mitigationBtnText: { color: '#fff', fontSize: 10, fontWeight: '900' },
-
-    envIconRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', alignSelf: 'stretch', marginBottom: 8 },
-
-    // Standards & Certification
-    standardsCard: { marginHorizontal: 16, backgroundColor: '#0a1a2f', borderRadius: 24, padding: 16, marginBottom: 15, borderWidth: 1, borderColor: '#1a2e46' },
-    standardsHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 15 },
-    standardsTitle: { color: '#34d399', fontSize: 13, fontWeight: '900', letterSpacing: 1 },
-    parameterGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-    paramBox: { flex: 1, minWidth: '45%', backgroundColor: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
-    paramLabel: { color: '#4b6b8a', fontSize: 9, fontWeight: '800', marginBottom: 4 },
-    paramVal: { color: '#fff', fontSize: 13, fontWeight: '800' },
-
-    gradesContainer: { flexDirection: 'row', paddingHorizontal: 16, gap: 12, marginBottom: 25 },
-    gradeCard: { flex: 1, backgroundColor: '#0a1a2f', borderRadius: 16, borderWidth: 1, overflow: 'hidden', paddingBottom: 10 },
-    gradeBadge: { paddingVertical: 6, alignItems: 'center', marginBottom: 10 },
-    gradeBadgeText: { color: '#fff', fontSize: 8, fontWeight: '900', letterSpacing: 0.5 },
-    gradeRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 10, marginBottom: 6 },
-    gradeText: { color: '#8fa8c0', fontSize: 9, fontWeight: '600' },
-    gradeReq: { color: '#fff', fontSize: 9, fontWeight: '800' },
+    // Stock
+    badgeBox: { backgroundColor: '#f0fdf4', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+    badgeText: { color: '#16a34a', fontSize: 11, fontWeight: '700' },
+    stockList: { backgroundColor: 'white', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#e5e7eb', elevation: 1, marginBottom: 16 },
+    stockItem: { flexDirection: 'row', alignItems: 'center', padding: 14, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+    stockAvatar: { width: 42, height: 42, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+    stockName: { color: '#111827', fontSize: 15, fontWeight: '700' },
+    stockDate: { color: '#9ca3af', fontSize: 12, marginTop: 2 },
+    stockWeight: { color: '#111827', fontSize: 15, fontWeight: '800' },
+    stockBags: { color: '#9ca3af', fontSize: 12, marginTop: 2 },
+    emptyBox: { padding: 30, alignItems: 'center' },
+    emptyText: { color: '#9ca3af', fontSize: 14, marginTop: 10 },
 });

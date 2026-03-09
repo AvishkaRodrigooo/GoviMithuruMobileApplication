@@ -5,7 +5,10 @@ from dotenv import load_dotenv
 from ultralytics import YOLO
 from routes.postharvest_guardian import postharvest_bp
 
+from flask_cors import CORS
+
 app = Flask(__name__)
+CORS(app) # Enable CORS for all routes
 
 # MongoDB connection
 MONGO_URI = os.getenv('MONGO_URI', "mongodb://localhost:27017/")

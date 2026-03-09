@@ -154,8 +154,8 @@ export default function HomeScreen({ navigation }) {
         </View>
 
         <View style={styles.featuresGrid}>
-          <Pressable style={[styles.featureCard, styles.featureLarge]} onPress={() => navTo('PostHarvestOnboarding', 'harvest')}>
-            <View style={[styles.featureIcon, { backgroundColor: '#dbeafe' }]}>
+          <Pressable style={[styles.featureCard, styles.featureLarge]} onPress={() => navTo('Stage', 'harvest')}>
+            <View style={[styles.featureIcon, { backgroundColor: '#dbeafe' }]} >
               <MaterialCommunityIcons name="warehouse" size={40} color="#3b82f6" />
             </View>
             <Text style={styles.featureTitle}>Harvest Advisory</Text>
@@ -249,7 +249,7 @@ export default function HomeScreen({ navigation }) {
           <Pressable
             key={tab}
             style={styles.navItem}
-            onPress={() => navTo(tab === 'home' ? 'Home' : tab === 'pest' ? 'Pest' : tab === 'harvest' ? 'PostHarvestOnboarding' : tab === 'weeds' ? 'weedsDashboard' : 'Pricing', tab)}
+            onPress={() => navTo(tab === 'home' ? 'Home' : tab === 'pest' ? 'Pest' : tab === 'harvest' ? 'Stage' : tab === 'weeds' ? 'weedsDashboard' : 'Pricing', tab)}
           >
             <View style={[styles.navIconWrapper, activeTab === tab && styles.navIconActive]}>
               <MaterialCommunityIcons
@@ -264,7 +264,7 @@ export default function HomeScreen({ navigation }) {
           </Pressable>
         ))}
       </View>
-    </View>
+    </View >
   );
 }
 

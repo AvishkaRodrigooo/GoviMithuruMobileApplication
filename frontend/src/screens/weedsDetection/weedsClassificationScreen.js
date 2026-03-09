@@ -11,6 +11,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { BASE_URL } from "../../utils/apiConfig";
 
 /*Reusable Category Card */
 const CategoryCard = ({ title, icon, children }) => (
@@ -92,7 +93,7 @@ export default function WeedsClassificationScreen() {
         type: "image/jpeg",
       });
 
-      const response = await fetch("http://192.168.8.156:5000/weed_predict", {
+      const response = await fetch(`${BASE_URL}/weed_predict`, {
         method: "POST",
         headers: {
           "Content-Type": "multipart/form-data",
