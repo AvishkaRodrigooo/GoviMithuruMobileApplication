@@ -373,6 +373,10 @@ export default function RegisterHarvestScreen({ navigation, route }) {
     setChatInput('');
     setIsTyping(true);
     try {
+      // detect intent: logistics vs grading
+      const lowerInput = currentInput.toLowerCase();
+      const isGradingIntent = lowerInput.includes('grade') || lowerInput.includes('quality') || lowerInput.includes('audit') || lowerInput.includes('moisture');
+
       const res = await fetch(`${BASE_URL}/api/guardian/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

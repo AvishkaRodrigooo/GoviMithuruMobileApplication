@@ -259,9 +259,12 @@ def _call_ollama(system_prompt, user_content,
         payload["format"] = "json"
     try:
         requests.get("http://127.0.0.1:11434/", timeout=2)
-        r = requests.post(url, json=payload, timeout=180)
+        r = requests.post(url, json=payload, timeout=900)  # Increased timeout for slow local LLM
         r.raise_for_status()
         return r.json()["message"]["content"]
+    except requests.exceptions.ReadTimeout:
+        print("[Ollama] ⏱️ Timeout occurred while waiting for the model. Ensure the system handles the load.")
+        return None
     except requests.exceptions.ConnectionError:
         print("[Ollama] ⚠️ Ollama is NOT running. Run: ollama serve")
         return None

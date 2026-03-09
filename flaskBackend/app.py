@@ -6,10 +6,13 @@ from ultralytics import YOLO
 from routes.postharvest_guardian import postharvest_bp
 
 from flask_cors import CORS
+import joblib
 
 app = Flask(__name__)
 CORS(app) # Enable CORS for all routes
 
+
+app.stage_model = joblib.load("models/paddy_stage_model.pkl")
 # MongoDB connection
 MONGO_URI = os.getenv('MONGO_URI', "mongodb://localhost:27017/")
 client = MongoClient(MONGO_URI)
@@ -25,7 +28,9 @@ load_dotenv()
 # Import blueprints
 
 from routes.predict import predict_bp
+from routes.stages import stages_bp  
 
+app.register_blueprint(stages_bp)
 # Register blueprints
 from routes.weed_predict import weed_predict_bp
 

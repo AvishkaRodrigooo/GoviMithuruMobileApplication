@@ -55,6 +55,45 @@ const C = {
 };
 
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
+const MAP_HTML = (lat, lon) => `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        body { margin: 0; padding: 0; }
+        #map { height: 100vh; width: 100vw; background: #0f172a; }
+        .leaflet-control-attribution { display: none; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <script>
+        var map = L.map('map').setView([${lat || 7.8731}, ${lon || 80.7718}], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(map);
+
+        var marker = L.marker([${lat || 7.8731}, ${lon || 80.7718}], {draggable: true}).addTo(map);
+        
+        function updatePos(lat, lng) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({ latitude: lat, longitude: lng }));
+        }
+
+        map.on('click', function(e) {
+            marker.setLatLng(e.latlng);
+            updatePos(e.latlng.lat, e.latlng.lng);
+        });
+
+        marker.on('dragend', function(e) {
+            updatePos(marker.getLatLng().lat, marker.getLatLng().lng);
+        });
+    </script>
+</body>
+</html>
+`;
 const VARIETIES = [
   'Bg 250', 'Bg 300', 'Bg 352', 'Bg 366', 'Bg 379-2',
   'Bg 403', 'At 306', 'At 362', 'At 405',

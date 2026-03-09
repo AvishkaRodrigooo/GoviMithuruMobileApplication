@@ -17,11 +17,16 @@ import axios from 'axios';
 import { BASE_URL } from '../../utils/apiConfig';
 const API_BASE_URL = BASE_URL;
 
+
 const CropRecommenderScreen = ({ navigation }) => {
   // State variables
   const [loading, setLoading] = useState(false);
   const [locationMethod, setLocationMethod] = useState('gps'); // 'gps' or 'manual'
   const [userLocation, setUserLocation] = useState(null);
+  const [weatherData, setWeatherData] = useState(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+  const [autoWater, setAutoWater] = useState(true);
+  const [autoSeason, setAutoSeason] = useState(true);
   const [formData, setFormData] = useState({
     district: '',
     gnDivision: '',
@@ -34,6 +39,32 @@ const CropRecommenderScreen = ({ navigation }) => {
     predictedSoil: null,
     searchTimeout: null,
   });
+
+
+  useEffect(() => {
+
+    if (!autoSeason) return;
+
+    const month = new Date().getMonth() + 1;
+
+    let detectedSeason = "Yala";
+
+    if (month >= 10 || month <= 1) {
+      detectedSeason = "Maha";
+    }
+    else if (month >= 4 && month <= 8) {
+      detectedSeason = "Yala";
+    }
+    else {
+      detectedSeason = "Maas kanna";
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      season: detectedSeason
+    }));
+
+  }, [autoSeason]);
 
   // Sri Lankan districts for dropdown.
   const districts = [
@@ -56,7 +87,7 @@ const CropRecommenderScreen = ({ navigation }) => {
     'Poor (Rain-fed Only)'
   ];
 
-  const seasons = ['Yala', 'Maha'];
+  const seasons = ['Yala', 'Maha', 'Maas kanna'];
 
   // Sri Lankan provinces to districts mapping (for better location parsing)
   const provinceToDistricts = {
@@ -98,6 +129,11 @@ const CropRecommenderScreen = ({ navigation }) => {
 
       // Try multiple methods to get village-level data
 
+      await getWeatherForecast(latitude, longitude);
+
+      console.log('Getting location for:', latitude, longitude);
+
+      // Try multiple methods to get village-level data
       // METHOD 1: Try with Google Maps Geocoding (most accurate for Sri Lanka)
       // Note: You'll need to enable Geocoding API and get an API key
       try {
@@ -261,7 +297,7 @@ const CropRecommenderScreen = ({ navigation }) => {
 
       // METHOD 4: Try with OpenCage Data (free tier available)
       try {
-        const OPENCAGE_API_KEY = 'xxxx'; // Sign up at opencagedata.com
+        const OPENCAGE_API_KEY = 'b952fb1f73564c9aae7f908a1bfadf84'; // Sign up at opencagedata.com
         const opencageResponse = await axios.get(
           `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=${OPENCAGE_API_KEY}&language=en&countrycode=lk&no_annotations=1`
         );
@@ -437,6 +473,91 @@ const CropRecommenderScreen = ({ navigation }) => {
     return true;
   };
 
+  const getWeatherForecast = async (lat, lon) => {
+    try {
+      setWeatherLoading(true);
+
+      const API_KEY = "975862a6d56da3d94749762933b338c5";
+
+      const response = await axios.get(
+        `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`
+      );
+
+      const forecastList = response.data.list;
+
+      // analyze next few days weather
+      let rainCount = 0;
+      let tempSum = 0;
+
+      forecastList.forEach(item => {
+        tempSum += item.main.temp;
+
+        if (item.weather[0].main === "Rain") {
+          rainCount++;
+        }
+      });
+
+      const avgTemp = tempSum / forecastList.length;
+
+      let climatePrediction = "Normal";
+
+      if (rainCount > 10) climatePrediction = "Rainy Season Expected";
+      else if (avgTemp > 30) climatePrediction = "Dry Hot Period";
+      else climatePrediction = "Moderate Climate";
+
+      const weatherInfo = {
+        temperature: avgTemp.toFixed(1),
+        rainProbability: rainCount,
+        climatePrediction: climatePrediction,
+      };
+
+      setWeatherData(weatherInfo);
+
+      // 🔹 Auto detect water availability
+      const waterLevel = detectWaterAvailability(weatherInfo);
+
+      if (autoWater) {
+        setFormData(prev => ({
+          ...prev,
+          waterAvailability: waterLevel
+        }));
+      }
+
+    } catch (error) {
+      console.log("Weather error:", error);
+    } finally {
+      setWeatherLoading(false);
+    }
+  };
+
+
+  const detectWaterAvailability = (weather) => {
+
+    if (!weather) return "";
+
+    const rain = weather.rainProbability;
+    const temp = parseFloat(weather.temperature);
+
+    if (rain > 12) {
+      return "Excellent (Irrigation + Rainfall)";
+    }
+
+    if (rain > 8) {
+      return "Good (Reliable Irrigation)";
+    }
+
+    if (rain > 4) {
+      return "Moderate (Seasonal Irrigation)";
+    }
+
+    if (rain <= 4 && temp > 32) {
+      return "Poor (Rain-fed Only)";
+    }
+
+    return "Moderate (Seasonal Irrigation)";
+  };
+
+
   // 4. GET RECOMMENDATION (AI/Backend Integration)
   const getRecommendation = async () => {
     console.log('Form Data:', formData);
@@ -446,34 +567,136 @@ const CropRecommenderScreen = ({ navigation }) => {
     setLoading(true);
 
     try {
-
       if (!formData || !formData.soilType || !formData.waterAvailability || !formData.fieldSize) {
         Alert.alert('Error', 'Please fill in all required fields');
         setLoading(false);
         return;
       }
 
-      // Generate recommendation based on form data
-      const recommendationData = generateRecommendation(formData);
+      // Use already fetched weather data
+      const weather = weatherData;
 
-      console.log('Generated Recommendation:', recommendationData);
+      const recommendationData = generateRecommendation(formData, weather);
 
-      // Navigate to results screen with both form data and recommendation
+      const suitabilityScore = calculatePlantingSuitability(
+        weatherData,
+        formData.soilType,
+        formData.waterAvailability
+      );
+
+      const rainRisk = calculateRainRisk(weatherData);
+
+      const climateVariety = recommendClimateVariety(weatherData);
+
       navigation.navigate('CropRecommendationResults', {
         formData: formData,
         recommendation: recommendationData,
+        suitabilityScore,
+        rainRisk,
+        climateVariety,
+        weather: weatherData
       });
 
     } catch (error) {
-      console.error('Recommendation error:', error);
-      Alert.alert('Error', 'Failed to generate recommendation. Please try again.');
+      console.log(error);
+      Alert.alert("Error", "Failed to generate recommendation");
     } finally {
       setLoading(false);
     }
   };
 
+
+  const calculatePlantingSuitability = (weather, soilType, waterAvailability) => {
+
+    if (!weather) return 50;
+
+    let score = 50;
+
+    const temp = parseFloat(weather.temperature);
+    const rain = weather.rainProbability;
+
+    // Temperature effect
+    if (temp >= 25 && temp <= 32) score += 20;
+    if (temp > 34) score -= 10;
+
+    // Rain effect
+    if (rain > 10) score += 15;
+    if (rain < 4) score -= 10;
+
+    // Water availability
+    if (waterAvailability === "High") score += 10;
+    if (waterAvailability === "Low") score -= 5;
+
+    // Soil bonus
+    if (soilType === "Clay") score += 10;
+
+    return Math.min(Math.max(score, 0), 100);
+  };
+
+
+  const calculateRainRisk = (weather) => {
+
+    if (!weather) return "Unknown";
+
+    const rain = weather.rainProbability;
+
+    if (rain > 12) return "High Rainfall Expected";
+    if (rain > 6) return "Moderate Rainfall";
+    return "Low Rainfall Risk";
+  };
+
+  const recommendClimateVariety = (weather) => {
+
+    if (!weather) return "BG 300";
+
+    if (weather.climatePrediction === "Rainy Season Expected") {
+      return "BG 352";
+    }
+
+    if (weather.climatePrediction === "Dry Hot Period") {
+      return "BG 366";
+    }
+
+    return "BG 300";
+  };
+
+
+  const calculateClimateScore = (weather) => {
+
+    if (!weather) return 50;
+
+    let score = 50;
+
+    if (weather.climatePrediction === "Rainy Season Expected") {
+      score += 20;
+    }
+
+    if (weather.climatePrediction === "Dry Hot Period") {
+      score -= 10;
+    }
+
+    if (weather.temperature >= 25 && weather.temperature <= 32) {
+      score += 10;
+    }
+
+    if (weather.rainProbability > 8) {
+      score += 10;
+    }
+
+    return score;
+  };
+
+
+
+
+
+
+
+
   // Add this function to generate recommendations based on form data:
-  const generateRecommendation = (formData) => {
+  const generateRecommendation = (formData, weatherData) => {
+
+    const climateScore = weatherData ? calculateClimateScore(weatherData) : 50;
 
     const { soilType, waterAvailability, fieldSize, season, district } = formData;
 
@@ -498,95 +721,23 @@ const CropRecommenderScreen = ({ navigation }) => {
     // Season-based planting windows
     const plantingWindows = {
       'Yala': 'April 15 - May 30',
-      'Maha': 'October 15 - November 30'
+      'Maha': 'October 15 - November 30',
+      'Maas kanna': 'January 15 - February 28'
     };
 
-    // Paddy varieties database for Sri Lanka
-    const paddyVarieties = [
-      {
-        name: 'BG 358',
-        soilPreference: ['Clay Loam', 'Alluvial Soil', 'Black Soil'],
-        waterNeed: 'High',
-        season: 'Both',
-        duration: '3.5-4 months',
-        yield: '5.0-6.0 t/ha',
-        price: 'LKR 80-90/kg',
-        resistance: ['Blast', 'Brown Spot'],
-        riskLevel: 'Low',
-        description: 'High yielding variety suitable for good irrigation'
-      },
-      {
-        name: 'BG 360',
-        soilPreference: ['Red Soil', 'Clay Loam', 'Laterite Soil'],
-        waterNeed: 'Medium',
-        season: 'Maha',
-        duration: '4-4.5 months',
-        yield: '4.5-5.5 t/ha',
-        price: 'LKR 75-85/kg',
-        resistance: ['Drought', 'Blast'],
-        riskLevel: 'Medium',
-        description: 'Drought tolerant, good for moderate irrigation'
-      },
-      {
-        name: 'AT 362',
-        soilPreference: ['Sandy Soil', 'Red Soil', 'Laterite Soil'],
-        waterNeed: 'Low',
-        season: 'Both',
-        duration: '3-3.5 months',
-        yield: '4.0-5.0 t/ha',
-        price: 'LKR 70-80/kg',
-        resistance: ['Drought', 'Salinity'],
-        riskLevel: 'Medium',
-        description: 'Short duration, suitable for rain-fed areas'
-      },
-      {
-        name: 'Bg 300',
-        soilPreference: ['Clay Loam', 'Alluvial Soil'],
-        waterNeed: 'High',
-        season: 'Yala',
-        duration: '4 months',
-        yield: '5.5-6.5 t/ha',
-        price: 'LKR 85-95/kg',
-        resistance: ['Blast'],
-        riskLevel: 'Low',
-        description: 'Traditional high yielder, needs good management'
-      },
-      {
-        name: 'Ld 365',
-        soilPreference: ['Sandy Soil', 'Red Soil'],
-        waterNeed: 'Low',
-        season: 'Maha',
-        duration: '3.5-4 months',
-        yield: '3.5-4.5 t/ha',
-        price: 'LKR 65-75/kg',
-        resistance: ['Drought', 'Pests'],
-        riskLevel: 'High',
-        description: 'Suitable for water-limited conditions'
-      },
-      {
-        name: 'Bg 94-1',
-        soilPreference: ['Alluvial Soil', 'Clay Loam'],
-        waterNeed: 'Medium',
-        season: 'Both',
-        duration: '4.5 months',
-        yield: '4.5-5.5 t/ha',
-        price: 'LKR 70-80/kg',
-        resistance: ['Diseases'],
-        riskLevel: 'Low',
-        description: 'Good for both seasons, stable yield'
-      }
-    ];
+
 
     // Score varieties based on farmer's conditions
     const scoredVarieties = paddyVarieties.map(variety => {
+
       let score = 0;
 
-      // Soil match (30 points)
+      // Soil match
       if (variety.soilPreference.includes(soilType)) {
         score += 30;
       }
 
-      // Water availability match (25 points)
+      // Water match
       const waterLevels = {
         'Excellent (Irrigation + Rainfall)': 'High',
         'Good (Reliable Irrigation)': 'High',
@@ -596,32 +747,27 @@ const CropRecommenderScreen = ({ navigation }) => {
 
       if (variety.waterNeed === waterLevels[waterAvailability]) {
         score += 25;
-      } else if (
-        (waterLevels[waterAvailability] === 'High' && variety.waterNeed === 'Medium') ||
-        (waterLevels[waterAvailability] === 'Medium' && variety.waterNeed === 'Low') ||
-        (waterLevels[waterAvailability] === 'Low' && variety.waterNeed === 'Medium')
-      ) {
-        score += 15;
       }
 
-      // Season match (20 points)
-      if (variety.season === 'Both' || variety.season === season) {
+      // Season match
+      if (
+        variety.season === 'Both' ||
+        variety.season === season ||
+        (season === 'Maas kanna' && variety.season === 'Yala')
+      ) {
         score += 20;
       }
 
-      // Risk level (15 points) - Lower risk gets higher score
-      if (variety.riskLevel === 'Low') score += 15;
-      else if (variety.riskLevel === 'Medium') score += 10;
-      else score += 5;
-
-      // Yield consideration (10 points) - Higher yield gets higher score
-      const avgYield = parseFloat(variety.yield.split('-')[0]);
-      if (avgYield > 5.0) score += 10;
-      else if (avgYield > 4.0) score += 7;
-      else score += 5;
+      // Climate effect
+      if (climateScore > 75) score += 20;
+      else if (climateScore > 60) score += 15;
+      else score += 10;
 
       return { ...variety, score };
     });
+
+
+
 
     // Sort by score and get top recommendations
     scoredVarieties.sort((a, b) => b.score - a.score);
@@ -702,6 +848,11 @@ const CropRecommenderScreen = ({ navigation }) => {
     if (fieldSizeInHectares > 2) {
       specialAdvice.push('• Consider mechanization for cost efficiency');
     }
+    if (season === 'Maas kanna') {
+      specialAdvice.push('• Maas Kanna is a short cultivation season');
+      specialAdvice.push('• Choose short duration paddy varieties');
+      specialAdvice.push('• Ensure irrigation availability');
+    }
 
     return {
       primary: {
@@ -740,10 +891,86 @@ const CropRecommenderScreen = ({ navigation }) => {
         hectares: fieldSizeInHectares.toFixed(2)
       },
       calculatedYield: `${totalYield.toFixed(1)} tons`,
+
+      climateScore: climateScore,
+      weather: weatherData
     };
   };
 
-
+  // Paddy varieties database for Sri Lanka
+  const paddyVarieties = [
+    {
+      name: 'BG 358',
+      soilPreference: ['Clay Loam', 'Alluvial Soil', 'Black Soil'],
+      waterNeed: 'High',
+      season: 'Both',
+      duration: '3.5-4 months',
+      yield: '5.0-6.0 t/ha',
+      price: 'LKR 80-90/kg',
+      resistance: ['Blast', 'Brown Spot'],
+      riskLevel: 'Low',
+      description: 'High yielding variety suitable for good irrigation'
+    },
+    {
+      name: 'BG 360',
+      soilPreference: ['Red Soil', 'Clay Loam', 'Laterite Soil'],
+      waterNeed: 'Medium',
+      season: 'Maha',
+      duration: '4-4.5 months',
+      yield: '4.5-5.5 t/ha',
+      price: 'LKR 75-85/kg',
+      resistance: ['Drought', 'Blast'],
+      riskLevel: 'Medium',
+      description: 'Drought tolerant, good for moderate irrigation'
+    },
+    {
+      name: 'AT 362',
+      soilPreference: ['Sandy Soil', 'Red Soil', 'Laterite Soil'],
+      waterNeed: 'Low',
+      season: 'Both',
+      duration: '3-3.5 months',
+      yield: '4.0-5.0 t/ha',
+      price: 'LKR 70-80/kg',
+      resistance: ['Drought', 'Salinity'],
+      riskLevel: 'Medium',
+      description: 'Short duration, suitable for rain-fed areas'
+    },
+    {
+      name: 'Bg 300',
+      soilPreference: ['Clay Loam', 'Alluvial Soil'],
+      waterNeed: 'High',
+      season: 'Yala',
+      duration: '4 months',
+      yield: '5.5-6.5 t/ha',
+      price: 'LKR 85-95/kg',
+      resistance: ['Blast'],
+      riskLevel: 'Low',
+      description: 'Traditional high yielder, needs good management'
+    },
+    {
+      name: 'Ld 365',
+      soilPreference: ['Sandy Soil', 'Red Soil'],
+      waterNeed: 'Low',
+      season: 'Maha',
+      duration: '3.5-4 months',
+      yield: '3.5-4.5 t/ha',
+      price: 'LKR 65-75/kg',
+      resistance: ['Drought', 'Pests'],
+      riskLevel: 'High',
+      description: 'Suitable for water-limited conditions'
+    },
+    {
+      name: 'Bg 94-1',
+      soilPreference: ['Alluvial Soil', 'Clay Loam'],
+      waterNeed: 'Medium',
+      season: 'Both',
+      duration: '4.5 months',
+      yield: '4.5-5.5 t/ha',
+      price: 'LKR 70-80/kg',
+      resistance: ['Diseases'],
+      riskLevel: 'Low',
+    }
+  ];
 
   const predictSoilTypeFromLocation = async (district, city) => {
     try {
@@ -958,6 +1185,80 @@ const CropRecommenderScreen = ({ navigation }) => {
           )}
         </View>
 
+        {weatherLoading && (
+          <ActivityIndicator size="small" color="#2E7D32" />
+        )}
+
+        {weatherData && (
+          <View style={styles.weatherDashboard}>
+
+            <View style={styles.weatherHeader}>
+              <MaterialCommunityIcons name="weather-partly-cloudy" size={30} color="#2E7D32" />
+              <Text style={styles.weatherTitle}>Smart Climate Insight</Text>
+            </View>
+
+            <View style={styles.weatherMainRow}>
+
+              <View style={styles.weatherBox}>
+                <MaterialCommunityIcons name="thermometer" size={26} color="#FF7043" />
+                <Text style={styles.weatherValue}>{weatherData.temperature}°C</Text>
+                <Text style={styles.weatherLabel}>Temperature</Text>
+              </View>
+
+              <View style={styles.weatherBox}>
+                <MaterialCommunityIcons name="weather-rainy" size={26} color="#42A5F5" />
+                <Text style={styles.weatherValue}>{weatherData.rainProbability}</Text>
+                <Text style={styles.weatherLabel}>Rain Forecast</Text>
+              </View>
+
+              <View style={styles.weatherBox}>
+                <MaterialCommunityIcons name="weather-cloudy" size={26} color="#78909C" />
+                <Text style={styles.weatherSmall}>{weatherData.climatePrediction}</Text>
+                <Text style={styles.weatherLabel}>Climate</Text>
+              </View>
+
+            </View>
+
+
+            {/* Rain probability bar */}
+            <View style={styles.rainSection}>
+              <Text style={styles.rainLabel}>Rain Probability Trend</Text>
+
+              <View style={styles.rainBarBackground}>
+                <View
+                  style={[
+                    styles.rainBarFill,
+                    { width: `${Math.min(weatherData.rainProbability * 5, 100)}%` }
+                  ]}
+                />
+              </View>
+            </View>
+
+
+            {/* Climate Risk Indicator */}
+            <View style={styles.riskSection}>
+              <MaterialCommunityIcons name="alert-circle" size={20} color="#FFA000" />
+              <Text style={styles.riskText}>
+                Climate Risk Level: {weatherData.rainProbability > 12 ? "High" : "Low"}
+              </Text>
+            </View>
+
+
+            {/* Farming Advice */}
+            <View style={styles.adviceBox}>
+              <MaterialCommunityIcons name="leaf" size={22} color="#2E7D32" />
+
+              <Text style={styles.adviceText}>
+                {weatherData.rainProbability > 10
+                  ? "Good rainfall expected. Suitable period for paddy establishment."
+                  : "Low rainfall expected. Ensure proper irrigation planning."}
+              </Text>
+
+            </View>
+
+          </View>
+        )}
+
         {/* Field Characteristics */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>🌱 Field Characteristics</Text>
@@ -1059,9 +1360,34 @@ const CropRecommenderScreen = ({ navigation }) => {
               )}
           </View>
 
+          {/* Water Availability Selection */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Water Availability</Text>
-            {waterAvailabilityOptions.map((option, index) => (
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={styles.inputLabel}>Water Availability</Text>
+
+              <TouchableOpacity
+                onPress={() => setAutoWater(!autoWater)}
+                style={{
+                  backgroundColor: '#16a34a',
+                  paddingHorizontal: 12,
+                  paddingVertical: 5,
+                  borderRadius: 10
+                }}
+              >
+                <Text style={{ color: 'white', fontSize: 12 }}>
+                  {autoWater ? "Auto Mode" : "Manual Mode"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {autoWater && (
+              <Text style={{ color: "#16a34a" }}>
+                Auto detected water availability: {formData.waterAvailability}
+              </Text>
+            )}
+
+
+            {!autoWater && waterAvailabilityOptions.map((option, index) => (
               <TouchableOpacity
                 key={index}
                 style={[
@@ -1078,6 +1404,75 @@ const CropRecommenderScreen = ({ navigation }) => {
                 <Text style={styles.optionText}>{option}</Text>
               </TouchableOpacity>
             ))}
+
+            {/* NEW: Water Requirement Bar - Add this section */}
+            {formData.waterAvailability && (
+              <View style={styles.waterRequirementContainer}>
+                <View style={styles.waterHeader}>
+                  <MaterialCommunityIcons name="water" size={20} color="#0284c7" />
+                  <Text style={styles.waterTitle}>Water Requirement Level</Text>
+                </View>
+
+                {/* Calculate water level based on selection */}
+                {(() => {
+                  const waterLevel =
+                    formData.waterAvailability === 'Excellent (Irrigation + Rainfall)' ? 100 :
+                      formData.waterAvailability === 'Good (Reliable Irrigation)' ? 75 :
+                        formData.waterAvailability === 'Moderate (Seasonal Irrigation)' ? 50 : 25;
+
+                  const waterText =
+                    formData.waterAvailability === 'Excellent (Irrigation + Rainfall)' ? 'Very High' :
+                      formData.waterAvailability === 'Good (Reliable Irrigation)' ? 'High' :
+                        formData.waterAvailability === 'Moderate (Seasonal Irrigation)' ? 'Medium' : 'Low';
+
+                  const barColor =
+                    waterLevel > 75 ? '#16a34a' :
+                      waterLevel > 50 ? '#eab308' :
+                        waterLevel > 25 ? '#f97316' : '#dc2626';
+
+                  return (
+                    <>
+                      <View style={styles.waterBarContainer}>
+                        <View
+                          style={[
+                            styles.waterBarFill,
+                            { width: `${waterLevel}%`, backgroundColor: barColor }
+                          ]}
+                        />
+                      </View>
+
+                      <View style={styles.waterInfoRow}>
+                        <Text style={styles.waterLevelText}>
+                          Requirement: <Text style={[styles.waterLevelValue, { color: barColor }]}>
+                            {waterText}
+                          </Text>
+                        </Text>
+                        <Text style={styles.waterPercentage}>{waterLevel}%</Text>
+                      </View>
+
+                      {/* Show specific advice based on selection */}
+                      <View style={styles.waterAdviceBox}>
+                        <MaterialCommunityIcons
+                          name={waterLevel > 50 ? "check-circle" : "alert-circle"}
+                          size={16}
+                          color={waterLevel > 50 ? "#16a34a" : "#dc2626"}
+                        />
+                        <Text style={styles.waterAdviceText}>
+                          {formData.waterAvailability === 'Excellent (Irrigation + Rainfall)' &&
+                            "Ideal for high-yield varieties like BG 358 or BG 300"}
+                          {formData.waterAvailability === 'Good (Reliable Irrigation)' &&
+                            "Good for most varieties. Consider BG 358 or Bg 94-1"}
+                          {formData.waterAvailability === 'Moderate (Seasonal Irrigation)' &&
+                            "Choose drought-tolerant varieties like BG 360 or AT 362"}
+                          {formData.waterAvailability === 'Poor (Rain-fed Only)' &&
+                            "Select water-efficient varieties like AT 362 or Ld 365"}
+                        </Text>
+                      </View>
+                    </>
+                  );
+                })()}
+              </View>
+            )}
           </View>
 
           <View style={styles.inputGroup}>
@@ -1109,9 +1504,34 @@ const CropRecommenderScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Season</Text>
+
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+
+              <Text style={styles.inputLabel}>Season</Text>
+
+              <TouchableOpacity
+                onPress={() => setAutoSeason(!autoSeason)}
+                style={{
+                  backgroundColor: '#16a34a',
+                  paddingHorizontal: 12,
+                  paddingVertical: 5,
+                  borderRadius: 10
+                }}
+              >
+                <Text style={{ color: 'white', fontSize: 12 }}>
+                  {autoSeason ? "Auto Mode" : "Manual Mode"}
+                </Text>
+              </TouchableOpacity>
+
+            </View>
+            {autoSeason && (
+              <Text style={{ color: "#16a34a" }}>
+                Auto detected season: {formData.season}
+              </Text>
+            )}
+
             <View style={styles.seasonContainer}>
-              {seasons.map((season, index) => (
+              {!autoSeason && seasons.map((season, index) => (
                 <TouchableOpacity
                   key={index}
                   style={[
@@ -1132,17 +1552,7 @@ const CropRecommenderScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* Soil Report Option */}
-        <TouchableOpacity style={styles.soilReportCard} onPress={uploadSoilReport}>
-          <MaterialCommunityIcons name="file-document" size={24} color="#16a34a" />
-          <View style={styles.soilReportContent}>
-            <Text style={styles.soilReportTitle}>Have a soil test report?</Text>
-            <Text style={styles.soilReportDesc}>
-              Upload for more accurate recommendations
-            </Text>
-          </View>
-          <MaterialCommunityIcons name="chevron-right" size={20} color="#9ca3af" />
-        </TouchableOpacity>
+
 
         {/* Action Button */}
         <TouchableOpacity
@@ -1453,6 +1863,182 @@ const styles = StyleSheet.create({
     backgroundColor: '#f3f4f6',
     borderWidth: 1,
     borderColor: 'transparent',
+  },
+
+  weatherDashboard: {
+    backgroundColor: "#F1F8E9",
+    padding: 18,
+    borderRadius: 16,
+    marginVertical: 15,
+    elevation: 4
+  },
+
+  weatherHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 15
+  },
+
+  weatherTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginLeft: 8,
+    color: "#2E7D32"
+  },
+
+  weatherMainRow: {
+    flexDirection: "row",
+    justifyContent: "space-between"
+  },
+
+  weatherBox: {
+    alignItems: "center",
+    flex: 1
+  },
+
+  weatherValue: {
+    fontSize: 20,
+    fontWeight: "bold",
+    marginTop: 4
+  },
+
+  weatherSmall: {
+    fontSize: 14,
+    textAlign: "center",
+    fontWeight: "600",
+    marginTop: 4
+  },
+
+  weatherLabel: {
+    fontSize: 12,
+    color: "#555",
+    marginTop: 2
+  },
+
+  rainSection: {
+    marginTop: 18
+  },
+
+  rainLabel: {
+    fontSize: 13,
+    marginBottom: 6,
+    color: "#444"
+  },
+
+  rainBarBackground: {
+    height: 10,
+    backgroundColor: "#E0E0E0",
+    borderRadius: 10,
+    overflow: "hidden"
+  },
+
+  rainBarFill: {
+    height: 10,
+    backgroundColor: "#42A5F5"
+  },
+
+  riskSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 15
+  },
+
+  riskText: {
+    marginLeft: 6,
+    fontSize: 13,
+    color: "#555"
+  },
+
+  adviceBox: {
+    flexDirection: "row",
+    backgroundColor: "#E8F5E9",
+    padding: 10,
+    borderRadius: 10,
+    marginTop: 12
+  },
+
+  adviceText: {
+    flex: 1,
+    marginLeft: 6,
+    fontSize: 13,
+    color: "#2E7D32"
+  },
+
+
+  waterRequirementContainer: {
+    marginTop: 16,
+    padding: 16,
+    backgroundColor: '#f0f9ff',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+  },
+
+  waterHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+
+  waterTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0369a1',
+    marginLeft: 8,
+  },
+
+  waterBarContainer: {
+    height: 12,
+    backgroundColor: '#e2e8f0',
+    borderRadius: 6,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+
+  waterBarFill: {
+    height: '100%',
+    borderRadius: 6,
+  },
+
+  waterInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+
+  waterLevelText: {
+    fontSize: 13,
+    color: '#334155',
+  },
+
+  waterLevelValue: {
+    fontWeight: '700',
+    fontSize: 14,
+  },
+
+  waterPercentage: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+
+  waterAdviceBox: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
+    padding: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderLeftWidth: 3,
+    borderLeftColor: '#0284c7',
+  },
+
+  waterAdviceText: {
+    fontSize: 12,
+    color: '#334155',
+    marginLeft: 8,
+    flex: 1,
+    lineHeight: 18,
   },
 });
 

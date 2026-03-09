@@ -20,70 +20,63 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { db, auth } from '../../firebase/firebaseConfig';
 import firebase from 'firebase/compat/app';
 
-// Seed varieties array - ONLY FROM THE IMAGE
+// Seed varieties array with all details
 const SEED_VARIETIES = [
-  { 
-    id: '1', 
-    name: 'Bg 250', 
-    description: 'Popular variety',
+  {
+    id: '1',
+    name: 'BG 358',
+    description: 'High yield, disease resistant',
     category: 'High-Yielding',
     maturity: '3.5-4 months'
   },
-  { 
-    id: '2', 
-    name: 'Bg 300', 
+  {
+    id: '2',
+    name: 'BG 352',
     description: 'Drought tolerant',
     category: 'Drought Tolerant',
     maturity: '4-4.5 months'
   },
-  { 
-    id: '3', 
-    name: 'Bg 352', 
-    description: 'High yield, disease resistant',
-    category: 'High-Yielding',
-    maturity: '4-4.5 months'
-  },
-  { 
-    id: '4', 
-    name: 'Bg 366', 
-    description: 'Short duration variety',
+  {
+    id: '3',
+    name: 'BG 367',
+    description: 'Short duration (3 months)',
     category: 'Short Duration',
-    maturity: '3.5 months'
+    maturity: '3 months'
   },
-  { 
-    id: '5', 
-    name: 'Bg 379-2', 
-    description: 'Suitable for all seasons',
-    category: 'All Season',
-    maturity: '4 months'
-  },
-  { 
-    id: '6', 
-    name: 'Bg 403', 
-    description: 'High yield, disease resistant',
-    category: 'High-Yielding',
-    maturity: '4-4.5 months'
-  },
-  { 
-    id: '7', 
-    name: 'At 306', 
-    description: 'Salinity tolerant',
-    category: 'Special',
-    maturity: '3.5 months'
-  },
-  { 
-    id: '8', 
-    name: 'At 362', 
+  {
+    id: '4',
+    name: 'AT 362',
     description: 'Traditional, high quality',
     category: 'Traditional',
     maturity: '3.5 months'
   },
-  { 
-    id: '9', 
-    name: 'At 405', 
-    description: 'Drought tolerant',
-    category: 'Drought Tolerant',
+  {
+    id: '5',
+    name: 'LD 365',
+    description: 'Suitable for low country',
+    category: 'Low Country',
     maturity: '4 months'
+  },
+  {
+    id: '6',
+    name: 'BG 300',
+    description: 'Popular variety',
+    category: 'Popular',
+    maturity: '4 months'
+  },
+  {
+    id: '7',
+    name: 'BG 94-1',
+    description: 'High yield',
+    category: 'High-Yielding',
+    maturity: '4.5 months'
+  },
+  {
+    id: '8',
+    name: 'AT 306',
+    description: 'Salinity tolerant',
+    category: 'Special',
+    maturity: '3.5 months'
   },
 ];
 
@@ -91,12 +84,12 @@ export default function AdminPriceManagementScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showSeedModal, setShowSeedModal] = useState(false);
-  const [selectedSeed, setSelectedSeed] = useState(SEED_VARIETIES[1]); // Default to Bg 300
+  const [selectedSeed, setSelectedSeed] = useState(SEED_VARIETIES[0]);
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  
+
   const [prices, setPrices] = useState({
-    seeds: {},
+    seeds: {}, // Will store multiple seed varieties
     urea: { price: '', source: '' },
     tsp: { price: '', source: '' },
     mop: { price: '', source: '' },
@@ -114,17 +107,22 @@ export default function AdminPriceManagementScreen({ navigation }) {
     const checkAuth = async () => {
       try {
         setLoading(true);
-        
+
+        // Listen to auth state
         const unsubscribe = auth.onAuthStateChanged(async (user) => {
           if (user) {
             setUser(user);
-            
-            // Check if user is admin
-            const isAdminEmail = user.email?.endsWith('@admin.com') || 
-                                user.email === 'admin2025@gmail.com';
-            
+
+            // Check if user is admin (you can customize this logic)
+            // Option 1: Check email domain
+            const isAdminEmail = user.email?.endsWith('@admin.com') ||
+              user.email === 'admin2025@gmail.com';
+
+            // Option 2: Check custom claim (requires backend)
+            // const token = await user.getIdTokenResult();
+            // const isAdminClaim = token.claims.admin || false;
             setIsAdmin(isAdminEmail);
-            
+
             if (isAdminEmail) {
               console.log('✅ Admin authenticated:', user.email);
               await loadAllPrices();
@@ -162,6 +160,7 @@ export default function AdminPriceManagementScreen({ navigation }) {
       setLoading(true);
       console.log('🔍 Loading all prices from Firebase...');
 
+      // Get main price document
       const docRef = db.collection('marketPrices').doc('currentPrices');
       const docSnap = await docRef.get();
 
@@ -169,7 +168,7 @@ export default function AdminPriceManagementScreen({ navigation }) {
         const data = docSnap.data();
         console.log('✅ Firebase data loaded:', data);
 
-        // Load seed prices
+        // Load seed prices (multiple varieties)
         const seedPrices = {};
         if (data.seeds) {
           Object.keys(data.seeds).forEach(seedKey => {
@@ -208,7 +207,8 @@ export default function AdminPriceManagementScreen({ navigation }) {
   const handleSeedSelect = (seed) => {
     setSelectedSeed(seed);
     const seedKey = seed.name.replace(/[.\s]/g, '_');
-    
+
+    // Load existing price for this seed
     if (prices.seeds[seedKey]) {
       setCurrentSeedPrice({
         price: prices.seeds[seedKey].price?.toString() || '',
@@ -217,12 +217,13 @@ export default function AdminPriceManagementScreen({ navigation }) {
     } else {
       setCurrentSeedPrice({ price: '', source: '' });
     }
-    
+
     setShowSeedModal(false);
   };
 
   // Save current seed price
   const handleSaveSeedPrice = async () => {
+    // Validate
     if (!currentSeedPrice.price || parseFloat(currentSeedPrice.price) <= 0) {
       Alert.alert('Error', 'Please enter a valid price');
       return;
@@ -235,7 +236,8 @@ export default function AdminPriceManagementScreen({ navigation }) {
     try {
       setSaving(true);
       const seedKey = selectedSeed.name.replace(/[.\s]/g, '_');
-      
+
+      // Update prices object
       const updatedSeeds = {
         ...prices.seeds,
         [seedKey]: {
@@ -254,12 +256,13 @@ export default function AdminPriceManagementScreen({ navigation }) {
         seeds: updatedSeeds,
       }));
 
+      // Save to Firebase
       await db.collection('marketPrices').doc('currentPrices').set({
         seeds: updatedSeeds,
       }, { merge: true });
 
       Alert.alert('✅ Success', `Price for ${selectedSeed.name} saved successfully!`);
-      
+
     } catch (error) {
       console.error('Error saving seed price:', error);
       Alert.alert('Error', 'Failed to save seed price');
@@ -272,7 +275,8 @@ export default function AdminPriceManagementScreen({ navigation }) {
   const handleSaveAllPrices = async () => {
     try {
       setSaving(true);
-      
+
+      // Prepare data
       const priceData = {
         seeds: prices.seeds,
         urea: {
@@ -299,6 +303,7 @@ export default function AdminPriceManagementScreen({ navigation }) {
         updatedBy: user?.email || 'admin',
       };
 
+      // Save to Firebase
       await db.collection('marketPrices').doc('currentPrices').set(priceData, { merge: true });
 
       Alert.alert(
@@ -329,7 +334,7 @@ export default function AdminPriceManagementScreen({ navigation }) {
             try {
               const updatedSeeds = { ...prices.seeds };
               delete updatedSeeds[seedKey];
-              
+
               setPrices(prev => ({
                 ...prev,
                 seeds: updatedSeeds,
@@ -379,7 +384,7 @@ export default function AdminPriceManagementScreen({ navigation }) {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
@@ -406,10 +411,10 @@ export default function AdminPriceManagementScreen({ navigation }) {
             {/* Seed Prices Section */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>🌾 Paddy Seed Prices</Text>
-              <Text style={styles.sectionSubtitle}>Manage prices for 9 varieties</Text>
+              <Text style={styles.sectionSubtitle}>Manage prices for different varieties</Text>
 
               {/* Seed Selector */}
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.seedSelector}
                 onPress={() => setShowSeedModal(true)}
               >
@@ -439,7 +444,7 @@ export default function AdminPriceManagementScreen({ navigation }) {
                       style={styles.input}
                       value={currentSeedPrice.source}
                       onChangeText={(text) => setCurrentSeedPrice(prev => ({ ...prev, source: text }))}
-                      placeholder="e.g., CIC, Dambulla"
+                      placeholder="e.g., CIC, Dambulla Market"
                     />
                   </View>
                 </View>
@@ -486,7 +491,7 @@ export default function AdminPriceManagementScreen({ navigation }) {
             {/* Fertilizer & Pesticide Prices */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>🧪 Fertilizer & Pesticide Prices</Text>
-              
+
               {/* Urea */}
               <View style={styles.priceCard}>
                 <Text style={styles.itemTitle}>Urea Fertilizer</Text>
