@@ -143,21 +143,7 @@ const HerbicideScreen = ({ navigation }) => {
 </Pressable>
 
 
-  <Pressable
-    style={[styles.shopButton, styles.farmButton]}
-    onPress={() => navigation.navigate('FarmShop')}
-  >
-    <MaterialCommunityIcons name="tractor" size={18} color="#fff" />
-    <Text style={styles.shopButtonText}>Farm Shop</Text>
-  </Pressable>
-
-  <Pressable
-    style={[styles.shopButton, styles.fertilizerButton]}
-    onPress={() => navigation.navigate('FertilizerShop')}
-  >
-    <MaterialCommunityIcons name="sack" size={18} color="#fff" />
-    <Text style={styles.shopButtonText}>Fertilizer Shop</Text>
-  </Pressable>
+ 
 </View>
 
         {/* Herbicide Types Section */}
