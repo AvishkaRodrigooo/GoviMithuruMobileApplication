@@ -125,7 +125,7 @@ const StagesScreen = () => {
       
       console.log("Sending payload:", JSON.stringify(payload, null, 2));
 
-      const response = await fetch("http://192.168.94.163:5000/predict-stage", {
+      const response = await fetch("http://10.11.204.131:5000/predict-stage", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
