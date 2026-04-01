@@ -11,5 +11,5 @@ joblib==1.3.2
 pandas==2.0.3
 
 
-expo install expo-tensorflow-lite
+langdetect==1.0.9
 

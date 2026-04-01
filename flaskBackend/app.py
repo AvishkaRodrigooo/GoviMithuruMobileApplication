@@ -5,9 +5,11 @@ from dotenv import load_dotenv
 from ultralytics import YOLO
 from routes.postharvest_guardian import postharvest_bp
 
+from flask_cors import CORS
 import joblib
 
 app = Flask(__name__)
+CORS(app) # Enable CORS for all routes
 
 
 app.stage_model = joblib.load("models/paddy_stage_model.pkl")

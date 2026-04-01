@@ -49,9 +49,10 @@ import SensorConnectionScreen from './src/screens/PostHarvest/SensorConnectionSc
 import MarketTrackingScreen from './src/screens/PostHarvest/MarketTrackingScreen';
 import InventoryListScreen from './src/screens/PostHarvest/InventoryListScreen';
 import PostHarvestAdvisorScreen from './src/screens/PostHarvest/PostHarvestAdvisorScreen';
-import DealerDashboardScreen from './src/screens/PostHarvest/DealerDashboardScreen';
+import DealerDashboardScreen from './src/screens/DealerDashboard/DealerDashboardScreen';
 import StorageStepGuideScreen from './src/screens/PostHarvest/StorageStepGuideScreen';
 import StorageExpertGuideScreen from './src/screens/PostHarvest/StorageExpertGuideScreen';
+import BeginnerStorageGuideScreen from './src/screens/PostHarvest/BeginnerStorageGuideScreen';
 
 // Pricing Placeholder
 function PricingForecastScreen() {
@@ -147,6 +148,7 @@ export default function App() {
             <Stack.Screen name="DealerDashboard" component={DealerDashboardScreen} options={{ headerShown: false }} />
             <Stack.Screen name="StorageStepGuide" component={StorageStepGuideScreen} options={{ headerShown: false }} />
             <Stack.Screen name="StorageExpertGuide" component={StorageExpertGuideScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="BeginnerStorageGuide" component={BeginnerStorageGuideScreen} options={{ headerShown: false }} />
 
             {/* weeds detection */}
             <Stack.Screen name="Stages" component={StageIdentificationScreen} options={{ title: 'Stage Identification' }} />
@@ -161,21 +163,21 @@ export default function App() {
 
 
 
-        {/* crop establishment planner */}
+            {/* crop establishment planner */}
 
-        <Stack.Screen name="InputPlanner" component={InputPlannerScreen} options={{ title: 'Input Planner' }} />
-        <Stack.Screen name="CropRecommender" component={CropRecommenderScreen} options={{ title: 'Crop Recommender' }} />
-        <Stack.Screen name="CropRecommendationResults" component={CropRecommendationResultsScreen} options={{ title: 'Crop Recommendation Results' }} />
-        <Stack.Screen name="CropCalendar" component={CropCalendarScreen}options={{ title: 'Crop Calendar' }} />
-        <Stack.Screen name="ProfitabilitySimulation" component={ProfitabilitySimulationScreen}options={{ title: 'Profitability Simulation' }} />
-        <Stack.Screen name="AdminPriceManagement" component={AdminPriceManagementScreen} />
+            <Stack.Screen name="InputPlanner" component={InputPlannerScreen} options={{ title: 'Input Planner' }} />
+            <Stack.Screen name="CropRecommender" component={CropRecommenderScreen} options={{ title: 'Crop Recommender' }} />
+            <Stack.Screen name="CropRecommendationResults" component={CropRecommendationResultsScreen} options={{ title: 'Crop Recommendation Results' }} />
+            <Stack.Screen name="CropCalendar" component={CropCalendarScreen} options={{ title: 'Crop Calendar' }} />
+            <Stack.Screen name="ProfitabilitySimulation" component={ProfitabilitySimulationScreen} options={{ title: 'Profitability Simulation' }} />
+            <Stack.Screen name="AdminPriceManagement" component={AdminPriceManagementScreen} />
 
 
             <Stack.Screen name="Pest" component={PricingForecastScreen} options={{ title: 'Pest Forecast' }} />
             <Stack.Screen name="Pricing" component={PricingForecastScreen} options={{ title: 'Price Forecast' }} />
 
 
-           
+
           </>
 
 

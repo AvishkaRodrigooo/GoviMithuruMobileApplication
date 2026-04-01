@@ -22,58 +22,58 @@ import firebase from 'firebase/compat/app';
 
 // Seed varieties array with all details
 const SEED_VARIETIES = [
-  { 
-    id: '1', 
-    name: 'BG 358', 
+  {
+    id: '1',
+    name: 'BG 358',
     description: 'High yield, disease resistant',
     category: 'High-Yielding',
     maturity: '3.5-4 months'
   },
-  { 
-    id: '2', 
-    name: 'BG 352', 
+  {
+    id: '2',
+    name: 'BG 352',
     description: 'Drought tolerant',
     category: 'Drought Tolerant',
     maturity: '4-4.5 months'
   },
-  { 
-    id: '3', 
-    name: 'BG 367', 
+  {
+    id: '3',
+    name: 'BG 367',
     description: 'Short duration (3 months)',
     category: 'Short Duration',
     maturity: '3 months'
   },
-  { 
-    id: '4', 
-    name: 'AT 362', 
+  {
+    id: '4',
+    name: 'AT 362',
     description: 'Traditional, high quality',
     category: 'Traditional',
     maturity: '3.5 months'
   },
-  { 
-    id: '5', 
-    name: 'LD 365', 
+  {
+    id: '5',
+    name: 'LD 365',
     description: 'Suitable for low country',
     category: 'Low Country',
     maturity: '4 months'
   },
-  { 
-    id: '6', 
-    name: 'BG 300', 
+  {
+    id: '6',
+    name: 'BG 300',
     description: 'Popular variety',
     category: 'Popular',
     maturity: '4 months'
   },
-  { 
-    id: '7', 
-    name: 'BG 94-1', 
+  {
+    id: '7',
+    name: 'BG 94-1',
     description: 'High yield',
     category: 'High-Yielding',
     maturity: '4.5 months'
   },
-  { 
-    id: '8', 
-    name: 'AT 306', 
+  {
+    id: '8',
+    name: 'AT 306',
     description: 'Salinity tolerant',
     category: 'Special',
     maturity: '3.5 months'
@@ -87,7 +87,7 @@ export default function AdminPriceManagementScreen({ navigation }) {
   const [selectedSeed, setSelectedSeed] = useState(SEED_VARIETIES[0]);
   const [user, setUser] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  
+
   const [prices, setPrices] = useState({
     seeds: {}, // Will store multiple seed varieties
     urea: { price: '', source: '' },
@@ -107,23 +107,22 @@ export default function AdminPriceManagementScreen({ navigation }) {
     const checkAuth = async () => {
       try {
         setLoading(true);
-        
+
         // Listen to auth state
         const unsubscribe = auth.onAuthStateChanged(async (user) => {
           if (user) {
             setUser(user);
-            
+
             // Check if user is admin (you can customize this logic)
             // Option 1: Check email domain
-            const isAdminEmail = user.email?.endsWith('@admin.com') || 
-                                user.email === 'admin2025@gmail.com';
-            
+            const isAdminEmail = user.email?.endsWith('@admin.com') ||
+              user.email === 'admin2025@gmail.com';
+
             // Option 2: Check custom claim (requires backend)
             // const token = await user.getIdTokenResult();
             // const isAdminClaim = token.claims.admin || false;
-            
             setIsAdmin(isAdminEmail);
-            
+
             if (isAdminEmail) {
               console.log('✅ Admin authenticated:', user.email);
               await loadAllPrices();
@@ -208,7 +207,7 @@ export default function AdminPriceManagementScreen({ navigation }) {
   const handleSeedSelect = (seed) => {
     setSelectedSeed(seed);
     const seedKey = seed.name.replace(/[.\s]/g, '_');
-    
+
     // Load existing price for this seed
     if (prices.seeds[seedKey]) {
       setCurrentSeedPrice({
@@ -218,7 +217,7 @@ export default function AdminPriceManagementScreen({ navigation }) {
     } else {
       setCurrentSeedPrice({ price: '', source: '' });
     }
-    
+
     setShowSeedModal(false);
   };
 
@@ -237,7 +236,7 @@ export default function AdminPriceManagementScreen({ navigation }) {
     try {
       setSaving(true);
       const seedKey = selectedSeed.name.replace(/[.\s]/g, '_');
-      
+
       // Update prices object
       const updatedSeeds = {
         ...prices.seeds,
@@ -263,7 +262,7 @@ export default function AdminPriceManagementScreen({ navigation }) {
       }, { merge: true });
 
       Alert.alert('✅ Success', `Price for ${selectedSeed.name} saved successfully!`);
-      
+
     } catch (error) {
       console.error('Error saving seed price:', error);
       Alert.alert('Error', 'Failed to save seed price');
@@ -276,7 +275,7 @@ export default function AdminPriceManagementScreen({ navigation }) {
   const handleSaveAllPrices = async () => {
     try {
       setSaving(true);
-      
+
       // Prepare data
       const priceData = {
         seeds: prices.seeds,
@@ -335,7 +334,7 @@ export default function AdminPriceManagementScreen({ navigation }) {
             try {
               const updatedSeeds = { ...prices.seeds };
               delete updatedSeeds[seedKey];
-              
+
               setPrices(prev => ({
                 ...prev,
                 seeds: updatedSeeds,
@@ -385,7 +384,7 @@ export default function AdminPriceManagementScreen({ navigation }) {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <KeyboardAvoidingView 
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
@@ -415,7 +414,7 @@ export default function AdminPriceManagementScreen({ navigation }) {
               <Text style={styles.sectionSubtitle}>Manage prices for different varieties</Text>
 
               {/* Seed Selector */}
-              <TouchableOpacity 
+              <TouchableOpacity
                 style={styles.seedSelector}
                 onPress={() => setShowSeedModal(true)}
               >
@@ -492,7 +491,7 @@ export default function AdminPriceManagementScreen({ navigation }) {
             {/* Fertilizer & Pesticide Prices */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>🧪 Fertilizer & Pesticide Prices</Text>
-              
+
               {/* Urea */}
               <View style={styles.priceCard}>
                 <Text style={styles.itemTitle}>Urea Fertilizer</Text>

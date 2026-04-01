@@ -1,0 +1,84 @@
+{
+  "version": "1.0.0",
+  "trained_at": "2026-03-06T06:00:02.958596",
+  "feature_cols": [
+    "outdoor_avg_temp",
+    "outdoor_avg_humidity",
+    "outdoor_peak_temp",
+    "outdoor_min_temp",
+    "outdoor_temp_range",
+    "outdoor_temp_variance",
+    "outdoor_heat_index",
+    "weather_stability",
+    "storage_type_enc",
+    "roof_material_enc",
+    "roof_color_enc",
+    "ventilation_enc",
+    "ceiling_height_enc",
+    "insulation",
+    "log_quantity",
+    "rice_moisture_pct",
+    "moisture_temp_interaction",
+    "is_risky_moisture",
+    "climate_zone_enc",
+    "latitude",
+    "longitude",
+    "hour_sin",
+    "hour_cos",
+    "physics_lag_hours",
+    "physics_temp_gain",
+    "is_hot_outdoor",
+    "is_metal_dark_roof"
+  ],
+  "targets": {
+    "temp": "indoor_avg_temp",
+    "humid": "indoor_avg_humidity"
+  },
+  "accuracy": {
+    "temp_mae": 0.2921926587327081,
+    "temp_rmse": 0.3883589051143936,
+    "temp_r2": 0.9859909542257603,
+    "temp_within_2c": 1.0,
+    "humid_mae": 0.9084996534967383,
+    "humid_rmse": 1.2305242955108375,
+    "humid_r2": 0.9822907569657103,
+    "humid_within_5": 0.9966583124477861
+  },
+  "training_samples": 5586,
+  "encoder_classes": {
+    "storage_type": [
+      "co-op",
+      "home",
+      "shed",
+      "warehouse"
+    ],
+    "roof_material": [
+      "asbestos",
+      "concrete",
+      "metal",
+      "tile"
+    ],
+    "roof_color": [
+      "dark",
+      "grey",
+      "red",
+      "white"
+    ],
+    "ventilation": [
+      "fan",
+      "natural",
+      "none"
+    ],
+    "ceiling_height": [
+      "3-4m",
+      "<3m",
+      ">4m"
+    ]
+  },
+  "district_count": 25,
+  "model_files": {
+    "temp_model": "storage_temp_model.pkl",
+    "humid_model": "storage_humid_model.pkl",
+    "encoders": "storage_temp_encoders.pkl"
+  }
+}
