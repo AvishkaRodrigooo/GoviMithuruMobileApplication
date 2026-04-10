@@ -86,7 +86,7 @@ const SignInScreen = ({ navigation }) => {
 
           {/* Logo/Header Section */}
           <View style={styles.header}>
-            <Text style={styles.appName}>GoviMithuru</Text>
+            <Text style={styles.appName}>AgroMind</Text>
             <Text style={styles.welcomeText}>Welcome Back!</Text>
             <Text style={styles.subtitle}>Sign in to continue</Text>
           </View>
@@ -155,7 +155,7 @@ const SignInScreen = ({ navigation }) => {
 
           {/* App Info */}
           <View style={styles.appInfo}>
-            <Text style={styles.appInfoText}>GoviMithuru App</Text>
+            <Text style={styles.appInfoText}>AgroMind App</Text>
             <Text style={styles.versionText}>2025</Text>
           </View>
         </View>

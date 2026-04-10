@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Dimensions, ActivityIndicator, RefreshControl, Modal, Animated,
-  SafeAreaView, StatusBar, Alert, TextInput, Image, KeyboardAvoidingView, Platform
+  SafeAreaView, StatusBar, Alert, TextInput, Image, KeyboardAvoidingView, Platform, Linking
 } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -33,8 +33,14 @@ const GRADE_COLORS = { A: '#059669', B: '#d97706', C: '#dc2626', ALL: '#6366f1' 
 const RICE_VARIETIES = ['All', 'Samba', 'Nadu', 'Basmati', 'Red Rice', 'Kekulu', 'Suwandel', 'Bg 300', 'At 306'];
 const { width } = Dimensions.get('window');
 
-export default function MarketTrackingScreen({ navigation }) {
+export default function MarketTrackingScreen({ navigation, route }) {
   const { latitude: userLat, longitude: userLon } = useUniversalLocation();
+
+  // ── Route params (when navigated from AI Advisor) ────────────
+  const fromAdvisor = route?.params?.fromAdvisor || false;
+  const advisorVariety = route?.params?.advisorVariety || null;
+  const advisorSignal = route?.params?.advisorSignal || null;
+  const advisorQuantity = route?.params?.quantity || null;
 
   // ── Data ─────────────────────────────────────────────────────
   const [allDeals, setAllDeals] = useState([]);
@@ -48,7 +54,10 @@ export default function MarketTrackingScreen({ navigation }) {
   const [activeMarketTab, setActiveMarketTab] = useState('rice');
 
   // ── Filters ───────────────────────────────────────────────────
-  const [varietyFilter, setVarietyFilter] = useState('All');
+  // Pre-fill variety from AI advisor if provided, else 'All'
+  const [varietyFilter, setVarietyFilter] = useState(
+    advisorVariety && RICE_VARIETIES.includes(advisorVariety) ? advisorVariety : 'All'
+  );
   const [gradeFilter, setGradeFilter] = useState('All');
   const [transportFilter, setTransportFilter] = useState(false);
   const [sortBy, setSortBy] = useState('nearest');
@@ -243,14 +252,18 @@ export default function MarketTrackingScreen({ navigation }) {
     setCompleting(true);
     try {
       const uid = auth.currentUser?.uid;
+      if (!uid) {
+        Alert.alert('Not Signed In', 'Please sign in to complete a deal.');
+        setCompleting(false);
+        return;
+      }
       const now = new Date().toISOString();
 
-      // 1. Save completed deal record
-      await db.collection('completedDeals').add({
+      // 1. Save completed deal to user's own sub-collection (always permitted)
+      await db.collection('users').doc(uid).collection('completedDeals').add({
         dealId: selectedDeal.id,
-        dealerId: selectedDeal.dealerId,
+        dealerId: selectedDeal.dealerId || '',
         dealerName: selectedDeal.dealerName,
-        farmerId: uid,
         riceVariety: selectedDeal.variety,
         grade: selectedDeal.grade,
         quantitySoldKg: dealQtyNum,
@@ -262,14 +275,13 @@ export default function MarketTrackingScreen({ navigation }) {
         completedAt: now,
       });
 
-      // 2. Deduct from farmer's stock
+      // 2. Deduct from farmer's stock (user-scoped — always permitted)
       if (matchingStock) {
         const newQty = Math.max(0, (matchingStock.quantityKg || matchingStock.quantity || 0) - dealQtyNum);
         await db.collection('users').doc(uid)
           .collection('stocks').doc(matchingStock.id)
           .update({ quantityKg: newQty, quantity: newQty, updatedAt: now });
 
-        // Update local state immediately
         setFarmerStocks(prev => prev.map(s =>
           s.id === matchingStock.id
             ? { ...s, quantityKg: newQty, quantity: newQty }
@@ -277,18 +289,48 @@ export default function MarketTrackingScreen({ navigation }) {
         ));
       }
 
-      // 3. Update deal filled quantity
-      const newFilled = (selectedDeal.filledQuantityKg || 0) + dealQtyNum;
-      const dealUpdate = { filledQuantityKg: newFilled };
-      if (selectedDeal.maxQuantityKg && newFilled >= selectedDeal.maxQuantityKg) {
-        dealUpdate.status = 'completed';
+      // 3. Try to update dealer's market listing (may fail if rules restrict it — non-blocking)
+      try {
+        const newFilled = (selectedDeal.filledQuantityKg || 0) + dealQtyNum;
+        const dealUpdate = { filledQuantityKg: newFilled };
+        if (selectedDeal.maxQuantityKg && newFilled >= selectedDeal.maxQuantityKg) {
+          dealUpdate.status = 'completed';
+        }
+        await db.collection('marketPrices').doc(selectedDeal.id).update(dealUpdate);
+      } catch (_) {
+        // Silently skip — farmer doesn't have write access to dealer listings
       }
-      await db.collection('marketPrices').doc(selectedDeal.id).update(dealUpdate);
+
+      // 4. Write order to root farmerOrders (dealer can query by their dealerId)
+      try {
+        await db.collection('farmerOrders').add({
+          dealerId: selectedDeal.dealerId || '',
+          dealerName: selectedDeal.dealerName,
+          farmerId: uid,
+          dealId: selectedDeal.id,
+          riceVariety: selectedDeal.variety,
+          grade: selectedDeal.grade,
+          quantitySoldKg: dealQtyNum,
+          pricePerKg: selectedDeal.pricePerKg || selectedDeal.price,
+          riceAmount: riceTotal,
+          transportUsed: useTransport,
+          transportCost: transportCostTotal || 0,
+          totalAmount: grandTotal,
+          status: 'pending',
+          completedAt: now,
+          isNew: true,
+        });
+      } catch (_) {
+        // Non-blocking if farmerOrders write rules not set yet
+      }
 
       setCompleteDealStep('success');
     } catch (e) {
       console.error('handleConfirmDeal:', e);
-      Alert.alert('Error', 'Could not complete deal. Please try again.');
+      const msg = e?.code === 'permission-denied'
+        ? 'Permission denied. Please ensure you are signed in.'
+        : 'Could not complete deal. Please try again.';
+      Alert.alert('Error', msg);
     } finally {
       setCompleting(false);
     }
@@ -327,6 +369,21 @@ export default function MarketTrackingScreen({ navigation }) {
             )}
           </TouchableOpacity>
         </View>
+
+        {/* AI Advisor context banner */}
+        {fromAdvisor && advisorVariety && (
+          <View style={st.advisorBanner}>
+            <MaterialCommunityIcons name="robot-happy-outline" size={14} color="#fde68a" />
+            <Text style={st.advisorBannerText}>
+              {advisorSignal === 'RED'
+                ? `AI says SELL NOW · Showing dealers for ${advisorVariety}`
+                : `AI suggests watching market · Filtering by ${advisorVariety}`}
+            </Text>
+            <TouchableOpacity onPress={() => setVarietyFilter('All')} style={st.clearVarietyBtn}>
+              <Text style={st.clearVarietyText}>Show All</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Variety pills */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -401,11 +458,52 @@ export default function MarketTrackingScreen({ navigation }) {
           {/* ── RICE DEALS ── */}
           {activeMarketTab === 'rice' && (
             groupedDealers.length === 0 ? (
-              <EmptyState
-                icon="storefront-remove"
-                title="No dealer offers"
-                sub="Try changing variety or removing filters."
-              />
+              // ── Variety-aware empty state
+              varietyFilter !== 'All' ? (
+                <View style={st.noVarietyCard}>
+                  <View style={st.noVarietyIconBox}>
+                    <MaterialCommunityIcons name="storefront-remove" size={36} color="#dc2626" />
+                  </View>
+                  <Text style={st.noVarietyTitle}>
+                    No dealers buying {varietyFilter} right now
+                  </Text>
+                  <Text style={st.noVarietySub}>
+                    There are currently no active dealer offers for{' '}
+                    <Text style={{ fontWeight: '700', color: '#1e293b' }}>{varietyFilter}</Text>.
+                    {fromAdvisor
+                      ? ' The AI advisor recommended selling, but this variety has no active buyers yet.'
+                      : ' Try a different variety or check back later.'}
+                  </Text>
+                  {/* Tips when no dealer for this variety */}
+                  <View style={st.noVarietyTips}>
+                    <View style={st.noVarietyTipRow}>
+                      <MaterialCommunityIcons name="lightbulb-on-outline" size={14} color="#d97706" />
+                      <Text style={st.noVarietyTipText}>Contact local agrarian service centre for buyers</Text>
+                    </View>
+                    <View style={st.noVarietyTipRow}>
+                      <MaterialCommunityIcons name="lightbulb-on-outline" size={14} color="#d97706" />
+                      <Text style={st.noVarietyTipText}>Try storing short-term and check again tomorrow</Text>
+                    </View>
+                    <View style={st.noVarietyTipRow}>
+                      <MaterialCommunityIcons name="lightbulb-on-outline" size={14} color="#d97706" />
+                      <Text style={st.noVarietyTipText}>Browse all varieties — dealers may accept {varietyFilter} under a similar grade</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity
+                    style={st.noVarietyAllBtn}
+                    onPress={() => setVarietyFilter('All')}
+                  >
+                    <MaterialCommunityIcons name="view-list" size={16} color="#059669" />
+                    <Text style={st.noVarietyAllBtnText}>Browse All Dealer Offers</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <EmptyState
+                  icon="storefront-remove"
+                  title="No dealer offers"
+                  sub="Try changing variety or removing filters."
+                />
+              )
             ) : (
               groupedDealers.map(dealer => (
                 <DealerCard
@@ -460,20 +558,7 @@ export default function MarketTrackingScreen({ navigation }) {
             )
           )}
 
-          {/* AI advisor link */}
-          <TouchableOpacity
-            style={st.advisorCard}
-            onPress={() => navigation.navigate('PostHarvestAdvisor')}
-          >
-            <LinearGradient colors={['#1e1b4b', '#312e81']} style={st.advisorGrad}>
-              <MaterialCommunityIcons name="brain" size={22} color="#818cf8" />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={st.advisorTitle}>AI Price Analysis</Text>
-                <Text style={st.advisorSub}>Compare prices vs your storage costs → best time to sell</Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={18} color="#818cf8" />
-            </LinearGradient>
-          </TouchableOpacity>
+
           <View style={{ height: 30 }} />
         </ScrollView>
       )}
@@ -702,6 +787,22 @@ function DealerCard({ dealer, onToggle, onSelectDeal, onOpenMap }) {
 
       {dealer.expanded && (
         <View style={st.dealsAccordion}>
+          {/* Phone number row */}
+          {dealer.contactNumber && (
+            <TouchableOpacity
+              style={st.phoneRow}
+              onPress={() => Linking.openURL(`tel:${dealer.contactNumber}`)}
+            >
+              <View style={st.phoneIconBox}>
+                <MaterialCommunityIcons name="phone" size={14} color="#059669" />
+              </View>
+              <Text style={st.phoneNumber}>{dealer.contactNumber}</Text>
+              <View style={st.callNowBadge}>
+                <MaterialCommunityIcons name="phone-outgoing" size={11} color="#fff" />
+                <Text style={st.callNowText}>Call Now</Text>
+              </View>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={st.mapLinkBtn} onPress={onOpenMap}>
             <MaterialCommunityIcons name="map-marker" size={14} color="#3b82f6" />
             <Text style={st.mapLinkText}>View on Map</Text>
@@ -853,10 +954,21 @@ function DealDetailView({ deal, distanceKm, dealerTab, setDealerTab, onClose, on
           <View style={st.sheetBtns}>
             <TouchableOpacity
               style={st.callBtn}
-              onPress={() => Alert.alert('📞 Calling', `${deal.dealerName}\n${deal.contactNumber || 'No number available'}`)}
+              onPress={() => {
+                if (deal.contactNumber) {
+                  Linking.openURL(`tel:${deal.contactNumber}`);
+                } else {
+                  Alert.alert('No Number', 'This dealer has no contact number listed.');
+                }
+              }}
             >
               <MaterialCommunityIcons name="phone" size={18} color="#059669" />
-              <Text style={st.callBtnText}>CALL</Text>
+              <View>
+                <Text style={st.callBtnText}>CALL</Text>
+                {deal.contactNumber && (
+                  <Text style={st.callBtnSub}>{deal.contactNumber}</Text>
+                )}
+              </View>
             </TouchableOpacity>
             <TouchableOpacity style={st.completeDealBtn} onPress={onStartComplete}>
               <MaterialCommunityIcons name="handshake" size={18} color="#fff" />
@@ -976,8 +1088,10 @@ function QuantityView({ deal, qty, setQty, useTransport, setUseTransport, transp
         </View>
       )}
 
-      <TouchableOpacity style={st.completeDealBtn} onPress={onNext}>
-        <Text style={st.completeDealBtnText}>REVIEW DEAL →</Text>
+      <TouchableOpacity style={st.qtyReviewBtn} onPress={onNext}>
+        <MaterialCommunityIcons name="clipboard-check-outline" size={18} color="#fff" />
+        <Text style={st.qtyReviewBtnText}>REVIEW DEAL</Text>
+        <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
       </TouchableOpacity>
       <View style={{ height: 20 }} />
     </View>
@@ -1017,12 +1131,12 @@ function ConfirmView({ deal, qty, riceTotal, transportCost, grandTotal, useTrans
         </Text>
       </View>
 
-      <TouchableOpacity style={st.completeDealBtn} onPress={onConfirm} disabled={completing}>
+      <TouchableOpacity style={[st.qtyReviewBtn, completing && { opacity: 0.7 }]} onPress={onConfirm} disabled={completing}>
         {completing
-          ? <ActivityIndicator color="#fff" />
+          ? <ActivityIndicator color="#fff" size="small" />
           : <>
             <MaterialCommunityIcons name="handshake" size={18} color="#fff" />
-            <Text style={st.completeDealBtnText}>CONFIRM & COMPLETE DEAL</Text>
+            <Text style={st.qtyReviewBtnText}>CONFIRM & COMPLETE DEAL</Text>
           </>
         }
       </TouchableOpacity>
@@ -1096,6 +1210,119 @@ const st = StyleSheet.create({
   pillActive: { backgroundColor: '#fff' },
   pillText: { color: 'rgba(255,255,255,0.85)', fontSize: 12, fontWeight: '700' },
   pillTextActive: { color: '#16a34a', fontWeight: '800' },
+
+  // ── AI Advisor banner
+  advisorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+    marginTop: 4,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(253,230,138,0.4)',
+  },
+  advisorBannerText: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fef9c3',
+    lineHeight: 16,
+  },
+  clearVarietyBtn: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  clearVarietyText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+
+  // ── No-variety-dealer empty state
+  noVarietyCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 24,
+    marginHorizontal: 4,
+    marginVertical: 8,
+    borderWidth: 1.5,
+    borderColor: '#fecaca',
+    alignItems: 'center',
+    shadowColor: '#dc2626',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  noVarietyIconBox: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    backgroundColor: '#fef2f2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#fecaca',
+  },
+  noVarietyTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#1e293b',
+    textAlign: 'center',
+    marginBottom: 8,
+    letterSpacing: -0.3,
+  },
+  noVarietySub: {
+    fontSize: 13,
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 18,
+  },
+  noVarietyTips: {
+    width: '100%',
+    backgroundColor: '#fffbeb',
+    borderRadius: 14,
+    padding: 14,
+    gap: 10,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  noVarietyTipRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+  },
+  noVarietyTipText: {
+    fontSize: 12.5,
+    color: '#78350f',
+    flex: 1,
+    lineHeight: 18,
+  },
+  noVarietyAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0fdf4',
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#bbf7d0',
+  },
+  noVarietyAllBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#059669',
+  },
 
   marketTabs: { flexDirection: 'row', backgroundColor: '#fff', marginHorizontal: 20, marginTop: -18, borderRadius: 18, elevation: 4, shadowColor: '#16a34a', shadowOpacity: 0.08, shadowRadius: 8, borderWidth: 1, borderColor: '#e5e7eb' },
   marketTab: { flex: 1, flexDirection: 'row', paddingVertical: 13, alignItems: 'center', justifyContent: 'center', gap: 6, borderRadius: 18 },
@@ -1193,11 +1420,23 @@ const st = StyleSheet.create({
   mapBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 10, marginBottom: 14 },
   mapBtnText: { color: '#3b82f6', fontSize: 12, fontWeight: '700' },
 
+  // Phone row in DealerCard expanded
+  phoneRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f0fdf4', borderRadius: 12, padding: 10, marginBottom: 8, borderWidth: 1, borderColor: '#bbf7d0', gap: 8 },
+  phoneIconBox: { width: 28, height: 28, borderRadius: 8, backgroundColor: '#dcfce7', justifyContent: 'center', alignItems: 'center' },
+  phoneNumber: { flex: 1, color: '#065f46', fontSize: 14, fontWeight: '800', letterSpacing: 0.5 },
+  callNowBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#059669', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, gap: 4 },
+  callNowText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  callBtnSub: { color: '#059669', fontSize: 10, fontWeight: '700', textAlign: 'center', marginTop: 2 },
+
   sheetBtns: { flexDirection: 'row', gap: 10, marginBottom: 8 },
   callBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, borderRadius: 16, borderWidth: 2, borderColor: '#059669', gap: 6 },
   callBtnText: { color: '#059669', fontSize: 13, fontWeight: '900' },
+  // completeDealBtn is only used inside sheetBtns row (flex:2 sibling of callBtn)
   completeDealBtn: { flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, borderRadius: 16, backgroundColor: '#059669', gap: 8, elevation: 3, shadowColor: '#059669', shadowOpacity: 0.3, shadowRadius: 8 },
   completeDealBtnText: { color: '#fff', fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
+  // Full-width standalone button for QuantityView & ConfirmView steps
+  qtyReviewBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 18, borderRadius: 18, backgroundColor: '#059669', gap: 10, marginTop: 8, elevation: 4, shadowColor: '#059669', shadowOpacity: 0.35, shadowRadius: 10 },
+  qtyReviewBtnText: { color: '#fff', fontSize: 16, fontWeight: '900', letterSpacing: 0.3 },
 
   otherItemsList: { padding: 10 },
   noOtherText: { color: '#94a3b8', fontSize: 13, textAlign: 'center', padding: 20 },

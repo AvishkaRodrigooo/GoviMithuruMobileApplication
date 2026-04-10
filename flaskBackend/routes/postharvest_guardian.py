@@ -1012,8 +1012,9 @@ def predict():
                 indoor_humid_pred = indoor_result['avg_humidity']
                 hourly_profile    = indoor_result.get('hourly_profile', [])
                 storage_alerts    = indoor_result.get('alerts', [])
-                # Override temp_c with ML-predicted indoor temp for all downstream calculations
+                # Override temp_c and humidity_pct with ML-predicted indoor temp for all downstream calculations
                 temp_c = indoor_temp_pred
+                humidity_pct = indoor_humid_pred
             except Exception as wx_exc:
                 print(f"[predict] Weather fetch skipped: {wx_exc}")
 
@@ -1458,7 +1459,7 @@ STRICT JSON RESPONSE:
 # ─── /risk_score ──────────────────────────────────────────────────────────────
 @postharvest_bp.route('/risk_score', methods=['POST'])
 def risk_score_endpoint():
-    """POST /api/guardian/risk_score — Farmer-friendly safety score (0-100)."""
+    """POST /api/guardian/risk_score — Farmer-friendly safety score (0-100). Multilingual."""
     try:
         data             = request.get_json() or {}
         moisture_pct     = float(data.get('moisture_pct', 13.0))
@@ -1468,29 +1469,35 @@ def risk_score_endpoint():
         has_pest_history = data.get('has_pest_history', False)
         storage_location = data.get('storage_location', data.get('location_type', 'home'))
         temp_c           = float(data.get('temp_c', 28.0))
+        lang             = data.get('lang', 'en')
+        target_lang      = LANGUAGE_CODES.get(lang, 'english')
 
         risk_data = _compute_risk_score(
             moisture_pct, bag_type, duration_months,
             quantity_kg, has_pest_history, storage_location, temp_c
         )
 
-        system_prompt = """You are the Post-Harvest Safety Officer for Sri Lankan rice farmers (SLR 603:2013 expert).
+        system_prompt = f"""You are the Post-Harvest Safety Officer for Sri Lankan rice farmers (SLR 603:2013 expert).
 Given a risk score and risk factors, write plain, empathetic advice for a village farmer.
-Use simple English. No technical jargon. Be direct.
+No technical jargon. Be direct. Use simple words a farmer can understand.
+
+LANGUAGE: Respond ENTIRELY in {target_lang}. Every word of the advice values must be in {target_lang}.
+Keep ALL JSON keys in English — only the values in {target_lang}.
 
 STRICT JSON RESPONSE:
-{
-  "verdict": "2-sentence plain verdict — what does this score mean for THIS farmer right now?",
-  "urgent_action": "the ONE most important step to take today",
-  "loss_if_ignored": "how much rice (kg and LKR) they risk losing if nothing is done",
-  "farmer_tip": "one practical traditional Sri Lankan tip (neem kohomba leaves, salt test, cadjan mat, etc.)"
-}"""
+{{
+  "verdict": "2-sentence plain verdict in {target_lang} — what does this score mean for THIS farmer right now?",
+  "urgent_action": "the ONE most important step to take today — in {target_lang}",
+  "loss_if_ignored": "how much rice (kg and LKR) they risk losing if nothing is done — in {target_lang}",
+  "farmer_tip": "one practical traditional Sri Lankan tip (neem/kohomba leaves, salt test, cadjan mat) — in {target_lang}"
+}}"""
 
         user_content = (
             f"Score: {risk_data['score']}/100, Category: {risk_data['category']}, "
             f"Moisture: {moisture_pct}%, Bag: {bag_type}, Duration: {duration_months} months, "
             f"Quantity: {quantity_kg}kg, Pest history: {has_pest_history}, "
             f"Location: {storage_location}, Temp: {temp_c}°C, "
+            f"Response language: {target_lang}, "
             f"Factors: {json.dumps(risk_data['risk_factors'])}"
         )
 
@@ -1502,6 +1509,29 @@ STRICT JSON RESPONSE:
             except Exception:
                 pass
 
+        # Multilingual fallbacks
+        _fallbacks = {
+            'en': {
+                'verdict': f"Risk level is {risk_data['category']}. Check moisture immediately.",
+                'urgent': 'Verify moisture content and ensure bags are sealed tightly.',
+                'loss': f"Estimated {risk_data['loss_estimate']} weight loss if unaddressed.",
+                'tip': 'Place dried neem (kohomba) leaves inside bags to repel weevils naturally.',
+            },
+            'si': {
+                'verdict': f"අවදානම් මට්ටම {risk_data['category']} වේ. වහාම තෙතමනය පරීක්ෂා කරන්න.",
+                'urgent': 'තෙතමනය සහ මළු හොඳින් වසා ඇති බව සහතික කරන්න.',
+                'loss': f"ක්‍රියා නොකළොත් {risk_data['loss_estimate']} බර හානියක් ඇතිවිය හැක.",
+                'tip': 'රෙදිකෙවෙල් (ගොනාකෑල්ල) දිරිය කොළ මළු ඇතුළේ දමා ගෙදිය.',
+            },
+            'ta': {
+                'verdict': f"அபாய நிலை {risk_data['category']} ஆகும். உடனே ஈரப்பதத்தை சோதிக்கவும்.",
+                'urgent': 'ஈரப்பத அளவை சரிபார்த்து மூட்டைகளை இறுக்கமாக மூடவும்.',
+                'loss': f"கவனிக்காவிட்டால் {risk_data['loss_estimate']} எடை இழப்பு ஏற்படலாம்.",
+                'tip': 'வேப்பிலை உலர்த்தி மூட்டைக்குள் வையுங்கள் — இது பூச்சிகளை விரட்டும்.',
+            },
+        }
+        fb = _fallbacks.get(lang, _fallbacks['en'])
+
         return jsonify({
             'success':          True,
             'score':            risk_data['score'],
@@ -1510,14 +1540,11 @@ STRICT JSON RESPONSE:
             'loss_estimate':    risk_data['loss_estimate'],
             'risk_factors':     risk_data['risk_factors'],
             'storage_life':     risk_data['storage_life'],
-            'ai_verdict':       ai_data.get('verdict',
-                                 f"Risk level is {risk_data['category']}. Check moisture immediately."),
-            'ai_urgent':        ai_data.get('urgent_action',
-                                 'Verify moisture content and ensure bags are sealed tightly.'),
-            'ai_loss_warning':  ai_data.get('loss_if_ignored',
-                                 f"Estimated {risk_data['loss_estimate']} weight loss if unaddressed."),
-            'ai_farmer_tip':    ai_data.get('farmer_tip',
-                                 'Place dried neem (kohomba) leaves inside bags to repel weevils naturally.'),
+            'lang':             lang,
+            'ai_verdict':       ai_data.get('verdict', fb['verdict']),
+            'ai_urgent':        ai_data.get('urgent_action', fb['urgent']),
+            'ai_loss_warning':  ai_data.get('loss_if_ignored', fb['loss']),
+            'ai_farmer_tip':    ai_data.get('farmer_tip', fb['tip']),
         }), 200
 
     except Exception as exc:
@@ -1536,6 +1563,8 @@ def calculate_costs():
         duration_months  = float(data.get('duration_months', data.get('duration', 3)))
         storage_location = data.get('storage_location', data.get('storage_type', 'home'))
         variety          = data.get('variety', 'Bg 300')
+        lang             = data.get('lang', 'en')
+        target_lang      = LANGUAGE_CODES.get(lang, 'english')
 
         pf             = _get_price_forecast(variety)
         current_price  = float(data.get('current_price',  pf['current_lkr']))
@@ -1546,17 +1575,20 @@ def calculate_costs():
             storage_location, current_price, expected_price
         )
 
-        system_prompt = """You are the Agricultural Economist for the Department of Agriculture, Sri Lanka.
+        system_prompt = f"""You are the Agricultural Economist for the Department of Agriculture, Sri Lanka.
 A farmer is deciding whether to store paddy or sell now. Give direct, honest economic advice.
 Use plain language. Use LKR figures from the data provided.
 
+LANGUAGE: Respond ENTIRELY in {target_lang}. Every word of the advice values must be in {target_lang}.
+Keep ALL JSON keys in English — only the values in {target_lang}.
+
 STRICT JSON RESPONSE:
-{
-  "economic_verdict": "2-sentence plain verdict in LKR — is it worth storing?",
-  "best_advice": "specific step-by-step recommendation for this farmer's exact situation",
-  "risk_warning": "the #1 financial risk if they proceed with storing",
-  "comparison": "compare storing vs selling today: exact LKR numbers"
-}"""
+{{
+  "economic_verdict": "2-sentence plain verdict in {target_lang} — is it worth storing?",
+  "best_advice": "specific step-by-step recommendation for this farmer's exact situation — in {target_lang}",
+  "risk_warning": "the #1 financial risk if they proceed with storing — in {target_lang}",
+  "comparison": "compare storing vs selling today: exact LKR numbers — in {target_lang}"
+}}"""
 
         user_content = json.dumps({
             'quantity_kg': quantity_kg, 'bag_type': bag_type,
@@ -1566,6 +1598,7 @@ STRICT JSON RESPONSE:
             'net_profit_lkr': costs['net_profit'], 'profitability': costs['profitability'],
             'break_even_price': costs['break_even_price'], 'roi_pct': costs['roi_pct'],
             'bags_required': costs['bags_required'],
+            'response_language': target_lang,
         })
 
         llm_raw = _call_ollama(system_prompt, user_content, format_json=True)
@@ -1576,13 +1609,36 @@ STRICT JSON RESPONSE:
             except Exception:
                 pass
 
+        _fallbacks = {
+            'en': {
+                'verdict': "Storing looks profitable based on current data.",
+                'advice': "Proceed with storage but monitor moisture closely to avoid spoilage.",
+                'warning': "Be aware of sudden market price drops.",
+                'comparison': "Storing is projected to give a higher profit than selling today.",
+            },
+            'si': {
+                'verdict': "දැනට ඇති දත්ත අනුව ගබඩා කිරීම ලාභදායී වේ.",
+                'advice': "ගබඩා කිරීම කරගෙන යන්න, නමුත් නරක් වීම වලක්වා ගැනීමට තෙතමනය හොඳින් නිරීක්ෂණය කරන්න.",
+                'warning': "හදිසි වෙළඳපල මිල පහළ යාම් ගැන සැලකිලිමත් වන්න.",
+                'comparison': "අද විකිණීමට වඩා ගබඩා කිරීමෙන් වැඩි ලාභයක් ලැබෙනු ඇතැයි අපේක්ෂා කෙරේ.",
+            },
+            'ta': {
+                'verdict': "தற்போதைய தரவுகளின் அடிப்படையில் சேமிப்பது லாபகரமானதாக தோன்றுகிறது.",
+                'advice': "சேமிப்பைத் தொடரவும், ஆனால் கெட்டுப்போவதைத் தவிர்க்க ஈரப்பதத்தை கண்காணிக்கவும்.",
+                'warning': "திடீர் சந்தை விலை வீழ்ச்சிகள் குறித்து எச்சரிக்கையாக இருங்கள்.",
+                'comparison': "இன்று விற்பதை விட சேமித்து வைப்பது அதிக லாபத்தை ஈட்டும் என எதிர்பார்க்கப்படுகிறது.",
+            },
+        }
+        fb = _fallbacks.get(lang, _fallbacks['en'])
+
         return jsonify({
             'success': True,
             **costs,
-            'ai_economic_verdict': ai_data.get('economic_verdict', ''),
-            'ai_best_advice':      ai_data.get('best_advice', ''),
-            'ai_risk_warning':     ai_data.get('risk_warning', ''),
-            'ai_comparison':       ai_data.get('comparison', ''),
+            'lang': lang,
+            'ai_economic_verdict': ai_data.get('economic_verdict', fb['verdict']),
+            'ai_best_advice':      ai_data.get('best_advice', fb['advice']),
+            'ai_risk_warning':     ai_data.get('risk_warning', fb['warning']),
+            'ai_comparison':       ai_data.get('comparison', fb['comparison']),
         }), 200
 
     except Exception as exc:
@@ -1738,11 +1794,29 @@ STRICT JSON RESPONSE:
 
         if not ai_rec.get('recommended_bag'):
             best = options[0] if options else {}
+            _fallbacks = {
+                'en': {
+                    'headline': f"Best option for {quantity_kg}kg for {duration_months} months.",
+                    'steps': ['Clean and dry the storage area', 'Check bags for holes', 'Place bags on pallets'],
+                    'buy': 'Agrarian Service Centers island-wide, Economic Centers, CIC outlets',
+                },
+                'si': {
+                    'headline': f"{duration_months} මාස සඳහා {quantity_kg}kg ගබඩා කිරීමට හොඳම විකල්පය.",
+                    'steps': ['ගබඩා ප්‍රදේශය පිරිසිදු කර වියළන්න', 'මළු වල සිදුරු ඇත්දැයි බලන්න', 'මළු පැලට් මත තබන්න'],
+                    'buy': 'දිවයින පුරා ගොවිජන සේවා මධ්‍යස්ථාන, ආර්ථික මධ්‍යස්ථාන, CIC ශාඛා',
+                },
+                'ta': {
+                    'headline': f"{duration_months} மாதங்களுக்கு {quantity_kg}kg சேமிக்க சிறந்த தேர்வு.",
+                    'steps': ['சேமிப்பு பகுதியை சுத்தப்படுத்தி உலர்த்தவும்', 'மூட்டைகளில் ஓட்டைகள் உள்ளதா என சோதிக்கவும்', 'மூட்டைகளை பாய் மீது வைக்கவும்'],
+                    'buy': 'தீவு முழுவதும் உள்ள கமநல சேவை மையங்கள், பொருளாதார மையங்கள்',
+                },
+            }
+            fb = _fallbacks.get(lang, _fallbacks['en'])
             ai_rec = {
                 'recommended_bag':          best.get('bag_type', 'hermetic'),
-                'recommendation_headline':  f"Best option for {quantity_kg}kg for {duration_months} months.",
-                'preparation_steps':        ['Clean and dry the storage area', 'Check bags for holes', 'Place bags on pallets'],
-                'where_to_buy_in_sl':       'Agrarian Service Centers island-wide, Economic Centers, CIC outlets',
+                'recommendation_headline':  fb['headline'],
+                'preparation_steps':        fb['steps'],
+                'where_to_buy_in_sl':       fb['buy'],
                 'cost_justification':       f"Net profit: LKR {best.get('net_profit_lkr', 0):,.0f}",
             }
 

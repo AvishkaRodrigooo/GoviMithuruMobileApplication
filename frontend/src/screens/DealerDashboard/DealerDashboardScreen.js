@@ -28,16 +28,16 @@ export default function DealerDashboardScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [dealerData, setDealerData] = useState(null);
-  const [activeTab, setActiveTab] = useState('profile'); // profile | rice | other | deals
+  const [activeTab, setActiveTab] = useState('orders'); // orders first!
 
-  // ── Profile fields (saved to dealers/{uid}) ─────────────────
+  // ── Profile fields ───────────────────────────────────────────
   const [contactNumber, setContactNumber] = useState('');
   const [locationName, setLocationName] = useState('');
   const [markerCoords, setMarkerCoords] = useState(null);
   const [hasTransport, setHasTransport] = useState(false);
   const [transportCostPerKm, setTransportCostPerKm] = useState('');
   const [transportMinCharge, setTransportMinCharge] = useState('');
-  const [gradesOffered, setGradesOffered] = useState(['A']); // Array
+  const [gradesOffered, setGradesOffered] = useState(['A']);
   const [profileSaved, setProfileSaved] = useState(false);
 
   // ── Rice Deal form ───────────────────────────────────────────
@@ -54,12 +54,18 @@ export default function DealerDashboardScreen({ navigation }) {
   const [itemUnit, setItemUnit] = useState('per piece');
   const [itemCategory, setItemCategory] = useState(OTHER_CATEGORIES[0]);
   const [itemDescription, setItemDescription] = useState('');
-  const [itemPhotos, setItemPhotos] = useState([]); // array of local URIs
+  const [itemPhotos, setItemPhotos] = useState([]);
   const [itemUploading, setItemUploading] = useState(false);
 
   // ── My Deals ─────────────────────────────────────────────────
   const [myDeals, setMyDeals] = useState([]);
-  const [dealFilter, setDealFilter] = useState('all'); // all | rice | other | active | paused
+  const [dealFilter, setDealFilter] = useState('all');
+
+  // ── Farmer Orders ─────────────────────────────────────────────
+  const [farmerOrders, setFarmerOrders] = useState([]);
+  const [unreadOrderCount, setUnreadOrderCount] = useState(0);
+  const [orderFilter, setOrderFilter] = useState('all'); // all | pending | accepted | rejected
+  const [updatingOrderId, setUpdatingOrderId] = useState(null);
 
   // ── Stats ────────────────────────────────────────────────────
   const [stats, setStats] = useState({ totalDeals: 0, activeDeals: 0, completedDeals: 0 });
@@ -68,12 +74,13 @@ export default function DealerDashboardScreen({ navigation }) {
   useEffect(() => {
     fetchDealerProfile();
     fetchMyDeals();
+    const unsub = subscribeToOrders();
+    return () => unsub && unsub();
   }, []);
 
   const fetchDealerProfile = async () => {
     try {
       const uid = auth.currentUser?.uid;
-      // Load from dedicated dealers collection
       const doc = await db.collection('dealers').doc(uid).get();
       if (doc.exists) {
         const d = doc.data();
@@ -87,7 +94,6 @@ export default function DealerDashboardScreen({ navigation }) {
         if (d.gradesOffered) setGradesOffered(d.gradesOffered);
         setProfileSaved(true);
       } else {
-        // Fallback: try users collection
         const userDoc = await db.collection('users').doc(uid).get();
         if (userDoc.exists) setDealerData(userDoc.data());
       }
@@ -103,13 +109,70 @@ export default function DealerDashboardScreen({ navigation }) {
       const deals = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       deals.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
       setMyDeals(deals);
-
-      // Compute stats
       const active = deals.filter(d => d.status === 'active').length;
       const completed = deals.filter(d => d.status === 'completed').length;
       setStats({ totalDeals: deals.length, activeDeals: active, completedDeals: completed });
     } catch (e) {
       console.error('fetchMyDeals:', e);
+    }
+  };
+
+  // ── Real-time listener for farmer orders ─────────────────────
+  const subscribeToOrders = () => {
+    const uid = auth.currentUser?.uid;
+    if (!uid) return null;
+    try {
+      return db.collection('farmerOrders')
+        .where('dealerId', '==', uid)
+        .orderBy('completedAt', 'desc')
+        .onSnapshot(
+          snapshot => {
+            const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setFarmerOrders(orders);
+            const unread = orders.filter(o => o.isNew === true).length;
+            setUnreadOrderCount(unread);
+            // Show alert notification if new order arrives
+            if (unread > 0) {
+              const newest = orders.find(o => o.isNew === true);
+              if (newest) {
+                Alert.alert(
+                  '🔔 New Farmer Order!',
+                  `${newest.farmerName || 'A farmer'} wants to sell ${newest.quantitySoldKg} kg of ${newest.riceVariety} (Grade ${newest.grade})\n\nTotal: Rs. ${newest.totalAmount?.toLocaleString()}`,
+                  [
+                    { text: 'View Orders', onPress: () => setActiveTab('orders') },
+                    { text: 'Later', style: 'cancel' },
+                  ]
+                );
+              }
+            }
+          },
+          err => console.log('Order listener error (rules may be needed):', err.message)
+        );
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // ── Mark order as read / acknowledge ─────────────────────────
+  const acknowledgeOrder = async (orderId) => {
+    try {
+      await db.collection('farmerOrders').doc(orderId).update({ isNew: false });
+    } catch (_) {}
+  };
+
+  // ── Update order status (accept / reject) ────────────────────
+  const updateOrderStatus = async (orderId, newStatus) => {
+    setUpdatingOrderId(orderId);
+    try {
+      await db.collection('farmerOrders').doc(orderId).update({
+        status: newStatus,
+        isNew: false,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (e) {
+      Alert.alert('Error', 'Could not update order status.');
+    } finally {
+      setUpdatingOrderId(null);
     }
   };
 
@@ -412,21 +475,29 @@ export default function DealerDashboardScreen({ navigation }) {
       {/* Tabs */}
       <View style={s.tabBar}>
         {[
-          { key: 'profile', icon: 'account-cog', label: 'Profile' },
-          { key: 'rice', icon: 'rice', label: 'Rice' },
-          { key: 'other', icon: 'package-variant', label: 'Items' },
-          { key: 'deals', icon: 'clipboard-list', label: 'My Deals' },
+          { key: 'orders', icon: 'bell-ring', label: 'Orders' },
+          { key: 'rice',    icon: 'rice',             label: 'Rice' },
+          { key: 'other',   icon: 'package-variant',  label: 'Items' },
+          { key: 'deals',   icon: 'clipboard-list',   label: 'My Deals' },
+          { key: 'profile', icon: 'account-cog',      label: 'Profile' },
         ].map(t => (
           <TouchableOpacity
             key={t.key}
             onPress={() => setActiveTab(t.key)}
             style={[s.tabItem, activeTab === t.key && s.tabItemActive]}
           >
-            <MaterialCommunityIcons
-              name={t.icon}
-              size={18}
-              color={activeTab === t.key ? '#fff' : '#64748b'}
-            />
+            <View style={{ position: 'relative' }}>
+              <MaterialCommunityIcons
+                name={t.icon}
+                size={18}
+                color={activeTab === t.key ? '#fff' : '#64748b'}
+              />
+              {t.key === 'orders' && unreadOrderCount > 0 && (
+                <View style={s.tabBadge}>
+                  <Text style={s.tabBadgeText}>{unreadOrderCount}</Text>
+                </View>
+              )}
+            </View>
             <Text style={[s.tabText, activeTab === t.key && s.tabTextActive]}>{t.label}</Text>
           </TouchableOpacity>
         ))}
@@ -434,7 +505,166 @@ export default function DealerDashboardScreen({ navigation }) {
 
       <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
 
-        {/* ══ PROFILE TAB ═══════════════════════════════════════ */}
+        {/* ══ ORDERS TAB – FARMER ORDERS ════════════════════════ */}
+        {activeTab === 'orders' && (
+          <>
+            {/* Order filter bar */}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.filterScroll}>
+              {[
+                { key: 'all',      label: 'All Orders' },
+                { key: 'pending',  label: '⏳  Pending' },
+                { key: 'accepted', label: '✅  Accepted' },
+                { key: 'rejected', label: '❌  Rejected' },
+              ].map(f => (
+                <TouchableOpacity
+                  key={f.key}
+                  style={[s.filterPill, orderFilter === f.key && s.filterPillActive]}
+                  onPress={() => setOrderFilter(f.key)}
+                >
+                  <Text style={[s.filterPillText, orderFilter === f.key && s.filterPillTextActive]}>
+                    {f.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {farmerOrders.filter(o => orderFilter === 'all' || o.status === orderFilter).length === 0 ? (
+              <View style={s.emptyDeals}>
+                <MaterialCommunityIcons name="inbox-outline" size={56} color="#cbd5e1" />
+                <Text style={s.emptyTitle}>No farmer orders yet</Text>
+                <Text style={s.emptyText}>
+                  When a farmer completes a deal with you, it will appear here with a notification.
+                </Text>
+              </View>
+            ) : (
+              farmerOrders
+                .filter(o => orderFilter === 'all' || o.status === orderFilter)
+                .map(order => {
+                  const isUpdating = updatingOrderId === order.id;
+                  return (
+                    <View
+                      key={order.id}
+                      style={[s.orderCard, order.isNew && s.orderCardNew]}
+                    >
+                      {/* NEW badge */}
+                      {order.isNew && (
+                        <View style={s.newOrderBadge}>
+                          <MaterialCommunityIcons name="bell-ring" size={11} color="#fff" />
+                          <Text style={s.newOrderBadgeText}>NEW</Text>
+                        </View>
+                      )}
+
+                      {/* Order header */}
+                      <View style={s.orderHeader}>
+                        <View style={s.orderAvatarBox}>
+                          <MaterialCommunityIcons name="account-cowboy-hat" size={22} color="#059669" />
+                        </View>
+                        <View style={{ flex: 1, marginLeft: 10 }}>
+                          <Text style={s.orderFarmerName}>{order.farmerName || 'Farmer'}</Text>
+                          <Text style={s.orderMeta}>
+                            {new Date(order.completedAt).toLocaleDateString('en-LK', {
+                              day: 'numeric', month: 'short', year: 'numeric',
+                              hour: '2-digit', minute: '2-digit',
+                            })}
+                          </Text>
+                        </View>
+                        {/* Status badge */}
+                        <View style={[
+                          s.orderStatusBadge,
+                          order.status === 'accepted' ? s.statusAccepted :
+                          order.status === 'rejected' ? s.statusRejected :
+                          s.statusPending,
+                        ]}>
+                          <Text style={s.orderStatusText}>
+                            {order.status === 'accepted' ? '✅ Accepted' :
+                             order.status === 'rejected' ? '❌ Rejected' : '⏳ Pending'}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Deal details */}
+                      <View style={s.orderDetails}>
+                        <View style={s.orderDetailRow}>
+                          <MaterialCommunityIcons name="rice" size={13} color="#059669" />
+                          <Text style={s.orderDetailLabel}>Variety</Text>
+                          <Text style={s.orderDetailValue}>{order.riceVariety} — Grade {order.grade}</Text>
+                        </View>
+                        <View style={s.orderDetailRow}>
+                          <MaterialCommunityIcons name="weight-kilogram" size={13} color="#6366f1" />
+                          <Text style={s.orderDetailLabel}>Quantity</Text>
+                          <Text style={s.orderDetailValue}>{order.quantitySoldKg} kg</Text>
+                        </View>
+                        <View style={s.orderDetailRow}>
+                          <MaterialCommunityIcons name="currency-inr" size={13} color="#d97706" />
+                          <Text style={s.orderDetailLabel}>Price/kg</Text>
+                          <Text style={s.orderDetailValue}>Rs. {order.pricePerKg}</Text>
+                        </View>
+                        {order.transportUsed && (
+                          <View style={s.orderDetailRow}>
+                            <MaterialCommunityIcons name="truck-delivery" size={13} color="#059669" />
+                            <Text style={s.orderDetailLabel}>Transport</Text>
+                            <Text style={s.orderDetailValue}>Rs. {order.transportCost?.toFixed(0)}</Text>
+                          </View>
+                        )}
+                        <View style={[s.orderDetailRow, { borderTopWidth: 1, borderTopColor: '#e2e8f0', paddingTop: 10, marginTop: 4 }]}>
+                          <MaterialCommunityIcons name="cash-multiple" size={14} color="#059669" />
+                          <Text style={[s.orderDetailLabel, { fontWeight: '900', color: '#1e293b' }]}>TOTAL</Text>
+                          <Text style={[s.orderDetailValue, { fontSize: 18, fontWeight: '900', color: '#059669' }]}>
+                            Rs. {order.totalAmount?.toLocaleString()}
+                          </Text>
+                        </View>
+                      </View>
+
+                      {/* Action buttons for pending orders */}
+                      {order.status === 'pending' && (
+                        <View style={s.orderActions}>
+                          <TouchableOpacity
+                            style={s.rejectBtn}
+                            onPress={() => updateOrderStatus(order.id, 'rejected')}
+                            disabled={isUpdating}
+                          >
+                            {isUpdating
+                              ? <ActivityIndicator size="small" color="#ef4444" />
+                              : <>
+                                <MaterialCommunityIcons name="close-circle" size={16} color="#ef4444" />
+                                <Text style={s.rejectBtnText}>Decline</Text>
+                              </>
+                            }
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={s.acceptBtn}
+                            onPress={() => {
+                              acknowledgeOrder(order.id);
+                              updateOrderStatus(order.id, 'accepted');
+                            }}
+                            disabled={isUpdating}
+                          >
+                            {isUpdating
+                              ? <ActivityIndicator size="small" color="#fff" />
+                              : <>
+                                <MaterialCommunityIcons name="check-circle" size={16} color="#fff" />
+                                <Text style={s.acceptBtnText}>Accept Order</Text>
+                              </>
+                            }
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                      {order.status !== 'pending' && order.isNew && (
+                        <TouchableOpacity
+                          style={s.markReadBtn}
+                          onPress={() => acknowledgeOrder(order.id)}
+                        >
+                          <Text style={s.markReadText}>Mark as Read</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  );
+                })
+            )}
+          </>
+        )}
+
+        {/* ══ PROFILE TAB ════════════════════════════════════════ */}
         {activeTab === 'profile' && (
           <>
             <View style={s.sectionCard}>
@@ -997,4 +1227,38 @@ const s = StyleSheet.create({
   emptyText: { color: '#94a3b8', fontSize: 13, textAlign: 'center', marginTop: 8 },
   emptyBtn: { marginTop: 20, backgroundColor: '#059669', paddingHorizontal: 24, paddingVertical: 14, borderRadius: 14 },
   emptyBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
+
+  // Tab notification badge
+  tabBadge: { position: 'absolute', top: -5, right: -8, backgroundColor: '#ef4444', borderRadius: 8, minWidth: 16, height: 16, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3 },
+  tabBadgeText: { color: '#fff', fontSize: 9, fontWeight: '900' },
+
+  // Order cards
+  orderCard: { backgroundColor: '#fff', borderRadius: 22, padding: 18, marginBottom: 14, elevation: 3, shadowColor: '#000', shadowOpacity: 0.07, shadowRadius: 10, position: 'relative', overflow: 'hidden', borderWidth: 1, borderColor: '#e2e8f0' },
+  orderCardNew: { borderColor: '#fbbf24', borderWidth: 2, shadowColor: '#f59e0b', shadowOpacity: 0.2 },
+  newOrderBadge: { position: 'absolute', top: 14, right: 14, flexDirection: 'row', alignItems: 'center', backgroundColor: '#f59e0b', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, gap: 4 },
+  newOrderBadgeText: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+
+  orderHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  orderAvatarBox: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#f0fdf4', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#bbf7d0' },
+  orderFarmerName: { color: '#1e293b', fontSize: 15, fontWeight: '800' },
+  orderMeta: { color: '#94a3b8', fontSize: 11, marginTop: 2 },
+
+  orderStatusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+  statusPending: { backgroundColor: '#fffbeb' },
+  statusAccepted: { backgroundColor: '#f0fdf4' },
+  statusRejected: { backgroundColor: '#fef2f2' },
+  orderStatusText: { fontSize: 11, fontWeight: '800' },
+
+  orderDetails: { backgroundColor: '#f8fafc', borderRadius: 16, padding: 14, marginBottom: 14 },
+  orderDetailRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  orderDetailLabel: { color: '#64748b', fontSize: 12, fontWeight: '700', width: 80 },
+  orderDetailValue: { color: '#1e293b', fontSize: 13, fontWeight: '700', flex: 1, textAlign: 'right' },
+
+  orderActions: { flexDirection: 'row', gap: 10 },
+  rejectBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 13, borderRadius: 14, borderWidth: 2, borderColor: '#fecaca', backgroundColor: '#fef2f2', gap: 6 },
+  rejectBtnText: { color: '#ef4444', fontSize: 13, fontWeight: '800' },
+  acceptBtn: { flex: 2, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 13, borderRadius: 14, backgroundColor: '#059669', gap: 6, elevation: 3, shadowColor: '#059669', shadowOpacity: 0.3, shadowRadius: 8 },
+  acceptBtnText: { color: '#fff', fontSize: 13, fontWeight: '900' },
+  markReadBtn: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 16 },
+  markReadText: { color: '#94a3b8', fontSize: 12, fontWeight: '700' },
 });

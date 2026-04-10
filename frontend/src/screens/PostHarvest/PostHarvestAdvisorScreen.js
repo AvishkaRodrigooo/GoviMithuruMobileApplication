@@ -1,5 +1,5 @@
 /**
- * PostHarvestAdvisorScreen.js  —  GoviMithuru v5.0
+ * PostHarvestAdvisorScreen.js  —  AgroMind v5.0
  * ─────────────────────────────────────────────────────────────────────────────
  * Modern Light Theme  |  New Backend Integration  |  Multilingual LLM Advice
  * ─────────────────────────────────────────────────────────────────────────────
@@ -920,6 +920,118 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
               )}
             </View>
 
+            {/* ── SELL INDICATOR: Find Dealers Card ─────────────────────── */}
+            {(sig === 'RED' || (advice.signal && advice.signal.toUpperCase().includes('SELL'))) && (
+              <View style={styles.dealerFinderCard}>
+                {/* Header row */}
+                <LinearGradient
+                  colors={['#dc2626', '#c41a1a']}
+                  style={styles.dealerFinderHeader}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <View style={styles.dealerFinderHeaderLeft}>
+                    <View style={styles.sellNowBadge}>
+                      <MaterialCommunityIcons name="tag-arrow-right" size={14} color="#dc2626" />
+                      <Text style={styles.sellNowBadgeText}>SELL INDICATOR</Text>
+                    </View>
+                    <Text style={styles.dealerFinderTitle}>🏪 Find Buyers for Your Paddy</Text>
+                    <Text style={styles.dealerFinderSubtitle}>
+                      AI recommends selling now. Connect with dealers buying {variety} in your area.
+                    </Text>
+                  </View>
+                  <View style={styles.dealerFinderIconBox}>
+                    <MaterialCommunityIcons name="storefront" size={32} color="rgba(255,255,255,0.9)" />
+                  </View>
+                </LinearGradient>
+
+                {/* Info pills */}
+                <View style={styles.dealerFinderPills}>
+                  <View style={styles.dealerInfoPill}>
+                    <MaterialCommunityIcons name="rice" size={13} color="#dc2626" />
+                    <Text style={styles.dealerInfoPillText}>{variety}</Text>
+                  </View>
+                  <View style={styles.dealerInfoPill}>
+                    <MaterialCommunityIcons name="weight-kilogram" size={13} color="#6b7280" />
+                    <Text style={styles.dealerInfoPillText}>{quantity} kg</Text>
+                  </View>
+                  <View style={[styles.dealerInfoPill, { backgroundColor: '#fef2f2', borderColor: '#fecaca' }]}>
+                    <MaterialCommunityIcons name="trending-down" size={13} color="#dc2626" />
+                    <Text style={[styles.dealerInfoPillText, { color: '#dc2626' }]}>Sell Now</Text>
+                  </View>
+                </View>
+
+                {/* What to expect tips */}
+                <View style={styles.dealerTips}>
+                  <View style={styles.dealerTipRow}>
+                    <MaterialCommunityIcons name="check-circle" size={14} color="#16a34a" />
+                    <Text style={styles.dealerTipText}>View live dealer prices & grades accepted</Text>
+                  </View>
+                  <View style={styles.dealerTipRow}>
+                    <MaterialCommunityIcons name="check-circle" size={14} color="#16a34a" />
+                    <Text style={styles.dealerTipText}>See nearest dealers with transport options</Text>
+                  </View>
+                  <View style={styles.dealerTipRow}>
+                    <MaterialCommunityIcons name="check-circle" size={14} color="#16a34a" />
+                    <Text style={styles.dealerTipText}>Get dealer contact & complete deal in-app</Text>
+                  </View>
+                </View>
+
+                {/* CTA Button */}
+                <TouchableOpacity
+                  style={styles.dealerFinderBtn}
+                  onPress={() =>
+                    navigation.navigate('MarketTracking', {
+                      fromAdvisor: true,
+                      advisorVariety: variety,
+                      advisorSignal: sig,
+                      quantity: parseFloat(quantity),
+                    })
+                  }
+                >
+                  <LinearGradient
+                    colors={['#16a34a', '#15803d']}
+                    style={styles.dealerFinderBtnGrad}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <MaterialCommunityIcons name="storefront-outline" size={20} color="#fff" />
+                    <Text style={styles.dealerFinderBtnText}>Browse Dealers for {variety}</Text>
+                    <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* ── YELLOW/HOLD: Gentle dealer awareness nudge ─────────────── */}
+            {sig === 'YELLOW' && (
+              <View style={styles.dealerNudgeCard}>
+                <View style={styles.dealerNudgeIcon}>
+                  <MaterialCommunityIcons name="eye-outline" size={20} color="#d97706" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.dealerNudgeTitle}>Watch the Market</Text>
+                  <Text style={styles.dealerNudgeSub}>
+                    Storage is marginal. Browse dealer prices now so you're ready to sell {variety} at the right moment.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.dealerNudgeBtn}
+                    onPress={() =>
+                      navigation.navigate('MarketTracking', {
+                        fromAdvisor: true,
+                        advisorVariety: variety,
+                        advisorSignal: sig,
+                      })
+                    }
+                  >
+                    <MaterialCommunityIcons name="trending-up" size={14} color="#d97706" />
+                    <Text style={styles.dealerNudgeBtnText}>View Market Prices</Text>
+                    <MaterialCommunityIcons name="chevron-right" size={14} color="#d97706" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
             {/* Action Steps */}
             {advice.store_option?.steps?.length > 0 && (
               <SectionCard>
@@ -1141,7 +1253,7 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
         </View>
         <View style={styles.headerBadge}>
           <MaterialCommunityIcons name="leaf" size={14} color={C.green} />
-          <Text style={styles.headerBadgeText}>GoviMithuru</Text>
+          <Text style={styles.headerBadgeText}>AgroMind</Text>
         </View>
       </View>
 
@@ -1194,6 +1306,183 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: C.bg,
+  },
+
+  // ── Dealer Finder Card (SELL signal)
+  dealerFinderCard: {
+    backgroundColor: C.white,
+    borderRadius: 20,
+    marginBottom: 14,
+    borderWidth: 1.5,
+    borderColor: '#fecaca',
+    overflow: 'hidden',
+    shadowColor: '#dc2626',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 5,
+  },
+  dealerFinderHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 18,
+    paddingBottom: 16,
+    gap: 12,
+  },
+  dealerFinderHeaderLeft: {
+    flex: 1,
+  },
+  sellNowBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+    gap: 4,
+  },
+  sellNowBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#dc2626',
+    letterSpacing: 1,
+  },
+  dealerFinderTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
+  dealerFinderSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    lineHeight: 17,
+  },
+  dealerFinderIconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dealerFinderPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 4,
+  },
+  dealerInfoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    gap: 5,
+  },
+  dealerInfoPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  dealerTips: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+    gap: 8,
+  },
+  dealerTipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dealerTipText: {
+    fontSize: 12.5,
+    color: '#374151',
+    flex: 1,
+    lineHeight: 18,
+  },
+  dealerFinderBtn: {
+    margin: 16,
+    marginTop: 14,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  dealerFinderBtnGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  dealerFinderBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#fff',
+    flex: 1,
+    textAlign: 'center',
+    letterSpacing: -0.2,
+  },
+
+  // ── Dealer Nudge Card (YELLOW signal)
+  dealerNudgeCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#fffbeb',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    gap: 12,
+  },
+  dealerNudgeIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#fef3c7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  dealerNudgeTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#92400e',
+    marginBottom: 3,
+  },
+  dealerNudgeSub: {
+    fontSize: 12,
+    color: '#78350f',
+    lineHeight: 17,
+    marginBottom: 10,
+  },
+  dealerNudgeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    gap: 5,
+  },
+  dealerNudgeBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#d97706',
   },
 
   // ── Header

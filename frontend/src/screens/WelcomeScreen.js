@@ -87,11 +87,11 @@ const WelcomeScreen = ({ navigation }) => {
                                 colors={['#10b981', '#059669']}
                                 style={s.logoIcon}
                             >
-                                <Text style={s.logoText}>GM</Text>
+                                <Text style={s.logoText}>AM</Text>
                             </LinearGradient>
                         </View>
 
-                        <Text style={s.appName}>GoviMithuru</Text>
+                        <Text style={s.appName}>AgroMind</Text>
                         <View style={s.accentLine} />
 
                         <Text style={s.tagline}>

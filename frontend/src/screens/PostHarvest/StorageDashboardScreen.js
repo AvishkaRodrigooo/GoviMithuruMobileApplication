@@ -1,7 +1,7 @@
 /**
  * StorageDashboardScreen.js
- * GoviMithuru — Post-Harvest Storage Management Dashboard
- * v3.0 — Complete rewrite. Zero duplicate declarations. Copy-paste ready.
+ * AgroMind — Post-Harvest Storage Management Dashboard
+ * v4.0 — Premium UI Redesign. Farmer-friendly, vivid, production-ready.
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -26,6 +26,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { db, auth } from '../../firebase/firebaseConfig';
 import { BASE_URL } from '../../utils/apiConfig';
+import useUniversalLocation from '../../utils/useUniversalLocation';
 
 const { width } = Dimensions.get('window');
 
@@ -33,15 +34,22 @@ const { width } = Dimensions.get('window');
 const C = {
   green: '#16a34a',
   greenLight: '#dcfce7',
+  greenMid: '#22c55e',
   greenDark: '#064e3b',
   amber: '#d97706',
   amberLight: '#fef3c7',
+  amberMid: '#f59e0b',
   red: '#dc2626',
   redLight: '#fee2e2',
+  redMid: '#ef4444',
   blue: '#2563eb',
   blueLight: '#dbeafe',
   purple: '#7c3aed',
   purpleLight: '#ede9fe',
+  teal: '#0d9488',
+  tealLight: '#ccfbf1',
+  orange: '#ea580c',
+  orangeLight: '#ffedd5',
   grey0: '#f9fafb',
   grey1: '#f3f4f6',
   grey2: '#e5e7eb',
@@ -71,7 +79,262 @@ const LOCATION_META = {
   coop: { label: 'Co-op Store', icon: 'handshake' },
 };
 
-// ─── LKR formatter ────────────────────────────────────────────────────────────
+// ─── Sri Lanka Districts ──────────────────────────────────────────────────────
+const SL_DISTRICTS = [
+  { label: 'Colombo', value: 'colombo', lat: 6.93, lon: 79.85, avgTemp: 29 },
+  { label: 'Gampaha', value: 'gampaha', lat: 7.09, lon: 80.01, avgTemp: 29 },
+  { label: 'Kalutara', value: 'kalutara', lat: 6.58, lon: 80.0, avgTemp: 28 },
+  { label: 'Kandy', value: 'kandy', lat: 7.29, lon: 80.63, avgTemp: 24 },
+  { label: 'Matale', value: 'matale', lat: 7.47, lon: 80.62, avgTemp: 26 },
+  { label: 'Nuwara Eliya', value: 'nuwaraeliya', lat: 6.97, lon: 80.78, avgTemp: 16 },
+  { label: 'Galle', value: 'galle', lat: 6.05, lon: 80.22, avgTemp: 28 },
+  { label: 'Matara', value: 'matara', lat: 5.95, lon: 80.54, avgTemp: 28 },
+  { label: 'Hambantota', value: 'hambantota', lat: 6.12, lon: 81.12, avgTemp: 30 },
+  { label: 'Jaffna', value: 'jaffna', lat: 9.67, lon: 80.01, avgTemp: 32 },
+  { label: 'Kilinochchi', value: 'kilinochchi', lat: 9.38, lon: 80.4, avgTemp: 31 },
+  { label: 'Mannar', value: 'mannar', lat: 8.98, lon: 79.9, avgTemp: 31 },
+  { label: 'Vavuniya', value: 'vavuniya', lat: 8.75, lon: 80.5, avgTemp: 30 },
+  { label: 'Mullativu', value: 'mullativu', lat: 9.27, lon: 80.81, avgTemp: 30 },
+  { label: 'Batticaloa', value: 'batticaloa', lat: 7.72, lon: 81.7, avgTemp: 29 },
+  { label: 'Ampara', value: 'ampara', lat: 7.3, lon: 81.67, avgTemp: 29 },
+  { label: 'Trincomalee', value: 'trincomalee', lat: 8.57, lon: 81.23, avgTemp: 30 },
+  { label: 'Kurunegala', value: 'kurunegala', lat: 7.48, lon: 80.36, avgTemp: 28 },
+  { label: 'Puttalam', value: 'puttalam', lat: 8.03, lon: 79.83, avgTemp: 30 },
+  { label: 'Anuradhapura', value: 'anuradhapura', lat: 8.31, lon: 80.41, avgTemp: 30 },
+  { label: 'Polonnaruwa', value: 'polonnaruwa', lat: 7.94, lon: 81.0, avgTemp: 30 },
+  { label: 'Badulla', value: 'badulla', lat: 6.99, lon: 81.05, avgTemp: 22 },
+  { label: 'Monaragala', value: 'monaragala', lat: 6.87, lon: 81.35, avgTemp: 27 },
+  { label: 'Ratnapura', value: 'ratnapura', lat: 6.68, lon: 80.4, avgTemp: 26 },
+  { label: 'Kegalle', value: 'kegalle', lat: 7.25, lon: 80.35, avgTemp: 26 },
+];
+
+// ─── Rice Varieties ───────────────────────────────────────────────────────────
+const RICE_VARIETIES = [
+  'Bg 352', 'Bg 300', 'Bg 94-1', 'Bg 358', 'Bg 366', 'Bg 379-2',
+  'Bg 406', 'At 308', 'At 362', 'Ld 356', 'Bw 272-6B', 'Bw 364',
+  'Pakwenna', 'Sudu Heenati', 'Rathu Heenati', 'Samba', 'Nadu',
+  'Keeri Samba', 'Red Raw Rice', 'White Raw Rice',
+];
+
+// ─── Translations ─────────────────────────────────────────────────────────────
+const T = {
+  en: {
+    lang: 'English',
+    storageCenter: 'Storage Center',
+    postHarvest: 'Post-Harvest Management',
+    totalPaddyValue: 'TOTAL PADDY VALUE',
+    kgStored: 'KG STORED',
+    totalBags: 'TOTAL BAGS',
+    batches: 'BATCHES',
+    addStock: 'Add Stock',
+    market: 'Market',
+    aiChat: 'AI Chat',
+    inventory: 'Inventory',
+    riskScore: 'Risk Score',
+    economics: 'Economics',
+    recommend: 'Recommend',
+    riskTitle: 'Storage Risk Score',
+    riskSub: 'Based on SLR 603:2013 standards',
+    moistureContent: 'Moisture Content (%)',
+    moistureHint: 'Use a moisture meter or salt-bottle test',
+    safe: 'SAFE',
+    limit: 'LIMIT',
+    danger: 'DANGER',
+    orEnterExact: 'Or enter exact value:',
+    storageBagType: 'Storage Bag Type',
+    howLongStore: 'How long to store?',
+    qty: 'Total Quantity (kg)',
+    storageLoc: 'Storage Location',
+    district: 'District (Sri Lanka)',
+    pestHistory: 'Seen rats or weevils (ghun) before?',
+    noPest: 'No — Safe location',
+    yesPest: 'Yes — Pest history',
+    computeRisk: 'Compute Risk Score',
+    analysing: 'Analysing with AI...',
+    ecoTitle: 'Storage Economics',
+    ecoSub: 'Is storing worth it? Real LKR analysis',
+    riceVariety: 'Rice Variety',
+    duration: 'Duration',
+    currentPrice: 'Current Price (LKR/kg)',
+    expectedPeak: 'Expected Peak (LKR/kg)',
+    priceHint: '💡 Leave prices empty to use our market forecast data',
+    calcEco: 'Calculate Economics',
+    calculating: 'Calculating...',
+    recTitle: 'Best Bag Recommendation',
+    recSub: 'AI picks the ideal storage for your situation',
+    moisture: 'Moisture (%)',
+    estTemp: 'Est. Temperature (°C)',
+    getAIRec: 'Get AI Recommendation',
+    aiThinking: 'AI Thinking...',
+    activeBatches: 'Active Storage Batches',
+    addNew: '+ Add New',
+    noBatches: 'No storage batches yet',
+    registerFirst: 'Register your first harvest to start tracking',
+    registerHarvest: 'Register Harvest',
+    month1: '1 Month', month2: '2 Months', month3: '3 Months',
+    month6: '6 Months', month6plus: '6+ Months', month9: '9 Months', month12: '12 Months',
+    riskFactors: 'Risk Factors Detected:',
+    urgentAction: '🚨 URGENT ACTION',
+    ifIgnored: '💰 IF IGNORED',
+    farmerTip: '💡 FARMER TIP',
+    safeStorage: 'Safe storage:',
+    days: 'days',
+    months: 'months',
+    estLoss: 'Estimated Weight Loss if Unaddressed',
+    profitable: 'PROFITABLE',
+    marginal: 'MARGINAL',
+    lossAlert: 'LOSS ALERT',
+    costBreakdown: 'Cost Breakdown',
+    bagsRequired: 'bags required',
+    storageBags: 'Storage Bags',
+    rent: 'Warehouse Rent',
+    fumigation: 'Fumigation (×2)',
+    labour: 'Labour (Pack/Move)',
+    insurance: 'Insurance',
+    totalCost: 'TOTAL STORAGE COST',
+    costPerKg: 'Cost per kg',
+    sellToday: 'SELL TODAY',
+    sellPeak: 'SELL AT PEAK',
+    netProfit: 'NET PROFIT',
+    breakEven: 'Break-even',
+    aiEconAdvice: '📊 AI ECONOMIC ADVICE',
+    bestChoice: 'BEST CHOICE FOR YOU',
+    allOptions: 'All Options Compared:',
+    notEnoughDays: 'NOT ENOUGH DAYS',
+    recommended: 'RECOMMENDED',
+    totalCostLabel: 'total cost',
+    prepSteps: 'Preparation Steps:',
+    whereToBuy: '🏪 WHERE TO BUY IN SRI LANKA',
+    recalcPlanner: 'Re-calculate in Input Planner',
+  },
+  si: {
+    lang: 'සිංහල',
+    storageCenter: 'ගබඩා මධ්‍යස්ථානය',
+    postHarvest: 'අස්වනු කළමනාකරණය',
+    totalPaddyValue: 'මුළු වී වටිනාකම',
+    kgStored: 'kg ගබඩා කළා',
+    totalBags: 'මළු ගණන',
+    batches: 'කණ්ඩායම්',
+    addStock: 'යොදා ගන්න',
+    market: 'වෙළෙඳපොළ',
+    aiChat: 'AI කතා',
+    inventory: 'ලැයිස්තුව',
+    riskScore: 'අවදානම් ලකුණු',
+    economics: 'ආර්ථිකය',
+    recommend: 'නිර්දේශය',
+    riskTitle: 'ගබඩා අවදානම් ලකුණු',
+    riskSub: 'SLR 603:2013 ප්‍රමිතීන් අනුව',
+    moistureContent: 'තෙතමනය (%)',
+    moistureHint: 'නමවියන් මීටරයකින් හෝ ලුණු-බෝතල් පරීක්ෂාව',
+    safe: 'ආරක්ෂිතයි', limit: 'සීමාව', danger: 'අන්තරාය',
+    orEnterExact: 'හෝ exact අගය ඇතුළත් කරන්න:',
+    storageBagType: 'ගබඩා මළු වර්ගය',
+    howLongStore: 'කොපමණ කාලයක් ගබඩා කරනවාද?',
+    qty: 'මුළු ප්‍රමාණය (kg)',
+    storageLoc: 'ගබඩා ස්ථානය',
+    district: 'දිස්ත්‍රික්කය',
+    pestHistory: 'මීකෝ හෝ රෙදි කන පළිඟු දුටුවාද?',
+    noPest: 'නැහැ — ආරක්ෂිතයි',
+    yesPest: 'ඔව් — පළිඟු ඉතිහාසයක් ඇත',
+    computeRisk: 'අවදානම ගණනය කරන්න',
+    analysing: 'AI සත්‍ය කරමින්...',
+    ecoTitle: 'ගබඩා ආර්ථිකය',
+    ecoSub: 'ගබඩා කිරීම වටිනවාද?',
+    riceVariety: 'වී වර්ගය', duration: 'කාලය',
+    currentPrice: 'දැනට මිල (LKR/kg)',
+    expectedPeak: 'අපේක්ෂිත ඉහළ මිල (LKR/kg)',
+    priceHint: '💡 මිල හිස්ව තැබුවොත් වෙළෙඳ අනාවැකි දත්ත ගනිමු',
+    calcEco: 'ආර්ථිකය ගණනය කරන්න',
+    calculating: 'ගණනය කරමින්...',
+    recTitle: 'හොඳම මළු නිර්දේශය',
+    recSub: 'AI ඔබේ තත්වයට හොඳම ගබඩාව තෝරයි',
+    moisture: 'තෙතමනය (%)', estTemp: 'තාප (°C)',
+    getAIRec: 'AI නිර්දේශය ලබාගන්න',
+    aiThinking: 'AI සිතමින්...',
+    activeBatches: 'සක්‍රිය ගබඩා කණ්ඩායම්',
+    addNew: '+ නව එකතු කරන්න',
+    noBatches: 'ගබඩා කණ්ඩායම් නැත',
+    registerFirst: 'ඔබේ පළමු අස්වැන්න ලියාපදිංචි කරන්න',
+    registerHarvest: 'අස්වැන්න ලියාපදිංචි කරන්න',
+    month1: '1 මාසය', month2: '2 මාස', month3: '3 මාස',
+    month6: '6 මාස', month6plus: '6+ මාස', month9: '9 මාස', month12: '12 මාස',
+    riskFactors: 'අවදානම් ලක්ෂණ:',
+    urgentAction: '🚨 හදිසි පියවර', ifIgnored: '💰 නොසලකා හැරියහොත්',
+    farmerTip: '💡 ගොවි උපදෙස්', safeStorage: 'ආරක්ෂිත කාලය:',
+    days: 'දින', months: 'මාස',
+    estLoss: 'විය හැකි බර අඩුවීම',
+    profitable: 'ලාභදායී', marginal: 'සාමාන්‍යයි', lossAlert: 'පාඩුයි',
+    costBreakdown: 'වියදම් විස්තරය', bagsRequired: 'මළු අවශ්‍යයි',
+    storageBags: 'ගබඩා මළු', rent: 'ගබඩා කුලිය',
+    fumigation: 'කෘමිනාශක (×2)', labour: 'ශ්‍රමය',
+    insurance: 'රක්ෂණය', totalCost: 'මුළු ගබඩා වියදම',
+    costPerKg: 'කිලෝවකට වියදම',
+    sellToday: 'අද විකුණන්න', sellPeak: 'ඉහළ මිලට විකුණන්න',
+    netProfit: 'ශුද්ධ ලාභය', breakEven: 'ලාභ-අලාභ සම ලක්ෂ්‍යය',
+    aiEconAdvice: '📊 AI ආර්ථික උපදෙස්',
+    bestChoice: 'ඔබට හොඳම විකල්පය',
+    allOptions: 'සියලුම විකල්ප:', notEnoughDays: 'දින ප්‍රමාණවත් නැත',
+    recommended: 'නිර්දේශිතයි', totalCostLabel: 'මුළු වියදම',
+    prepSteps: 'පෙර සූදානම් පියවර:',
+    whereToBuy: '🏪 මිලදී ගත හැකි ස්ථාන',
+    recalcPlanner: 'යෙදවුම් සැලසුම්කරු',
+  },
+  ta: {
+    lang: 'தமிழ்',
+    storageCenter: 'சேமிப்பு மையம்',
+    postHarvest: 'அறுவடை மேலாண்மை',
+    totalPaddyValue: 'மொத்த நெல் மதிப்பு',
+    kgStored: 'kg சேமிக்கப்பட்டது',
+    totalBags: 'மொத்த மூட்டைகள்',
+    batches: 'தொகுதிகள்',
+    addStock: 'சேர்', market: 'சந்தை', aiChat: 'AI உரை', inventory: 'பட்டியல்',
+    riskScore: 'அபாய மதிப்பெண்', economics: 'பொருளாதாரம்', recommend: 'பரிந்துரை',
+    riskTitle: 'சேமிப்பு அபாய மதிப்பெண்', riskSub: 'SLR 603:2013 தரநிலைகள்',
+    moistureContent: 'ஈரப்பதம் (%)', moistureHint: 'ஈரப்பத மீட்டர் சோதனை',
+    safe: 'பாதுகாப்பு', limit: 'வரம்பு', danger: 'ஆபத்து',
+    orEnterExact: 'சரியான மதிப்பை உள்ளிடவும்:',
+    storageBagType: 'சேமிப்பு மூட்டை வகை',
+    howLongStore: 'எவ்வளவு காலம்?',
+    qty: 'மொத்த அளவு (kg)', storageLoc: 'சேமிப்பு இடம்', district: 'மாவட்டம்',
+    pestHistory: 'எலி அல்லது பூச்சி பார்த்தீர்களா?',
+    noPest: 'இல்லை — பாதுகாப்பான', yesPest: 'ஆம் — பூச்சி வரலாறு',
+    computeRisk: 'அபாயத்தை கணக்கிடு', analysing: 'AI பகுப்பாய்வு...',
+    ecoTitle: 'சேமிப்பு பொருளாதாரம்', ecoSub: 'சேமிப்பு மதிப்புள்ளதா?',
+    riceVariety: 'நெல் வகை', duration: 'காலம்',
+    currentPrice: 'தற்போதைய விலை (LKR/kg)', expectedPeak: 'உச்ச விலை (LKR/kg)',
+    priceHint: '💡 விலையை வெறுமையாக விட்டால் சந்தை தரவு பயன்படுத்துவோம்',
+    calcEco: 'பொருளாதாரம் கணக்கிடு', calculating: 'கணக்கிடுகிறது...',
+    recTitle: 'சிறந்த மூட்டை பரிந்துரை', recSub: 'AI சிறந்த சேமிப்பை தேர்வு செய்கிறது',
+    moisture: 'ஈரப்பதம் (%)', estTemp: 'வெப்பநிலை (°C)',
+    getAIRec: 'AI பரிந்துரை பெறு', aiThinking: 'AI சிந்திக்கிறது...',
+    activeBatches: 'செயலில் உள்ள தொகுதிகள்',
+    addNew: '+ புதிது சேர்', noBatches: 'சேமிப்பு தொகுதிகள் இல்லை',
+    registerFirst: 'முதல் அறுவடையை பதிவு செய்யுங்கள்',
+    registerHarvest: 'அறுவடை பதிவு',
+    month1: '1 மாதம்', month2: '2 மாதங்கள்', month3: '3 மாதங்கள்',
+    month6: '6 மாதங்கள்', month6plus: '6+ மாதங்கள்', month9: '9 மாதங்கள்', month12: '12 மாதங்கள்',
+    riskFactors: 'கண்டறியப்பட்ட அபாயங்கள்:',
+    urgentAction: '🚨 அவசர நடவடிக்கை', ifIgnored: '💰 புறக்கணித்தால்',
+    farmerTip: '💡 உழவர் குறிப்பு', safeStorage: 'பாதுகாப்பான சேமிப்பு:',
+    days: 'நாட்கள்', months: 'மாதங்கள்',
+    estLoss: 'எடை இழப்பு மதிப்பீடு',
+    profitable: 'லாபகரமானது', marginal: 'சராசரி', lossAlert: 'இழப்பு எச்சரிக்கை',
+    costBreakdown: 'செலவு விவரம்', bagsRequired: 'மூட்டைகள் தேவை',
+    storageBags: 'சேமிப்பு மூட்டைகள்', rent: 'கிடங்கு வாடகை',
+    fumigation: 'புகையிடுதல்', labour: 'கூலி', insurance: 'காப்பீடு',
+    totalCost: 'மொத்த சேமிப்பு செலவு', costPerKg: 'ஒரு கிலோ செலவு',
+    sellToday: 'இன்று விற்கவும்', sellPeak: 'உச்ச விலையில் விற்கவும்',
+    netProfit: 'நிகர லாபம்', breakEven: 'பிரேக்-ஈவன்',
+    aiEconAdvice: '📊 AI பொருளாதார ஆலோசனை',
+    bestChoice: 'உங்களுக்கான சிறந்த தேர்வு',
+    allOptions: 'அனைத்து விருப்பங்களும்:',
+    notEnoughDays: 'நாட்கள் போதாது', recommended: 'பரிந்துரைக்கப்படுகிறது',
+    totalCostLabel: 'மொத்த செலவு', prepSteps: 'தயாரிப்பு படிகள்:',
+    whereToBuy: '🏪 எங்கே வாங்குவது',
+    recalcPlanner: 'உற்பத்தி செலவை மீண்டும் கணக்கிடுங்கள்',
+  },
+};
+
 const fmtLKR = (n) =>
   `Rs. ${Number(n || 0).toLocaleString('en-LK', { maximumFractionDigits: 0 })}`;
 
@@ -79,49 +342,76 @@ const fmtLKR = (n) =>
 //  REUSABLE COMPONENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ScoreRing({ score, color, size }) {
-  const sz = size || 90;
-  const sc = score || 0;
+// ── Beautiful Score Gauge ─────────────────────────────────────────────────────
+function ScoreGauge({ score, color, size }) {
+  const sz = size || 110;
+  const sc = Math.min(100, Math.max(0, score || 0));
+  const danger = sc <= 30;
+  const warn = sc > 30 && sc <= 60;
+  const safe = sc > 60;
+
+  const gaugeColor = danger ? C.red : warn ? C.amber : C.green;
+
   return (
     <View style={{ width: sz, height: sz, alignItems: 'center', justifyContent: 'center' }}>
-      {/* Background ring */}
-      <View
-        style={{
-          position: 'absolute',
-          width: sz,
-          height: sz,
-          borderRadius: sz / 2,
-          borderWidth: 7,
-          borderColor: color + '25',
-        }}
-      />
-      {/* Foreground arc (quarter-border trick) */}
-      <View
-        style={{
-          position: 'absolute',
-          width: sz,
-          height: sz,
-          borderRadius: sz / 2,
-          borderWidth: 7,
-          borderColor: color,
-          borderRightColor: sc >= 25 ? color : 'transparent',
-          borderBottomColor: sc >= 50 ? color : 'transparent',
-          borderLeftColor: sc >= 75 ? color : 'transparent',
-          transform: [{ rotate: '-90deg' }],
-        }}
-      />
-      <Text style={{ fontSize: 20, fontWeight: '900', color: color }}>{sc}</Text>
-      <Text style={{ fontSize: 9, color: C.grey4, fontWeight: '700' }}>/100</Text>
+      {/* Outer glow ring */}
+      <View style={{
+        position: 'absolute',
+        width: sz,
+        height: sz,
+        borderRadius: sz / 2,
+        borderWidth: 3,
+        borderColor: gaugeColor + '20',
+      }} />
+      {/* Mid ring */}
+      <View style={{
+        position: 'absolute',
+        width: sz - 10,
+        height: sz - 10,
+        borderRadius: (sz - 10) / 2,
+        borderWidth: 8,
+        borderColor: gaugeColor + '18',
+      }} />
+      {/* Active ring */}
+      <View style={{
+        position: 'absolute',
+        width: sz - 10,
+        height: sz - 10,
+        borderRadius: (sz - 10) / 2,
+        borderWidth: 8,
+        borderColor: gaugeColor,
+        borderRightColor: sc >= 25 ? gaugeColor : 'transparent',
+        borderBottomColor: sc >= 50 ? gaugeColor : 'transparent',
+        borderLeftColor: sc >= 75 ? gaugeColor : 'transparent',
+        transform: [{ rotate: '-90deg' }],
+      }} />
+      {/* Inner filled circle */}
+      <View style={{
+        width: sz - 30,
+        height: sz - 30,
+        borderRadius: (sz - 30) / 2,
+        backgroundColor: gaugeColor + '12',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <Text style={{ fontSize: 26, fontWeight: '900', color: gaugeColor, letterSpacing: -1 }}>{sc}</Text>
+        <Text style={{ fontSize: 9, color: gaugeColor + 'aa', fontWeight: '800', marginTop: -2 }}>/100</Text>
+      </View>
     </View>
   );
 }
 
+// ── Section Header ────────────────────────────────────────────────────────────
 function SectionHeader({ icon, color, title, sub }) {
   return (
     <View style={st.secHeader}>
-      <View style={[st.secIconBox, { backgroundColor: color + '18' }]}>
-        <MaterialCommunityIcons name={icon} size={20} color={color} />
-      </View>
+      <LinearGradient
+        colors={[color + '30', color + '10']}
+        style={st.secIconBox}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+      >
+        <MaterialCommunityIcons name={icon} size={22} color={color} />
+      </LinearGradient>
       <View style={{ flex: 1 }}>
         <Text style={st.secTitle}>{title}</Text>
         {sub ? <Text style={st.secSub}>{sub}</Text> : null}
@@ -130,10 +420,11 @@ function SectionHeader({ icon, color, title, sub }) {
   );
 }
 
+// ── Chip Group ────────────────────────────────────────────────────────────────
 function ChipGroup({ label, options, value, onChange, color }) {
   const activeColor = color || C.green;
   return (
-    <View style={{ marginBottom: 14 }}>
+    <View style={{ marginBottom: 16 }}>
       {label ? <Text style={st.fieldLabel}>{label}</Text> : null}
       <View style={st.chipRow}>
         {options.map((opt) => {
@@ -141,19 +432,11 @@ function ChipGroup({ label, options, value, onChange, color }) {
           return (
             <TouchableOpacity
               key={String(opt.value)}
-              style={[
-                st.chip,
-                isActive && { backgroundColor: activeColor, borderColor: activeColor },
-              ]}
+              style={[st.chip, isActive && { backgroundColor: activeColor, borderColor: activeColor, shadowColor: activeColor, shadowOpacity: 0.35, shadowRadius: 6, elevation: 4 }]}
               onPress={() => onChange(opt.value)}
             >
               {opt.icon ? (
-                <MaterialCommunityIcons
-                  name={opt.icon}
-                  size={13}
-                  color={isActive ? C.white : C.grey5}
-                  style={{ marginRight: 4 }}
-                />
+                <MaterialCommunityIcons name={opt.icon} size={13} color={isActive ? C.white : C.grey5} style={{ marginRight: 4 }} />
               ) : null}
               <Text style={[st.chipTxt, isActive && { color: C.white }]}>{opt.label}</Text>
             </TouchableOpacity>
@@ -164,881 +447,939 @@ function ChipGroup({ label, options, value, onChange, color }) {
   );
 }
 
-// ─── Batch card (used in harvest list) ───────────────────────────────────────
-function BatchCard({ item, navigation }) {
+// ── Batch Card ────────────────────────────────────────────────────────────────
+function BatchCard({ item, navigation, location, locData }) {
+  const [rtData, setRtData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchRT() {
+      try {
+        const storType = (locData?.storageType || 'home').toLowerCase().replace(/[^a-z]/g, '');
+        const stMap = { home: 'home', warehouse: 'warehouse', shed: 'shed', coop: 'co-op', 'co-op': 'co-op', private: 'warehouse', government: 'warehouse' };
+        const stype = Object.keys(stMap).find(k => storType.includes(k)) ? stMap[Object.keys(stMap).find(k => storType.includes(k))] : 'warehouse';
+        const body = {
+          variety: item.variety || 'Bg 352',
+          bag_type: item.storageType || item.storageMethod || 'gunny',
+          moisture_pct: parseFloat(item.moisturePct || item.moisture_pct || 13.5),
+          quantity_kg: parseFloat(item.quantityKg || 1000),
+          duration_months: 3,
+          lat: locData?.latitude || locData?.lat || location?.latitude || 7.87,
+          lon: locData?.longitude || locData?.lon || location?.longitude || 80.77,
+          storage_type: stype,
+          roof_material: locData?.roofMaterial || 'tile',
+          roof_color: locData?.roofColor || 'red',
+          ventilation: locData?.ventilation || 'natural',
+          ceiling_height: locData?.ceilingHeight || '3-4m',
+          insulation: locData?.insulation || false,
+        };
+        const res = await fetch(`${BASE_URL}/api/guardian/predict`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        });
+        const d = await res.json();
+        if (mounted && !d.error) setRtData(d);
+      } catch (e) { console.log(e); }
+      finally { if (mounted) setLoading(false); }
+    }
+    fetchRT();
+    return () => { mounted = false; };
+  }, [location, item]);
+
   const mc = parseFloat(item.moisturePct || item.moisture_pct || 13.5);
-  const riskKey = mc > 16 ? 'CRITICAL' : mc > 14 ? 'HIGH' : mc > 13 ? 'MEDIUM' : 'LOW';
-  const riskColor = { CRITICAL: C.red, HIGH: C.amber, MEDIUM: C.blue, LOW: C.green }[riskKey];
+  let riskKey = mc > 16 ? 'CRITICAL' : mc > 14 ? 'HIGH' : mc > 13 ? 'MEDIUM' : 'LOW';
+  let temp = '--';
+  let humid = '--';
+
+  if (rtData?.risk) {
+    const cat = rtData.risk.category?.toUpperCase() || 'LOW';
+    riskKey = cat.includes('CRITICAL') ? 'CRITICAL' : cat.includes('HIGH') ? 'HIGH' : cat.includes('MEDIUM') ? 'MEDIUM' : 'LOW';
+    if (rtData.indoor_environment) {
+      temp = rtData.indoor_environment.indoor_temp_c != null ? rtData.indoor_environment.indoor_temp_c.toFixed(1) : '--';
+      humid = rtData.indoor_environment.indoor_humidity_pct != null ? rtData.indoor_environment.indoor_humidity_pct.toFixed(0) : '--';
+    }
+  }
+
+  const riskColor = { CRITICAL: C.red, HIGH: C.amber, MEDIUM: '#10b981', LOW: C.green }[riskKey];
+  const bgData = { CRITICAL: ['#fef2f2', '#fee2e2'], HIGH: ['#fffbeb', '#fef3c7'], MEDIUM: ['#ecfdf5', '#d1fae5'], LOW: ['#f0fdf4', '#dcfce7'] }[riskKey];
 
   return (
-    <TouchableOpacity
-      style={st.batchCard}
-      onPress={() =>
-        navigation.navigate('RegisterHarvest', { editData: item, docId: item.id })
-      }
-    >
-      <View style={st.batchLeft}>
-        <View style={[st.batchDot, { backgroundColor: riskColor }]} />
-        <View>
-          <Text style={st.batchVariety}>{item.variety}</Text>
-          <Text style={st.batchMeta}>
-            {item.season} • {item.quantityKg} kg
-          </Text>
+    <View style={[st.batchCard, { borderColor: riskColor + '40' }]}>
+      <LinearGradient colors={bgData} style={StyleSheet.absoluteFillObject} borderRadius={16} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} />
+      <TouchableOpacity style={st.batchLeft}
+        onPress={() => navigation.navigate('PostHarvestAdvisor', {
+          batch: item, location: locData, locationId: locData?.id,
+          indoorTemp: rtData?.indoor_environment?.indoor_temp_c,
+          indoorHumid: rtData?.indoor_environment?.indoor_humidity_pct,
+          lat: locData?.latitude || locData?.lat || location?.latitude || 7.87,
+          lon: locData?.longitude || locData?.lon || location?.longitude || 80.77,
+        })}>
+        <View style={[st.batchIconBox, { backgroundColor: riskColor + '20' }]}>
+          {loading ? <ActivityIndicator color={riskColor} size="small" /> : <MaterialCommunityIcons name="sack" size={24} color={riskColor} />}
         </View>
-      </View>
+        <View style={{ flex: 1 }}>
+          <Text style={st.batchVariety} numberOfLines={1}>{item.variety}</Text>
+          <Text style={st.batchMeta}>{item.season} • <Text style={{ fontWeight: '800', color: C.ink }}>{item.quantityKg} kg</Text></Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 6, flexWrap: 'wrap' }}>
+            <View style={[st.riskPill, { backgroundColor: riskColor }]}>
+              <Text style={[st.riskPillTxt, { color: C.white }]}>{riskKey} RISK</Text>
+            </View>
+            <Text style={{ fontSize: 10, color: C.grey6, fontWeight: '700' }}>💧 {mc}%</Text>
+            {temp !== '--' && <Text style={{ fontSize: 10, color: C.grey6, fontWeight: '700' }}>🌡 {temp}°C</Text>}
+            {humid !== '--' && <Text style={{ fontSize: 10, color: C.grey6, fontWeight: '700' }}>☁️ {humid}%</Text>}
+          </View>
+        </View>
+      </TouchableOpacity>
       <View style={st.batchRight}>
-        <View style={[st.riskPill, { backgroundColor: riskColor + '20' }]}>
-          <Text style={[st.riskPillTxt, { color: riskColor }]}>{riskKey}</Text>
-        </View>
-        <TouchableOpacity
-          style={st.advisorBtn}
-          onPress={(e) => {
-            e.stopPropagation();
-            navigation.navigate('PostHarvestAdvisor', { batch: item });
-          }}
-        >
-          <MaterialCommunityIcons name="brain" size={16} color={C.green} />
+        <TouchableOpacity style={st.editBtnPremium}
+          onPress={() => navigation.navigate('RegisterHarvest', { editData: item, docId: item.id })}>
+          <MaterialCommunityIcons name="pencil" size={14} color={C.grey6} />
         </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 
-// ─── Risk result panel ────────────────────────────────────────────────────────
-function RiskResultPanel({ data }) {
-  return (
-    <View style={[st.resultBox, { borderLeftColor: data.color }]}>
-      <View style={st.riskHeader}>
-        <ScoreRing score={data.score} color={data.color} size={90} />
-        <View style={{ flex: 1, marginLeft: 16 }}>
-          <View style={[st.riskBadge, { backgroundColor: data.color + '20' }]}>
-            <Text style={[st.riskBadgeTxt, { color: data.color }]}>
-              {data.category} RISK
-            </Text>
-          </View>
-          <Text style={st.aiVerdict}>{data.ai_verdict}</Text>
-        </View>
-      </View>
+// ══════════════════════════════════════════════════════════════════════════════
+//  RISK RESULT PANEL — Premium redesign
+// ══════════════════════════════════════════════════════════════════════════════
+function RiskResultPanel({ data, tx }) {
+  const cColor = data.color || C.amber;
+  const isLow = data.score >= 70;
+  const isMed = data.score >= 40 && data.score < 70;
 
+  // Gradient based on risk level
+  const headerGrads = isLow
+    ? ['#064e3b', '#16a34a']
+    : isMed
+    ? ['#92400e', '#d97706']
+    : ['#7f1d1d', '#dc2626'];
+
+  return (
+    <View style={st.resultWrapper}>
+      {/* ── Hero header with score ── */}
+      <LinearGradient colors={headerGrads} style={st.riskHero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+        {/* Decorative circles */}
+        <View style={st.decCircle1} />
+        <View style={st.decCircle2} />
+
+        <View style={st.riskHeroContent}>
+          <View style={{ alignItems: 'center' }}>
+            <ScoreGauge score={data.score} color={C.white} size={100} />
+            <View style={[st.riskBadgeHero, { backgroundColor: 'rgba(255,255,255,0.2)', borderColor: 'rgba(255,255,255,0.4)' }]}>
+              <Text style={st.riskBadgeHeroTxt}>{data.category} RISK</Text>
+            </View>
+          </View>
+          <View style={{ flex: 1, paddingLeft: 16 }}>
+            <Text style={st.riskHeroVerdict}>{data.ai_verdict}</Text>
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* ── Safe storage life ── */}
       {data.storage_life && (
-        <View style={st.storageLifeBox}>
-          <MaterialCommunityIcons name="clock-outline" size={16} color={C.green} />
-          <Text style={st.storageLifeTxt}>
-            Safe storage:{' '}
-            <Text style={{ fontWeight: '800', color: C.green }}>
-              {data.storage_life.storage_days} days ({data.storage_life.storage_months} months)
-            </Text>
-          </Text>
-          <View style={[st.gradePill, { backgroundColor: data.color + '15' }]}>
-            <Text style={[st.gradePillTxt, { color: data.color }]}>
-              {data.storage_life.grade}
+        <View style={st.safeLifeRow}>
+          <View style={[st.safeLifeIcon, { backgroundColor: C.greenLight }]}>
+            <MaterialCommunityIcons name="clock-check-outline" size={26} color={C.green} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={st.safeLifeLabel}>{tx.safeStorage}</Text>
+            <Text style={st.safeLifeVal}>
+              <Text style={{ color: cColor, fontSize: 22, fontWeight: '900' }}>{data.storage_life.storage_days}</Text>
+              <Text style={{ fontSize: 14, color: C.grey6, fontWeight: '700' }}> {tx.days}</Text>
+              <Text style={{ fontSize: 13, color: C.grey4 }}>  ({data.storage_life.storage_months} {tx.months})</Text>
             </Text>
           </View>
+          <LinearGradient colors={[cColor, cColor + 'cc']} style={st.gradePillLarge}>
+            <Text style={st.gradePillLargeTxt}>{data.storage_life.grade}</Text>
+          </LinearGradient>
         </View>
       )}
 
+      {/* ── Risk factors ── */}
       {data.risk_factors && data.risk_factors.length > 0 && (
-        <View style={st.factorsBox}>
-          <Text style={st.factorsTitle}>Risk Factors Detected:</Text>
+        <View style={st.factorsSection}>
+          <View style={st.factorsHeader}>
+            <MaterialCommunityIcons name="alert-circle" size={16} color={cColor} />
+            <Text style={[st.factorsSectionTitle, { color: cColor }]}>{tx.riskFactors}</Text>
+          </View>
           {data.risk_factors.map((f, i) => (
-            <View key={i} style={st.factorRow}>
-              <View style={[st.factorDot, { backgroundColor: data.color }]} />
-              <View style={{ flex: 1 }}>
-                <Text style={st.factorName}>
-                  {f.factor}{' '}
-                  <Text style={{ color: C.red, fontWeight: '800' }}>−{f.deduction} pts</Text>
-                </Text>
-                <Text style={st.factorDetail}>{f.detail}</Text>
+            <View key={i} style={st.factorPremiumCard}>
+              <View style={[st.factorPremiumLeft, { backgroundColor: cColor + '15' }]}>
+                <MaterialCommunityIcons name="alert-outline" size={18} color={cColor} />
+              </View>
+              <View style={{ flex: 1, paddingHorizontal: 12 }}>
+                <Text style={st.factorPremiumName}>{f.factor}</Text>
+                <Text style={st.factorPremiumDetail}>{f.detail}</Text>
+              </View>
+              <View style={[st.deductionBadge, { backgroundColor: C.red + '15' }]}>
+                <Text style={[st.deductionTxt, { color: C.red }]}>−{f.deduction}</Text>
               </View>
             </View>
           ))}
         </View>
       )}
 
-      <View style={[st.aiBox, { borderColor: data.color + '30' }]}>
-        <Text style={[st.aiBoxLabel, { color: data.color }]}>🚨 URGENT ACTION</Text>
-        <Text style={st.aiBoxContent}>{data.ai_urgent}</Text>
-      </View>
-      <View style={[st.aiBox, { borderColor: '#fbbf2430', marginTop: 8 }]}>
-        <Text style={[st.aiBoxLabel, { color: C.amber }]}>💰 IF IGNORED</Text>
-        <Text style={st.aiBoxContent}>{data.ai_loss_warning}</Text>
-      </View>
-      <View style={[st.aiBox, { borderColor: '#16a34a30', marginTop: 8 }]}>
-        <Text style={[st.aiBoxLabel, { color: C.green }]}>💡 FARMER TIP</Text>
-        <Text style={st.aiBoxContent}>{data.ai_farmer_tip}</Text>
+      {/* ── Three action callouts ── */}
+      {/* 1. Urgent action */}
+      <View style={[st.actionCallout, { backgroundColor: cColor + '0d', borderColor: cColor + '35', borderLeftColor: cColor }]}>
+        <View style={st.actionCalloutHead}>
+          <View style={[st.actionCalloutIconBox, { backgroundColor: cColor + '20' }]}>
+            <MaterialCommunityIcons name="bell-ring" size={20} color={cColor} />
+          </View>
+          <Text style={[st.actionCalloutTitle, { color: cColor }]}>{tx.urgentAction}</Text>
+        </View>
+        <Text style={st.actionCalloutBody}>{data.ai_urgent}</Text>
       </View>
 
-      <View style={st.lossBox}>
-        <Text style={st.lossLabel}>Estimated Weight Loss if Unaddressed</Text>
-        <Text style={[st.lossValue, { color: data.color }]}>{data.loss_estimate}</Text>
+      {/* 2. If ignored */}
+      <View style={[st.actionCallout, { backgroundColor: '#fef3c7', borderColor: C.amber + '40', borderLeftColor: C.amber, marginTop: 10 }]}>
+        <View style={st.actionCalloutHead}>
+          <View style={[st.actionCalloutIconBox, { backgroundColor: C.amber + '20' }]}>
+            <MaterialCommunityIcons name="cash-remove" size={20} color={C.amber} />
+          </View>
+          <Text style={[st.actionCalloutTitle, { color: C.amber }]}>{tx.ifIgnored}</Text>
+        </View>
+        <Text style={st.actionCalloutBody}>{data.ai_loss_warning}</Text>
+        <View style={st.lossEstimateRow}>
+          <Text style={st.lossEstimateLabel}>{tx.estLoss}</Text>
+          <Text style={[st.lossEstimateVal, { color: cColor }]}>{data.loss_estimate}</Text>
+        </View>
+      </View>
+
+      {/* 3. Farmer tip */}
+      <View style={[st.actionCallout, { backgroundColor: '#f0fdf4', borderColor: C.green + '40', borderLeftColor: C.green, marginTop: 10 }]}>
+        <View style={st.actionCalloutHead}>
+          <View style={[st.actionCalloutIconBox, { backgroundColor: C.green + '20' }]}>
+            <MaterialCommunityIcons name="lightbulb-on" size={20} color={C.green} />
+          </View>
+          <Text style={[st.actionCalloutTitle, { color: C.green }]}>{tx.farmerTip}</Text>
+        </View>
+        <Text style={st.actionCalloutBody}>{data.ai_farmer_tip}</Text>
       </View>
     </View>
   );
 }
 
-// ─── Cost result panel ────────────────────────────────────────────────────────
-function CostResultPanel({ data }) {
-  const pColor =
-    data.profitability === 'YES'
-      ? C.green
-      : data.profitability === 'MARGINAL'
-        ? C.amber
-        : C.red;
-  const pLabel =
-    data.profitability === 'YES'
-      ? 'PROFITABLE'
-      : data.profitability === 'MARGINAL'
-        ? 'MARGINAL'
-        : 'LOSS ALERT';
+// ══════════════════════════════════════════════════════════════════════════════
+//  COST RESULT PANEL — Premium redesign
+// ══════════════════════════════════════════════════════════════════════════════
+function CostResultPanel({ data, tx }) {
+  const navigation = useNavigation();
+  const isProfit = data.profitability === 'YES';
+  const isMarginal = data.profitability === 'MARGINAL';
+  const pColor = isProfit ? C.green : isMarginal ? C.amber : C.red;
+  const pLabel = isProfit ? tx.profitable : isMarginal ? tx.marginal : tx.lossAlert;
+  const pIcon = isProfit ? 'trending-up' : isMarginal ? 'trending-neutral' : 'trending-down';
+  const headerGrads = isProfit ? ['#064e3b', '#16a34a'] : isMarginal ? ['#78350f', '#d97706'] : ['#7f1d1d', '#dc2626'];
+
+  const netPositive = (data.net_profit || 0) > 0;
 
   return (
-    <View style={[st.resultBox, { borderLeftColor: pColor }]}>
-      <View style={st.riskHeader}>
-        <View style={{ flex: 1 }}>
-          <View style={[st.riskBadge, { backgroundColor: pColor + '20' }]}>
-            <Text style={[st.riskBadgeTxt, { color: pColor }]}>{pLabel}</Text>
+    <View style={st.resultWrapper}>
+      {/* ── Hero verdict ── */}
+      <LinearGradient colors={headerGrads} style={st.ecoHero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+        <View style={st.decCircle1} />
+        <View style={st.decCircle2} />
+        <View style={st.ecoHeroContent}>
+          <View style={[st.ecoHeroIconCircle, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
+            <MaterialCommunityIcons name={pIcon} size={36} color={C.white} />
           </View>
-          <Text style={st.aiVerdict}>{data.ai_economic_verdict}</Text>
+          <View style={{ flex: 1, paddingLeft: 14 }}>
+            <View style={st.ecoHeroBadge}>
+              <Text style={st.ecoHeroBadgeTxt}>{pLabel}</Text>
+            </View>
+            <Text style={st.ecoHeroVerdict}>{data.ai_economic_verdict}</Text>
+          </View>
+        </View>
+      </LinearGradient>
+
+      {/* ── Price comparison ── */}
+      <View style={st.priceCompareCard}>
+        <View style={st.priceCompareItem}>
+          <View style={st.priceCompareIconBox}>
+            <MaterialCommunityIcons name="cash" size={20} color={C.grey5} />
+          </View>
+          <Text style={st.priceCompareLabel}>{tx.sellToday}</Text>
+          <Text style={st.priceCompareValueNeutral}>{fmtLKR(data.sell_now_value)}</Text>
+        </View>
+        <View style={st.priceArrow}>
+          <MaterialCommunityIcons name="arrow-right-bold" size={22} color={pColor} />
+        </View>
+        <View style={st.priceCompareItem}>
+          <View style={[st.priceCompareIconBox, { backgroundColor: pColor + '18' }]}>
+            <MaterialCommunityIcons name="rocket-launch" size={20} color={pColor} />
+          </View>
+          <Text style={[st.priceCompareLabel, { color: pColor }]}>{tx.sellPeak}</Text>
+          <Text style={[st.priceCompareValueBold, { color: pColor }]}>{fmtLKR(data.sell_peak_value)}</Text>
         </View>
       </View>
 
-      <View style={st.costTable}>
-        <Text style={st.costTableTitle}>
-          Cost Breakdown ({data.bags_required} bags required)
+      {/* ── Net profit hero number ── */}
+      <LinearGradient
+        colors={[pColor + 'ee', pColor]}
+        style={st.netProfitHero}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+      >
+        <Text style={st.netProfitLabel}>{tx.netProfit}</Text>
+        <Text style={st.netProfitValue}>
+          {netPositive ? '+' : ''}{fmtLKR(data.net_profit)}
         </Text>
-        {[
-          { label: 'Storage Bags', value: data.effective_bag_cost },
-          { label: 'Warehouse Rent', value: data.rent_cost },
-          { label: 'Fumigation (×2)', value: data.fumigation_cost },
-          { label: 'Labour (Pack/Move)', value: data.labour_cost },
-          { label: 'Insurance', value: data.insurance_cost },
-        ].map((row, i) => (
-          <View key={i} style={st.costRow}>
-            <Text style={st.costLbl}>{row.label}</Text>
-            <Text style={st.costVal}>{fmtLKR(row.value)}</Text>
+        <MaterialCommunityIcons
+          name={netPositive ? 'arrow-up-circle' : 'arrow-down-circle'}
+          size={28} color="rgba(255,255,255,0.6)"
+        />
+      </LinearGradient>
+
+      {/* ── Cost breakdown ── */}
+      <View style={st.costBreakdownCard}>
+        <View style={st.costBreakdownHeader}>
+          <MaterialCommunityIcons name="receipt" size={18} color={C.grey7} />
+          <Text style={st.costBreakdownTitle}>{tx.costBreakdown}</Text>
+          <View style={st.bagsBadge}>
+            <Text style={st.bagsBadgeTxt}>{data.bags_required} {tx.bagsRequired}</Text>
           </View>
-        ))}
-        <View style={[st.costRow, st.costTotalRow]}>
-          <Text style={st.costTotalLbl}>TOTAL STORAGE COST</Text>
-          <Text style={[st.costVal, { color: C.red, fontSize: 15 }]}>
-            {fmtLKR(data.total_storage_cost)}
-          </Text>
-        </View>
-        <View style={st.costRow}>
-          <Text style={st.costLbl}>Cost per kg</Text>
-          <Text style={st.costVal}>Rs. {data.cost_per_kg}/kg</Text>
         </View>
 
-        {/* FIX L7: Input Planner Button */}
-        <TouchableOpacity
-          style={st.inputPlannerBtn}
-          onPress={() => useNavigation().navigate('InputPlanner')}
-        >
-          <MaterialCommunityIcons name="calculator-variant" size={14} color={C.blue} />
-          <Text style={st.inputPlannerBtnTxt}>Re-calculate Production Cost in Input Planner</Text>
+        {[
+          { icon: 'bag-personal', label: tx.storageBags, value: data.effective_bag_cost, color: C.blue },
+          { icon: 'warehouse', label: tx.rent, value: data.rent_cost, color: C.purple },
+          { icon: 'spray', label: tx.fumigation, value: data.fumigation_cost, color: C.orange },
+          { icon: 'account-hard-hat', label: tx.labour, value: data.labour_cost, color: C.teal },
+          { icon: 'shield-check', label: tx.insurance, value: data.insurance_cost, color: C.green },
+        ].map((row, i) => (
+          <View key={i} style={st.costRow}>
+            <View style={[st.costRowIcon, { backgroundColor: row.color + '15' }]}>
+              <MaterialCommunityIcons name={row.icon} size={15} color={row.color} />
+            </View>
+            <Text style={st.costRowLabel}>{row.label}</Text>
+            <Text style={st.costRowValue}>{fmtLKR(row.value)}</Text>
+          </View>
+        ))}
+
+        <View style={st.costDivider} />
+
+        <View style={st.costTotalRow}>
+          <Text style={st.costTotalLabel}>{tx.totalCost}</Text>
+          <Text style={[st.costTotalValue, { color: pColor }]}>{fmtLKR(data.total_storage_cost)}</Text>
+        </View>
+
+        <View style={[st.costPerKgBadge, { backgroundColor: pColor + '12', borderColor: pColor + '30' }]}>
+          <MaterialCommunityIcons name="scale" size={14} color={pColor} />
+          <Text style={[st.costPerKgTxt, { color: pColor }]}>
+            {tx.costPerKg}: <Text style={{ fontWeight: '900' }}>Rs. {data.cost_per_kg}/kg</Text>
+          </Text>
+        </View>
+
+        <TouchableOpacity style={[st.plannerBtn, { backgroundColor: C.blue }]}
+          onPress={() => navigation.navigate('InputPlanner')}>
+          <MaterialCommunityIcons name="calculator-variant" size={16} color={C.white} />
+          <Text style={st.plannerBtnTxt}>{tx.recalcPlanner}</Text>
         </TouchableOpacity>
       </View>
 
-      <View style={st.compareBox}>
-        <View style={st.compareItem}>
-          <Text style={st.compareLabel}>SELL TODAY</Text>
-          <Text style={[st.compareValue, { color: C.grey7 }]}>
-            {fmtLKR(data.sell_now_value)}
-          </Text>
+      {/* ── Break-even ── */}
+      <View style={st.breakEvenPremium}>
+        <View style={st.breakEvenLeft}>
+          <MaterialCommunityIcons name="scale-balance" size={22} color={C.grey6} />
+          <View style={{ marginLeft: 10 }}>
+            <Text style={st.breakEvenTitle}>{tx.breakEven}</Text>
+            <Text style={st.breakEvenSub}>Rs. {data.break_even_price}/kg</Text>
+          </View>
         </View>
-        <MaterialCommunityIcons name="arrow-right" size={20} color={C.grey4} />
-        <View style={st.compareItem}>
-          <Text style={st.compareLabel}>SELL AT PEAK</Text>
-          <Text style={[st.compareValue, { color: C.green }]}>
-            {fmtLKR(data.sell_peak_value)}
-          </Text>
-        </View>
-        <MaterialCommunityIcons name="equal" size={20} color={C.grey4} />
-        <View style={st.compareItem}>
-          <Text style={st.compareLabel}>NET PROFIT</Text>
-          <Text style={[st.compareValue, { color: pColor, fontSize: 14 }]}>
-            {fmtLKR(data.net_profit)}
-          </Text>
+        <View style={[st.roiBadge, { backgroundColor: netPositive ? C.greenLight : C.redLight }]}>
+          <Text style={[st.roiTxt, { color: netPositive ? C.green : C.red }]}>ROI {data.roi_pct}%</Text>
         </View>
       </View>
 
-      <View style={st.breakEvenBox}>
-        <MaterialCommunityIcons name="scale-balance" size={14} color={C.grey5} />
-        <Text style={st.breakEvenTxt}>
-          Break-even: Rs. {data.break_even_price}/kg • ROI: {data.roi_pct}%
-        </Text>
-      </View>
-
-      <View style={[st.aiBox, { borderColor: pColor + '30', marginTop: 8 }]}>
-        <Text style={[st.aiBoxLabel, { color: pColor }]}>📊 AI ECONOMIC ADVICE</Text>
-        <Text style={st.aiBoxContent}>{data.ai_best_advice}</Text>
+      {/* ── AI advice ── */}
+      <View style={[st.actionCallout, { backgroundColor: pColor + '0d', borderColor: pColor + '35', borderLeftColor: pColor }]}>
+        <View style={st.actionCalloutHead}>
+          <View style={[st.actionCalloutIconBox, { backgroundColor: pColor + '20' }]}>
+            <MaterialCommunityIcons name="robot-outline" size={20} color={pColor} />
+          </View>
+          <Text style={[st.actionCalloutTitle, { color: pColor }]}>{tx.aiEconAdvice}</Text>
+        </View>
+        <Text style={st.actionCalloutBody}>{data.ai_best_advice}</Text>
         {data.ai_risk_warning ? (
-          <Text style={[st.aiBoxContent, { color: C.red, marginTop: 4 }]}>
-            ⚠️ {data.ai_risk_warning}
-          </Text>
+          <View style={st.aiWarnRow}>
+            <MaterialCommunityIcons name="alert-octagon" size={15} color={C.red} />
+            <Text style={st.aiWarnTxt}>{data.ai_risk_warning}</Text>
+          </View>
         ) : null}
       </View>
     </View>
   );
 }
 
-// ─── Recommend result panel ───────────────────────────────────────────────────
-function RecommendResultPanel({ data }) {
+// ══════════════════════════════════════════════════════════════════════════════
+//  RECOMMEND RESULT PANEL — Premium redesign
+// ══════════════════════════════════════════════════════════════════════════════
+function RecommendResultPanel({ data, tx }) {
   const rec = data.ai_recommendation || {};
-  const recKey = rec.recommended_bag || (data.best_option && data.best_option.bag_type) || 'hermetic';
+  const recKey = rec.recommended_bag || (data.best_option?.bag_type) || 'hermetic';
   const meta = BAG_META[recKey] || BAG_META.hermetic;
 
   return (
-    <View style={st.resultBox}>
+    <View style={st.resultWrapper}>
+      {/* ── Winner hero ── */}
       <LinearGradient
-        colors={[meta.color, meta.color + 'aa']}
-        style={st.recWinner}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
+        colors={[meta.color + 'ee', meta.color + 'bb', meta.color + '88']}
+        style={st.recHero}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
       >
-        <MaterialCommunityIcons name={meta.icon} size={32} color={C.white} />
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={st.recWinnerLabel}>BEST CHOICE FOR YOU</Text>
-          <Text style={st.recWinnerName}>{meta.label}</Text>
-          <Text style={st.recWinnerDesc}>{rec.recommendation_headline}</Text>
+        <View style={st.decCircle1} />
+        <View style={st.decCircle2} />
+        <View style={st.recHeroContent}>
+          <View style={[st.recHeroIconBox, { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+            <MaterialCommunityIcons name={meta.icon} size={38} color={C.white} />
+          </View>
+          <View style={{ flex: 1, paddingLeft: 16 }}>
+            <Text style={st.recHeroEyebrow}>{tx.bestChoice}</Text>
+            <Text style={st.recHeroName}>{meta.label}</Text>
+            <Text style={st.recHeroHeadline}>{rec.recommendation_headline}</Text>
+          </View>
         </View>
       </LinearGradient>
 
-      <Text style={[st.factorsTitle, { marginTop: 14 }]}>All Options Compared:</Text>
-      {(data.options || []).map((opt, i) => {
-        const m = BAG_META[opt.bag_type] || {};
-        return (
-          <View
-            key={i}
-            style={[
-              st.optionRow,
-              !opt.viable && { opacity: 0.5 },
-              opt.bag_type === recKey && {
-                borderColor: m.color,
-                borderWidth: 1.5,
-                backgroundColor: m.color + '08',
-              },
-            ]}
-          >
-            <MaterialCommunityIcons
-              name={m.icon || 'sack'}
-              size={20}
-              color={opt.viable ? m.color : C.grey4}
-            />
-            <View style={{ flex: 1, marginLeft: 10 }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={[st.optionName, { color: opt.viable ? C.ink : C.grey4 }]}>
-                  {m.label || opt.bag_type}
-                </Text>
-                {!opt.viable && (
-                  <View style={[st.riskPill, { backgroundColor: C.redLight }]}>
-                    <Text style={[st.riskPillTxt, { color: C.red }]}>NOT ENOUGH DAYS</Text>
-                  </View>
-                )}
-                {opt.bag_type === recKey && (
-                  <View style={[st.riskPill, { backgroundColor: m.color + '20' }]}>
-                    <Text style={[st.riskPillTxt, { color: m.color }]}>RECOMMENDED</Text>
-                  </View>
-                )}
-              </View>
-              <Text style={st.optionMeta}>
-                {opt.storage_months} months safe • {fmtLKR(opt.total_cost)} total cost
-              </Text>
-            </View>
-            <Text style={[st.optionProfit, { color: opt.net_profit > 0 ? C.green : C.red }]}>
-              {opt.net_profit > 0 ? '+' : ''}
-              {fmtLKR(opt.net_profit)}
-            </Text>
-          </View>
-        );
-      })}
+      {/* ── Options comparison ── */}
+      <View style={st.optionsSection}>
+        <Text style={st.optionsSectionTitle}>{tx.allOptions}</Text>
+        {(data.options || []).map((opt, i) => {
+          const m = BAG_META[opt.bag_type] || {};
+          const isWinner = opt.bag_type === recKey;
+          const hasProfit = opt.net_profit > 0;
 
-      {rec.preparation_steps && rec.preparation_steps.length > 0 && (
-        <View style={st.stepsBox}>
-          <Text style={st.factorsTitle}>Preparation Steps:</Text>
-          {rec.preparation_steps.map((step, i) => (
-            <View key={i} style={st.stepRow}>
-              <View style={[st.stepNum, { backgroundColor: meta.color }]}>
-                <Text style={st.stepNumTxt}>{i + 1}</Text>
+          return (
+            <View
+              key={i}
+              style={[
+                st.optionPremiumCard,
+                !opt.viable && st.optionFaded,
+                isWinner && { borderColor: m.color, borderWidth: 2, backgroundColor: m.color + '06' },
+              ]}
+            >
+              {isWinner && (
+                <LinearGradient
+                  colors={[m.color + '15', 'transparent']}
+                  style={StyleSheet.absoluteFillObject}
+                  borderRadius={16}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                />
+              )}
+
+              <View style={[st.optionPremiumIcon, { backgroundColor: opt.viable ? m.color + '18' : C.grey1 }]}>
+                <MaterialCommunityIcons name={m.icon || 'sack'} size={22} color={opt.viable ? m.color : C.grey4} />
               </View>
-              <Text style={st.stepTxt}>{step}</Text>
+
+              <View style={{ flex: 1, paddingLeft: 12 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                  <Text style={[st.optionPremiumName, !opt.viable && { color: C.grey4 }]}>{m.label || opt.bag_type}</Text>
+                  {isWinner && (
+                    <View style={[st.recBadge, { backgroundColor: m.color }]}>
+                      <MaterialCommunityIcons name="check-circle" size={11} color={C.white} style={{ marginRight: 3 }} />
+                      <Text style={st.recBadgeTxt}>{tx.recommended}</Text>
+                    </View>
+                  )}
+                  {!opt.viable && (
+                    <View style={[st.recBadge, { backgroundColor: C.redLight }]}>
+                      <Text style={[st.recBadgeTxt, { color: C.red }]}>{tx.notEnoughDays}</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={st.optionPremiumMeta}>
+                  {opt.storage_months} {tx.months} • {fmtLKR(opt.total_cost)} {tx.totalCostLabel}
+                </Text>
+              </View>
+
+              <View style={{ alignItems: 'flex-end' }}>
+                <Text style={[st.optionPremiumProfit, { color: hasProfit ? C.green : C.red }]}>
+                  {hasProfit ? '+' : ''}{fmtLKR(opt.net_profit)}
+                </Text>
+                <Text style={st.optionPremiumProfitLabel}>net profit</Text>
+              </View>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* ── Preparation steps ── */}
+      {rec.preparation_steps && rec.preparation_steps.length > 0 && (
+        <View style={st.stepsSection}>
+          <View style={st.stepsSectionHeader}>
+            <MaterialCommunityIcons name="format-list-numbered" size={16} color={meta.color} />
+            <Text style={[st.stepsSectionTitle, { color: meta.color }]}>{tx.prepSteps}</Text>
+          </View>
+          {rec.preparation_steps.map((step, i) => (
+            <View key={i} style={st.stepPremiumRow}>
+              <LinearGradient colors={[meta.color, meta.color + 'bb']} style={st.stepPremiumNum}>
+                <Text style={st.stepPremiumNumTxt}>{i + 1}</Text>
+              </LinearGradient>
+              <View style={st.stepPremiumBubble}>
+                <Text style={st.stepPremiumTxt}>{step}</Text>
+              </View>
             </View>
           ))}
         </View>
       )}
 
+      {/* ── Where to buy ── */}
       {rec.where_to_buy ? (
-        <View style={[st.aiBox, { borderColor: meta.color + '30', marginTop: 8 }]}>
-          <Text style={[st.aiBoxLabel, { color: meta.color }]}>🏪 WHERE TO BUY IN SRI LANKA</Text>
-          <Text style={st.aiBoxContent}>{rec.where_to_buy}</Text>
+        <View style={[st.whereToBuyCard, { borderColor: meta.color + '30' }]}>
+          <LinearGradient colors={[meta.color + '10', meta.color + '05']} style={StyleSheet.absoluteFillObject} borderRadius={16} />
+          <View style={st.whereToBuyHeader}>
+            <MaterialCommunityIcons name="store" size={18} color={meta.color} />
+            <Text style={[st.whereToBuyTitle, { color: meta.color }]}>{tx.whereToBuy}</Text>
+          </View>
+          <Text style={st.whereToBuyBody}>{rec.where_to_buy}</Text>
         </View>
       ) : null}
     </View>
   );
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
 //  MAIN SCREEN
-// ═════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════
 export default function StorageDashboardScreen({ navigation }) {
+  const location = useUniversalLocation();
   const [locations, setLocations] = useState([]);
   const [harvests, setHarvests] = useState([]);
   const [totals, setTotals] = useState({ kg: 0, bags: 0, value: '0' });
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('risk');
+  const [lang, setLang] = useState('en');
+  const tx = T[lang] || T.en;
 
-  // ── Risk form ──────────────────────────────────────────────────────────────
+  const [selectedDistrict, setSelectedDistrict] = useState(null);
+  const [showDistrictPicker, setShowDistrictPicker] = useState(false);
+  const [showVarietyPicker, setShowVarietyPicker] = useState(false);
+  const [recShowVarietyPicker, setRecShowVarietyPicker] = useState(false);
+
   const [riskForm, setRiskForm] = useState({
-    moisture_pct: 13.5,
-    bag_type: 'gunny',
-    duration_months: 3,
-    quantity_kg: 1000,
-    has_pest_history: false,
-    storage_location: 'home',
-    temp_c: 28,
+    moisture_pct: 13.5, bag_type: 'gunny', duration_months: 3,
+    quantity_kg: 1000, has_pest_history: false, storage_location: 'home',
+    temp_c: 28, district: null,
   });
   const [riskResult, setRiskResult] = useState(null);
   const [loadingRisk, setLoadingRisk] = useState(false);
 
-  // ── Cost form ──────────────────────────────────────────────────────────────
   const [costForm, setCostForm] = useState({
-    quantity_kg: 1000,
-    bag_type: 'gunny',
-    duration_months: 3,
-    storage_location: 'home',
-    variety: 'Bg 352',
-    current_price: '',
-    expected_price: '',
+    quantity_kg: 1000, bag_type: 'gunny', duration_months: 3,
+    storage_location: 'home', variety: 'Bg 352', current_price: '', expected_price: '',
   });
   const [costResult, setCostResult] = useState(null);
   const [loadingCost, setLoadingCost] = useState(false);
 
-  // ── Recommend form ─────────────────────────────────────────────────────────
   const [recForm, setRecForm] = useState({
-    quantity_kg: 1000,
-    duration_months: 3,
-    moisture_pct: 13.5,
-    temp_c: 28,
-    variety: 'Bg 352',
-    budget_lkr: 0,
+    quantity_kg: 1000, duration_months: 3, moisture_pct: 13.5,
+    temp_c: 28, variety: 'Bg 352', budget_lkr: 0,
   });
   const [recResult, setRecResult] = useState(null);
   const [loadingRec, setLoadingRec] = useState(false);
 
-  // ─── Fetch from Firestore ────────────────────────────────────────────────
   const fetchData = useCallback(async () => {
     try {
-      const uid = auth.currentUser && auth.currentUser.uid;
+      const uid = auth.currentUser?.uid;
       if (!uid) return;
-
-      const locSnap = await db
-        .collection('storageLocations')
-        .where('userId', '==', uid)
-        .get();
+      const locSnap = await db.collection('storageLocations').where('userId', '==', uid).get();
       setLocations(locSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-
-      return db
-        .collection('harvests')
-        .where('userId', '==', uid)
-        .onSnapshot(
-          (snap) => {
-            let kg = 0;
-            let bags = 0;
-            const list = snap.docs.map((doc) => {
-              const d = doc.data();
-              kg += Number(d.quantityKg || 0);
-              bags += Number(d.bags || 0);
-              return { id: doc.id, ...d };
-            });
-            setHarvests(list);
-            setTotals({
-              kg: kg.toFixed(0),
-              bags: bags.toFixed(0),
-              value: (kg * 256).toLocaleString('en-LK'),
-            });
-            setLoading(false);
-            setRefreshing(false);
-          },
-          (err) => {
-            console.error(err);
-            setLoading(false);
-            setRefreshing(false);
-          },
-        );
-    } catch (err) {
-      console.error(err);
-      setLoading(false);
-      setRefreshing(false);
-    }
+      return db.collection('harvests').where('userId', '==', uid).onSnapshot(
+        (snap) => {
+          let kg = 0; let bags = 0;
+          const list = snap.docs.map((doc) => {
+            const d = doc.data();
+            kg += Number(d.quantityKg || 0);
+            bags += Number(d.bags || 0);
+            return { id: doc.id, ...d };
+          });
+          setHarvests(list);
+          setTotals({ kg: kg.toFixed(0), bags: bags.toFixed(0), value: (kg * 256).toLocaleString('en-LK') });
+          setLoading(false); setRefreshing(false);
+        },
+        (err) => { console.error(err); setLoading(false); setRefreshing(false); },
+      );
+    } catch (err) { console.error(err); setLoading(false); setRefreshing(false); }
   }, []);
 
   useEffect(() => {
     let unsub;
-    fetchData().then((u) => {
-      unsub = u;
-    });
-    return () => {
-      if (typeof unsub === 'function') unsub();
-    };
+    fetchData().then((u) => { unsub = u; });
+    return () => { if (typeof unsub === 'function') unsub(); };
   }, []);
 
-  // ─── API helpers ─────────────────────────────────────────────────────────
   const apiPost = async (path, body) => {
     const res = await fetch(`${BASE_URL}${path}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     });
     return res.json();
   };
 
   const computeRisk = async () => {
-    setLoadingRisk(true);
-    setRiskResult(null);
+    const d = selectedDistrict;
+    const body = { ...riskForm, lang, temp_c: d ? d.avgTemp : riskForm.temp_c, lat: d ? d.lat : (location?.latitude || 7.87), lon: d ? d.lon : (location?.longitude || 80.77) };
+    setLoadingRisk(true); setRiskResult(null);
     try {
-      const data = await apiPost('/api/guardian/risk_score', riskForm);
-      if (data.error) Alert.alert('Error', data.error);
-      else setRiskResult(data);
-    } catch {
-      Alert.alert('Connection Error', 'Could not reach AI server. Check network.');
-    } finally {
-      setLoadingRisk(false);
-    }
+      const data = await apiPost('/api/guardian/risk_score', body);
+      if (data.error) Alert.alert('Error', data.error); else setRiskResult(data);
+    } catch { Alert.alert('Connection Error', 'Could not reach AI server.'); }
+    finally { setLoadingRisk(false); }
   };
 
   const computeCost = async () => {
     if (!costForm.quantity_kg || Number(costForm.quantity_kg) <= 0) {
-      Alert.alert('Input Error', 'Please enter the quantity in kg.');
-      return;
+      Alert.alert('Input Error', 'Please enter the quantity in kg.'); return;
     }
-    setLoadingCost(true);
-    setCostResult(null);
+    setLoadingCost(true); setCostResult(null);
     try {
-      const body = {
-        ...costForm,
-        quantity_kg: Number(costForm.quantity_kg),
-        duration_months: Number(costForm.duration_months),
-        current_price: costForm.current_price ? Number(costForm.current_price) : undefined,
-        expected_price: costForm.expected_price ? Number(costForm.expected_price) : undefined,
-      };
+      const body = { ...costForm, lang, quantity_kg: Number(costForm.quantity_kg), duration_months: Number(costForm.duration_months), current_price: costForm.current_price ? Number(costForm.current_price) : undefined, expected_price: costForm.expected_price ? Number(costForm.expected_price) : undefined };
       const data = await apiPost('/api/guardian/calculate_costs', body);
-      if (data.error) Alert.alert('Error', data.error);
-      else setCostResult(data);
-    } catch {
-      Alert.alert('Connection Error', 'Could not reach AI server.');
-    } finally {
-      setLoadingCost(false);
-    }
+      if (data.error) Alert.alert('Error', data.error); else setCostResult(data);
+    } catch { Alert.alert('Connection Error', 'Could not reach AI server.'); }
+    finally { setLoadingCost(false); }
   };
 
   const computeRecommend = async () => {
-    setLoadingRec(true);
-    setRecResult(null);
+    setLoadingRec(true); setRecResult(null);
     try {
-      const data = await apiPost('/api/guardian/recommend_storage', recForm);
-      if (data.error) Alert.alert('Error', data.error);
-      else setRecResult(data);
-    } catch {
-      Alert.alert('Error', 'Could not compute recommendation.');
-    } finally {
-      setLoadingRec(false);
-    }
+      const data = await apiPost('/api/guardian/recommend_storage', { ...recForm, lang });
+      if (data.error) Alert.alert('Error', data.error); else setRecResult(data);
+    } catch { Alert.alert('Error', 'Could not compute recommendation.'); }
+    finally { setLoadingRec(false); }
   };
 
-  // ─── API helpers ─────────────────────────────────────────────────────────
+  // ─── Render Risk Tab ──────────────────────────────────────────────────────
   const renderRiskTab = () => (
     <View style={st.card}>
-      <SectionHeader
-        icon="shield-search"
-        color={C.green}
-        title="Storage Risk Score"
-        sub="Based on SLR 603:2013 standards"
-      />
+      <SectionHeader icon="shield-search" color={C.green} title={tx.riskTitle} sub={tx.riskSub} />
 
-      {/* Moisture — most critical field */}
+      {/* District */}
+      <View style={{ marginBottom: 16 }}>
+        <Text style={st.fieldLabel}>📍 {tx.district}</Text>
+        <TouchableOpacity style={st.pickerBtn} onPress={() => setShowDistrictPicker(true)}>
+          <MaterialCommunityIcons name="map-marker" size={16} color={C.green} />
+          <Text style={st.pickerBtnTxt}>{selectedDistrict ? selectedDistrict.label : '— Select district —'}</Text>
+          {selectedDistrict && (
+            <View style={st.tempBadge}><Text style={st.tempBadgeTxt}>🌡 {selectedDistrict.avgTemp}°C</Text></View>
+          )}
+          <MaterialCommunityIcons name="chevron-down" size={16} color={C.grey5} />
+        </TouchableOpacity>
+        {selectedDistrict && (
+          <Text style={st.hintText}>📊 {selectedDistrict.label} avg temp: {selectedDistrict.avgTemp}°C — auto applied</Text>
+        )}
+      </View>
+
+      {/* Moisture chips */}
       <View style={st.moistureBox}>
-        <Text style={st.fieldLabel}>Moisture Content (%)</Text>
-        <Text style={st.hintSmall}>
-          Use a moisture meter or refer to the salt-bottle test guide
-        </Text>
+        <Text style={st.fieldLabel}>{tx.moistureContent}</Text>
+        <Text style={st.hintSmall}>{tx.moistureHint}</Text>
         <View style={st.mcRow}>
           {[10, 12, 13, 14, 15, 16, 18].map((mc) => {
             const isSel = riskForm.moisture_pct === mc;
             const isRisky = mc >= 14;
             return (
-              <TouchableOpacity
-                key={mc}
-                style={[
-                  st.mcChip,
-                  isSel && {
-                    backgroundColor: isRisky ? C.red : C.green,
-                    borderColor: isRisky ? C.red : C.green,
-                  },
-                ]}
+              <TouchableOpacity key={mc}
+                style={[st.mcChip, isSel && { backgroundColor: isRisky ? C.red : C.green, borderColor: isRisky ? C.red : C.green }]}
                 onPress={() => setRiskForm({ ...riskForm, moisture_pct: mc })}
               >
                 <Text style={[st.mcChipTxt, isSel && { color: C.white }]}>{mc}%</Text>
-                {mc === 13 && (
-                  <Text style={{ fontSize: 8, color: isSel ? C.white : C.green, fontWeight: '800' }}>
-                    SAFE
-                  </Text>
-                )}
-                {mc === 14 && (
-                  <Text style={{ fontSize: 8, color: isSel ? C.white : C.amber, fontWeight: '800' }}>
-                    LIMIT
-                  </Text>
-                )}
-                {mc >= 16 && (
-                  <Text style={{ fontSize: 8, color: isSel ? C.white : C.red, fontWeight: '800' }}>
-                    DANGER
-                  </Text>
-                )}
+                {mc === 13 && <Text style={{ fontSize: 7, color: isSel ? C.white : C.green, fontWeight: '800' }}>{tx.safe}</Text>}
+                {mc === 14 && <Text style={{ fontSize: 7, color: isSel ? C.white : C.amber, fontWeight: '800' }}>{tx.limit}</Text>}
+                {mc >= 16 && <Text style={{ fontSize: 7, color: isSel ? C.white : C.red, fontWeight: '800' }}>{tx.danger}</Text>}
               </TouchableOpacity>
             );
           })}
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 10 }}>
-          <Text style={st.fieldLabel}>Or enter exact value:</Text>
-          <TextInput
-            style={st.compactInput}
-            keyboardType="decimal-pad"
+          <Text style={st.fieldLabel}>{tx.orEnterExact}</Text>
+          <TextInput style={st.compactInput} keyboardType="decimal-pad"
             value={String(riskForm.moisture_pct)}
-            onChangeText={(v) =>
-              setRiskForm({ ...riskForm, moisture_pct: parseFloat(v) || 13.5 })
-            }
-            placeholder="e.g. 13.8"
-          />
+            onChangeText={(v) => setRiskForm({ ...riskForm, moisture_pct: parseFloat(v) || 13.5 })}
+            placeholder="e.g. 13.8" />
         </View>
       </View>
 
-      <ChipGroup
-        label="Storage Bag Type"
-        options={Object.entries(BAG_META).map(([v, m]) => ({
-          value: v,
-          label: m.label,
-          icon: m.icon,
-        }))}
-        value={riskForm.bag_type}
-        onChange={(v) => setRiskForm({ ...riskForm, bag_type: v })}
-        color={C.green}
-      />
+      <ChipGroup label={tx.storageBagType}
+        options={Object.entries(BAG_META).map(([v, m]) => ({ value: v, label: m.label, icon: m.icon }))}
+        value={riskForm.bag_type} onChange={(v) => setRiskForm({ ...riskForm, bag_type: v })} color={C.green} />
 
       {BAG_META[riskForm.bag_type] && (
-        <View
-          style={[
-            st.bagDescBox,
-            { borderColor: BAG_META[riskForm.bag_type].color + '40' },
-          ]}
-        >
-          <MaterialCommunityIcons
-            name={BAG_META[riskForm.bag_type].icon}
-            size={16}
-            color={BAG_META[riskForm.bag_type].color}
-          />
-          <Text style={[st.bagDescTxt, { color: BAG_META[riskForm.bag_type].color }]}>
-            {BAG_META[riskForm.bag_type].desc}
-          </Text>
+        <View style={[st.bagDescBox, { borderColor: BAG_META[riskForm.bag_type].color + '40' }]}>
+          <MaterialCommunityIcons name={BAG_META[riskForm.bag_type].icon} size={16} color={BAG_META[riskForm.bag_type].color} />
+          <Text style={[st.bagDescTxt, { color: BAG_META[riskForm.bag_type].color }]}>{BAG_META[riskForm.bag_type].desc}</Text>
         </View>
       )}
 
-      <ChipGroup
-        label="How long to store?"
-        options={[
-          { value: 1, label: '1 Month' },
-          { value: 2, label: '2 Months' },
-          { value: 3, label: '3 Months' },
-          { value: 6, label: '6 Months' },
-        ]}
-        value={riskForm.duration_months}
-        onChange={(v) => setRiskForm({ ...riskForm, duration_months: v })}
-        color={C.green}
-      />
-
-      <View style={{ marginBottom: 14 }}>
-        <Text style={st.fieldLabel}>Total Quantity (kg)</Text>
-        <TextInput
-          style={st.fullInput}
-          keyboardType="numeric"
-          value={String(riskForm.quantity_kg)}
-          onChangeText={(v) =>
-            setRiskForm({ ...riskForm, quantity_kg: parseFloat(v) || 1000 })
-          }
-          placeholder="e.g. 2000"
-        />
+      {/* Duration */}
+      <View style={{ marginBottom: 16 }}>
+        <Text style={st.fieldLabel}>{tx.howLongStore}</Text>
+        <View style={st.chipRow}>
+          {[{ value: 1, label: tx.month1 }, { value: 2, label: tx.month2 }, { value: 3, label: tx.month3 }, { value: 6, label: tx.month6 }].map((opt) => (
+            <TouchableOpacity key={opt.value}
+              style={[st.chip, riskForm.duration_months === opt.value && { backgroundColor: C.green, borderColor: C.green }]}
+              onPress={() => setRiskForm({ ...riskForm, duration_months: opt.value })}>
+              <Text style={[st.chipTxt, riskForm.duration_months === opt.value && { color: C.white }]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity
+            style={[st.chip, { borderColor: C.purple, borderWidth: 2 }, riskForm.duration_months > 6 && { backgroundColor: C.purple, borderColor: C.purple }]}
+            onPress={() => setRiskForm({ ...riskForm, duration_months: 9 })}>
+            <MaterialCommunityIcons name="clock-plus" size={12} color={riskForm.duration_months > 6 ? C.white : C.purple} style={{ marginRight: 3 }} />
+            <Text style={[st.chipTxt, { color: riskForm.duration_months > 6 ? C.white : C.purple }]}>{tx.month6plus}</Text>
+          </TouchableOpacity>
+        </View>
+        {riskForm.duration_months > 6 && (
+          <Text style={[st.hintText, { color: C.purple }]}>⚠️ Long-term: hermetic bags or metal bins recommended</Text>
+        )}
       </View>
 
-      <ChipGroup
-        label="Storage Location"
-        options={Object.entries(LOCATION_META).map(([v, m]) => ({
-          value: v,
-          label: m.label,
-          icon: m.icon,
-        }))}
-        value={riskForm.storage_location}
-        onChange={(v) => setRiskForm({ ...riskForm, storage_location: v })}
-        color={C.blue}
-      />
+      <View style={{ marginBottom: 16 }}>
+        <Text style={st.fieldLabel}>{tx.qty}</Text>
+        <TextInput style={st.fullInput} keyboardType="numeric" value={String(riskForm.quantity_kg)}
+          onChangeText={(v) => setRiskForm({ ...riskForm, quantity_kg: parseFloat(v) || 1000 })} placeholder="e.g. 2000" />
+      </View>
 
-      <ChipGroup
-        label="Seen rats or weevils (ghun) here before?"
-        options={[
-          { value: false, label: 'No — Safe location', icon: 'check-circle-outline' },
-          { value: true, label: 'Yes — Pest history', icon: 'alert-outline' },
-        ]}
-        value={riskForm.has_pest_history}
-        onChange={(v) => setRiskForm({ ...riskForm, has_pest_history: v })}
-        color={C.red}
-      />
+      <ChipGroup label={tx.storageLoc}
+        options={Object.entries(LOCATION_META).map(([v, m]) => ({ value: v, label: m.label, icon: m.icon }))}
+        value={riskForm.storage_location} onChange={(v) => setRiskForm({ ...riskForm, storage_location: v })} color={C.blue} />
 
-      <TouchableOpacity
-        style={[st.primaryBtn, { backgroundColor: C.green }]}
-        onPress={computeRisk}
-        disabled={loadingRisk}
-      >
-        {loadingRisk ? (
-          <>
-            <ActivityIndicator color={C.white} />
-            <Text style={st.primaryBtnTxt}> Analysing with AI...</Text>
-          </>
-        ) : (
-          <>
-            <MaterialCommunityIcons name="shield-search" size={18} color={C.white} />
-            <Text style={st.primaryBtnTxt}> Compute Risk Score</Text>
-          </>
-        )}
+      <ChipGroup label={tx.pestHistory}
+        options={[{ value: false, label: tx.noPest, icon: 'check-circle-outline' }, { value: true, label: tx.yesPest, icon: 'alert-outline' }]}
+        value={riskForm.has_pest_history} onChange={(v) => setRiskForm({ ...riskForm, has_pest_history: v })} color={C.red} />
+
+      <TouchableOpacity style={[st.primaryBtn, { backgroundColor: C.green }]} onPress={computeRisk} disabled={loadingRisk}>
+        {loadingRisk
+          ? <><ActivityIndicator color={C.white} /><Text style={st.primaryBtnTxt}> {tx.analysing}</Text></>
+          : <><MaterialCommunityIcons name="shield-search" size={18} color={C.white} /><Text style={st.primaryBtnTxt}> {tx.computeRisk}</Text></>}
       </TouchableOpacity>
 
-      {riskResult ? <RiskResultPanel data={riskResult} /> : null}
+      {riskResult ? <RiskResultPanel data={riskResult} tx={tx} /> : null}
     </View>
   );
 
+  // ─── Render Cost Tab ──────────────────────────────────────────────────────
   const renderCostTab = () => (
     <View style={st.card}>
-      <SectionHeader
-        icon="calculator"
-        color={C.blue}
-        title="Storage Economics"
-        sub="Is storing worth it? Real LKR analysis"
-      />
+      <SectionHeader icon="calculator" color={C.blue} title={tx.ecoTitle} sub={tx.ecoSub} />
 
-      <View style={{ marginBottom: 14 }}>
-        <Text style={st.fieldLabel}>Quantity (kg)</Text>
-        <TextInput
-          style={st.fullInput}
-          keyboardType="numeric"
-          value={String(costForm.quantity_kg)}
-          onChangeText={(v) => setCostForm({ ...costForm, quantity_kg: v })}
-          placeholder="e.g. 2000"
-        />
+      <View style={{ marginBottom: 16 }}>
+        <Text style={st.fieldLabel}>{tx.qty}</Text>
+        <TextInput style={st.fullInput} keyboardType="numeric" value={String(costForm.quantity_kg)}
+          onChangeText={(v) => setCostForm({ ...costForm, quantity_kg: v })} placeholder="e.g. 2000" />
       </View>
 
-      <ChipGroup
-        label="Storage Bag"
+      <View style={{ marginBottom: 16 }}>
+        <Text style={st.fieldLabel}>🌾 {tx.riceVariety}</Text>
+        <TouchableOpacity style={st.pickerBtn} onPress={() => setShowVarietyPicker(true)}>
+          <MaterialCommunityIcons name="grain" size={16} color={C.blue} />
+          <Text style={st.pickerBtnTxt}>{costForm.variety || 'Select variety'}</Text>
+          <MaterialCommunityIcons name="chevron-down" size={16} color={C.grey5} />
+        </TouchableOpacity>
+      </View>
+
+      <ChipGroup label={tx.storageBagType}
         options={Object.entries(BAG_META).map(([v, m]) => ({ value: v, label: m.label }))}
-        value={costForm.bag_type}
-        onChange={(v) => setCostForm({ ...costForm, bag_type: v })}
-        color={C.blue}
-      />
+        value={costForm.bag_type} onChange={(v) => setCostForm({ ...costForm, bag_type: v })} color={C.blue} />
 
-      <ChipGroup
-        label="Duration"
-        options={[
-          { value: 1, label: '1 Month' },
-          { value: 2, label: '2 Months' },
-          { value: 3, label: '3 Months' },
-          { value: 6, label: '6 Months' },
-        ]}
-        value={costForm.duration_months}
-        onChange={(v) => setCostForm({ ...costForm, duration_months: v })}
-        color={C.blue}
-      />
+      <View style={{ marginBottom: 16 }}>
+        <Text style={st.fieldLabel}>{tx.duration}</Text>
+        <View style={st.chipRow}>
+          {[{ value: 1, label: tx.month1 }, { value: 2, label: tx.month2 }, { value: 3, label: tx.month3 }, { value: 6, label: tx.month6 }].map((opt) => (
+            <TouchableOpacity key={opt.value}
+              style={[st.chip, costForm.duration_months === opt.value && { backgroundColor: C.blue, borderColor: C.blue }]}
+              onPress={() => setCostForm({ ...costForm, duration_months: opt.value })}>
+              <Text style={[st.chipTxt, costForm.duration_months === opt.value && { color: C.white }]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity
+            style={[st.chip, { borderColor: C.purple, borderWidth: 2 }, costForm.duration_months > 6 && { backgroundColor: C.purple, borderColor: C.purple }]}
+            onPress={() => setCostForm({ ...costForm, duration_months: 9 })}>
+            <MaterialCommunityIcons name="clock-plus" size={12} color={costForm.duration_months > 6 ? C.white : C.purple} style={{ marginRight: 3 }} />
+            <Text style={[st.chipTxt, { color: costForm.duration_months > 6 ? C.white : C.purple }]}>{tx.month6plus}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
-      <ChipGroup
-        label="Storage Location"
+      <ChipGroup label={tx.storageLoc}
         options={Object.entries(LOCATION_META).map(([v, m]) => ({ value: v, label: m.label }))}
-        value={costForm.storage_location}
-        onChange={(v) => setCostForm({ ...costForm, storage_location: v })}
-        color={C.blue}
-      />
+        value={costForm.storage_location} onChange={(v) => setCostForm({ ...costForm, storage_location: v })} color={C.blue} />
 
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}>
         <View style={{ flex: 1 }}>
-          <Text style={st.fieldLabel}>Current Price (LKR/kg)</Text>
-          <TextInput
-            style={st.fullInput}
-            keyboardType="decimal-pad"
-            value={costForm.current_price}
-            onChangeText={(v) => setCostForm({ ...costForm, current_price: v })}
-            placeholder="Auto from market"
-          />
+          <Text style={st.fieldLabel}>{tx.currentPrice}</Text>
+          <TextInput style={st.fullInput} keyboardType="decimal-pad" value={costForm.current_price}
+            onChangeText={(v) => setCostForm({ ...costForm, current_price: v })} placeholder="Auto from market" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={st.fieldLabel}>Expected Peak (LKR/kg)</Text>
-          <TextInput
-            style={st.fullInput}
-            keyboardType="decimal-pad"
-            value={costForm.expected_price}
-            onChangeText={(v) => setCostForm({ ...costForm, expected_price: v })}
-            placeholder="Auto from forecast"
-          />
+          <Text style={st.fieldLabel}>{tx.expectedPeak}</Text>
+          <TextInput style={st.fullInput} keyboardType="decimal-pad" value={costForm.expected_price}
+            onChangeText={(v) => setCostForm({ ...costForm, expected_price: v })} placeholder="Auto from forecast" />
         </View>
       </View>
-      <Text style={st.hintText}>💡 Leave prices empty to use our market forecast data</Text>
+      <Text style={st.hintText}>{tx.priceHint}</Text>
 
-      <TouchableOpacity
-        style={[st.primaryBtn, { backgroundColor: C.blue }]}
-        onPress={computeCost}
-        disabled={loadingCost}
-      >
-        {loadingCost ? (
-          <>
-            <ActivityIndicator color={C.white} />
-            <Text style={st.primaryBtnTxt}> Calculating...</Text>
-          </>
-        ) : (
-          <>
-            <MaterialCommunityIcons name="calculator" size={18} color={C.white} />
-            <Text style={st.primaryBtnTxt}> Calculate Economics</Text>
-          </>
-        )}
+      <TouchableOpacity style={[st.primaryBtn, { backgroundColor: C.blue }]} onPress={computeCost} disabled={loadingCost}>
+        {loadingCost
+          ? <><ActivityIndicator color={C.white} /><Text style={st.primaryBtnTxt}> {tx.calculating}</Text></>
+          : <><MaterialCommunityIcons name="calculator" size={18} color={C.white} /><Text style={st.primaryBtnTxt}> {tx.calcEco}</Text></>}
       </TouchableOpacity>
 
-      {costResult ? <CostResultPanel data={costResult} /> : null}
+      {costResult ? <CostResultPanel data={costResult} tx={tx} /> : null}
     </View>
   );
 
+  // ─── Render Recommend Tab ─────────────────────────────────────────────────
   const renderRecommendTab = () => (
     <View style={st.card}>
-      <SectionHeader
-        icon="lightbulb-on"
-        color={C.purple}
-        title="Best Bag Recommendation"
-        sub="AI picks the ideal storage for your situation"
-      />
+      <SectionHeader icon="lightbulb-on" color={C.purple} title={tx.recTitle} sub={tx.recSub} />
 
-      <View style={{ marginBottom: 14 }}>
-        <Text style={st.fieldLabel}>Quantity (kg)</Text>
-        <TextInput
-          style={st.fullInput}
-          keyboardType="numeric"
-          value={String(recForm.quantity_kg)}
-          onChangeText={(v) => setRecForm({ ...recForm, quantity_kg: parseFloat(v) || 1000 })}
-          placeholder="e.g. 5000"
-        />
+      <View style={{ marginBottom: 16 }}>
+        <Text style={st.fieldLabel}>{tx.qty}</Text>
+        <TextInput style={st.fullInput} keyboardType="numeric" value={String(recForm.quantity_kg)}
+          onChangeText={(v) => setRecForm({ ...recForm, quantity_kg: parseFloat(v) || 1000 })} placeholder="e.g. 5000" />
       </View>
 
-      <ChipGroup
-        label="How long do you need to store?"
-        options={[
-          { value: 1, label: '1 Month' },
-          { value: 3, label: '3 Months' },
-          { value: 6, label: '6 Months' },
-          { value: 9, label: '9 Months' },
-        ]}
-        value={recForm.duration_months}
-        onChange={(v) => setRecForm({ ...recForm, duration_months: v })}
-        color={C.purple}
-      />
+      <View style={{ marginBottom: 16 }}>
+        <Text style={st.fieldLabel}>🌾 {tx.riceVariety}</Text>
+        <TouchableOpacity style={st.pickerBtn} onPress={() => setRecShowVarietyPicker(true)}>
+          <MaterialCommunityIcons name="grain" size={16} color={C.purple} />
+          <Text style={st.pickerBtnTxt}>{recForm.variety || 'Select variety'}</Text>
+          <MaterialCommunityIcons name="chevron-down" size={16} color={C.grey5} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={{ marginBottom: 16 }}>
+        <Text style={st.fieldLabel}>{tx.howLongStore}</Text>
+        <View style={st.chipRow}>
+          {[{ value: 1, label: tx.month1 }, { value: 3, label: tx.month3 }, { value: 6, label: tx.month6 }, { value: 9, label: tx.month9 }].map((opt) => (
+            <TouchableOpacity key={opt.value}
+              style={[st.chip, recForm.duration_months === opt.value && { backgroundColor: C.purple, borderColor: C.purple }]}
+              onPress={() => setRecForm({ ...recForm, duration_months: opt.value })}>
+              <Text style={[st.chipTxt, recForm.duration_months === opt.value && { color: C.white }]}>{opt.label}</Text>
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity
+            style={[st.chip, { borderColor: C.amber, borderWidth: 2 }, recForm.duration_months > 9 && { backgroundColor: C.amber, borderColor: C.amber }]}
+            onPress={() => setRecForm({ ...recForm, duration_months: 12 })}>
+            <MaterialCommunityIcons name="clock-plus" size={12} color={recForm.duration_months > 9 ? C.white : C.amber} style={{ marginRight: 3 }} />
+            <Text style={[st.chipTxt, { color: recForm.duration_months > 9 ? C.white : C.amber }]}>{tx.month12}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}>
         <View style={{ flex: 1 }}>
-          <Text style={st.fieldLabel}>Moisture (%)</Text>
-          <TextInput
-            style={st.fullInput}
-            keyboardType="decimal-pad"
-            value={String(recForm.moisture_pct)}
-            onChangeText={(v) => setRecForm({ ...recForm, moisture_pct: parseFloat(v) || 13.5 })}
-            placeholder="13.5"
-          />
+          <Text style={st.fieldLabel}>{tx.moisture}</Text>
+          <TextInput style={st.fullInput} keyboardType="decimal-pad" value={String(recForm.moisture_pct)}
+            onChangeText={(v) => setRecForm({ ...recForm, moisture_pct: parseFloat(v) || 13.5 })} placeholder="13.5" />
         </View>
         <View style={{ flex: 1 }}>
-          <Text style={st.fieldLabel}>Est. Temperature (°C)</Text>
-          <TextInput
-            style={st.fullInput}
-            keyboardType="decimal-pad"
-            value={String(recForm.temp_c)}
-            onChangeText={(v) => setRecForm({ ...recForm, temp_c: parseFloat(v) || 28 })}
-            placeholder="28"
-          />
+          <Text style={st.fieldLabel}>{tx.estTemp}</Text>
+          <TextInput style={st.fullInput} keyboardType="decimal-pad" value={String(recForm.temp_c)}
+            onChangeText={(v) => setRecForm({ ...recForm, temp_c: parseFloat(v) || 28 })} placeholder="28" />
         </View>
       </View>
 
-      <TouchableOpacity
-        style={[st.primaryBtn, { backgroundColor: C.purple }]}
-        onPress={computeRecommend}
-        disabled={loadingRec}
-      >
-        {loadingRec ? (
-          <>
-            <ActivityIndicator color={C.white} />
-            <Text style={st.primaryBtnTxt}> AI Thinking...</Text>
-          </>
-        ) : (
-          <>
-            <MaterialCommunityIcons name="lightbulb-on" size={18} color={C.white} />
-            <Text style={st.primaryBtnTxt}> Get AI Recommendation</Text>
-          </>
-        )}
+      <TouchableOpacity style={[st.primaryBtn, { backgroundColor: C.purple }]} onPress={computeRecommend} disabled={loadingRec}>
+        {loadingRec
+          ? <><ActivityIndicator color={C.white} /><Text style={st.primaryBtnTxt}> {tx.aiThinking}</Text></>
+          : <><MaterialCommunityIcons name="lightbulb-on" size={18} color={C.white} /><Text style={st.primaryBtnTxt}> {tx.getAIRec}</Text></>}
       </TouchableOpacity>
 
-      {recResult ? <RecommendResultPanel data={recResult} /> : null}
+      {recResult ? <RecommendResultPanel data={recResult} tx={tx} /> : null}
     </View>
   );
 
-  // ─── Main render ─────────────────────────────────────────────────────────
+  // ─── Main render ──────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={st.root}>
       <StatusBar barStyle="dark-content" backgroundColor={C.white} />
 
-      <ScrollView
-        contentContainerStyle={st.scroll}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={() => {
-              setRefreshing(true);
-              fetchData();
-            }}
-            colors={[C.green]}
-          />
-        }
-      >
+      {/* District Picker Modal */}
+      <Modal visible={showDistrictPicker} transparent animationType="slide">
+        <View style={st.modalOverlay}>
+          <View style={st.modalSheet}>
+            <View style={st.modalTop}>
+              <Text style={st.modalTopTitle}>📍 {tx.district}</Text>
+              <TouchableOpacity onPress={() => setShowDistrictPicker(false)}>
+                <MaterialCommunityIcons name="close" size={22} color={C.grey6} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView>
+              {SL_DISTRICTS.map((d) => (
+                <TouchableOpacity key={d.value}
+                  style={[st.pickerItem, selectedDistrict?.value === d.value && { backgroundColor: C.greenLight }]}
+                  onPress={() => { setSelectedDistrict(d); setRiskForm(f => ({ ...f, temp_c: d.avgTemp, district: d.value })); setShowDistrictPicker(false); }}>
+                  <Text style={[st.pickerItemTxt, selectedDistrict?.value === d.value && { color: C.green, fontWeight: '800' }]}>{d.label}</Text>
+                  <View style={st.tempBadge}><Text style={st.tempBadgeTxt}>🌡 {d.avgTemp}°C</Text></View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Variety Pickers */}
+      {[
+        { visible: showVarietyPicker, onClose: () => setShowVarietyPicker(false), activeVal: costForm.variety, onSelect: (v) => { setCostForm(f => ({ ...f, variety: v })); setShowVarietyPicker(false); }, activeBg: C.blueLight, activeColor: C.blue },
+        { visible: recShowVarietyPicker, onClose: () => setRecShowVarietyPicker(false), activeVal: recForm.variety, onSelect: (v) => { setRecForm(f => ({ ...f, variety: v })); setRecShowVarietyPicker(false); }, activeBg: C.purpleLight, activeColor: C.purple },
+      ].map((m, idx) => (
+        <Modal key={idx} visible={m.visible} transparent animationType="slide">
+          <View style={st.modalOverlay}>
+            <View style={st.modalSheet}>
+              <View style={st.modalTop}>
+                <Text style={st.modalTopTitle}>🌾 {tx.riceVariety}</Text>
+                <TouchableOpacity onPress={m.onClose}><MaterialCommunityIcons name="close" size={22} color={C.grey6} /></TouchableOpacity>
+              </View>
+              <ScrollView>
+                {RICE_VARIETIES.map((v) => (
+                  <TouchableOpacity key={v} style={[st.pickerItem, m.activeVal === v && { backgroundColor: m.activeBg }]}
+                    onPress={() => m.onSelect(v)}>
+                    <Text style={[st.pickerItemTxt, m.activeVal === v && { color: m.activeColor, fontWeight: '800' }]}>{v}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      ))}
+
+      <ScrollView contentContainerStyle={st.scroll} showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} colors={[C.green]} />}>
+
+        {/* Language bar */}
+        <View style={st.langBar}>
+          <MaterialCommunityIcons name="translate" size={16} color={C.grey5} />
+          {['en', 'si', 'ta'].map((l) => (
+            <TouchableOpacity key={l} style={[st.langBtn, lang === l && { backgroundColor: C.green }]} onPress={() => setLang(l)}>
+              <Text style={[st.langBtnTxt, lang === l && { color: C.white }]}>{T[l].lang}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
         {/* Header */}
         <View style={st.header}>
           <View>
-            <Text style={st.headerTitle}>Storage Center</Text>
-            <Text style={st.headerSub}>Post-Harvest Management</Text>
+            <Text style={st.headerTitle}>{tx.storageCenter}</Text>
+            <Text style={st.headerSub}>{tx.postHarvest}</Text>
           </View>
-          <TouchableOpacity
-            style={st.headerBtn}
-            onPress={() => navigation.navigate('InventoryList')}
-          >
+          <TouchableOpacity style={st.headerBtn} onPress={() => navigation.navigate('InventoryList')}>
             <MaterialCommunityIcons name="format-list-bulleted" size={20} color={C.green} />
           </TouchableOpacity>
         </View>
 
         {/* Asset card */}
-        <LinearGradient
-          colors={['#16a34a', '#065f46']}
-          style={st.assetCard}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
+        <LinearGradient colors={['#16a34a', '#065f46']} style={st.assetCard} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
           <View style={st.assetTop}>
             <View>
-              <Text style={st.assetLabel}>TOTAL PADDY VALUE</Text>
+              <Text style={st.assetLabel}>{tx.totalPaddyValue}</Text>
               <Text style={st.assetValue}>Rs. {totals.value}</Text>
             </View>
             <MaterialCommunityIcons name="grain" size={40} color="rgba(255,255,255,0.25)" />
           </View>
           <View style={st.assetStats}>
-            {[
-              { val: totals.kg, lbl: 'KG STORED' },
-              { val: totals.bags, lbl: 'TOTAL BAGS' },
-              { val: harvests.length, lbl: 'BATCHES' },
-            ].map((item, i) => (
+            {[{ val: totals.kg, lbl: tx.kgStored }, { val: totals.bags, lbl: tx.totalBags }, { val: harvests.length, lbl: tx.batches }].map((item, i) => (
               <React.Fragment key={i}>
                 {i > 0 && <View style={st.assetDiv} />}
                 <View style={st.assetStat}>
@@ -1053,16 +1394,12 @@ export default function StorageDashboardScreen({ navigation }) {
         {/* Quick actions */}
         <View style={st.quickRow}>
           {[
-            { label: 'Add Stock', icon: 'plus-circle', color: C.green, bg: C.greenLight, nav: 'RegisterHarvest' },
-            { label: 'Market', icon: 'trending-up', color: C.blue, bg: C.blueLight, nav: 'MarketTracking' },
-            { label: 'AI Chat', icon: 'chat-processing', color: C.purple, bg: C.purpleLight, nav: 'BeginnerStorageGuide' },
-            { label: 'Inventory', icon: 'clipboard-list', color: C.amber, bg: C.amberLight, nav: 'InventoryList' },
+            { label: tx.addStock, icon: 'plus-circle', color: C.green, bg: C.greenLight, nav: 'RegisterHarvest' },
+            { label: tx.market, icon: 'trending-up', color: C.blue, bg: C.blueLight, nav: 'MarketTracking' },
+            { label: tx.aiChat, icon: 'chat-processing', color: C.purple, bg: C.purpleLight, nav: 'BeginnerStorageGuide' },
+            { label: tx.inventory, icon: 'clipboard-list', color: C.amber, bg: C.amberLight, nav: 'InventoryList' },
           ].map((item) => (
-            <TouchableOpacity
-              key={item.label}
-              style={st.quickItem}
-              onPress={() => navigation.navigate(item.nav)}
-            >
+            <TouchableOpacity key={item.label} style={st.quickItem} onPress={() => navigation.navigate(item.nav)}>
               <View style={[st.quickIcon, { backgroundColor: item.bg }]}>
                 <MaterialCommunityIcons name={item.icon} size={22} color={item.color} />
               </View>
@@ -1074,34 +1411,15 @@ export default function StorageDashboardScreen({ navigation }) {
         {/* Tool tabs */}
         <View style={st.tabBar}>
           {[
-            { key: 'risk', icon: 'shield-search', label: 'Risk Score', color: C.green },
-            { key: 'cost', icon: 'calculator', label: 'Economics', color: C.blue },
-            { key: 'recommend', icon: 'lightbulb-on', label: 'Recommend', color: C.purple },
+            { key: 'risk', icon: 'shield-search', label: tx.riskScore, color: C.green },
+            { key: 'cost', icon: 'calculator', label: tx.economics, color: C.blue },
+            { key: 'recommend', icon: 'lightbulb-on', label: tx.recommend, color: C.purple },
           ].map((tab) => (
-            <TouchableOpacity
-              key={tab.key}
-              style={[
-                st.tabBtn,
-                activeTab === tab.key && {
-                  borderBottomWidth: 2,
-                  borderBottomColor: tab.color,
-                },
-              ]}
-              onPress={() => setActiveTab(tab.key)}
-            >
-              <MaterialCommunityIcons
-                name={tab.icon}
-                size={18}
-                color={activeTab === tab.key ? tab.color : C.grey4}
-              />
-              <Text
-                style={[
-                  st.tabTxt,
-                  { color: activeTab === tab.key ? tab.color : C.grey4 },
-                ]}
-              >
-                {tab.label}
-              </Text>
+            <TouchableOpacity key={tab.key}
+              style={[st.tabBtn, activeTab === tab.key && { borderBottomWidth: 2.5, borderBottomColor: tab.color, backgroundColor: tab.color + '08' }]}
+              onPress={() => setActiveTab(tab.key)}>
+              <MaterialCommunityIcons name={tab.icon} size={18} color={activeTab === tab.key ? tab.color : C.grey4} />
+              <Text style={[st.tabTxt, { color: activeTab === tab.key ? tab.color : C.grey4 }]}>{tab.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -1112,9 +1430,9 @@ export default function StorageDashboardScreen({ navigation }) {
 
         {/* Harvest batches */}
         <View style={st.batchSectionHeader}>
-          <Text style={st.sectionTitle}>Active Storage Batches</Text>
+          <Text style={st.sectionTitle}>{tx.activeBatches}</Text>
           <TouchableOpacity onPress={() => navigation.navigate('RegisterHarvest')}>
-            <Text style={{ color: C.green, fontSize: 13, fontWeight: '700' }}>+ Add New</Text>
+            <Text style={{ color: C.green, fontSize: 13, fontWeight: '700' }}>{tx.addNew}</Text>
           </TouchableOpacity>
         </View>
 
@@ -1123,20 +1441,16 @@ export default function StorageDashboardScreen({ navigation }) {
         ) : harvests.length === 0 ? (
           <View style={st.emptyState}>
             <MaterialCommunityIcons name="warehouse" size={56} color={C.grey3} />
-            <Text style={st.emptyTitle}>No storage batches yet</Text>
-            <Text style={st.emptySub}>Register your first harvest to start tracking</Text>
-            <TouchableOpacity
-              style={[st.primaryBtn, { marginTop: 16, paddingHorizontal: 32 }]}
-              onPress={() => navigation.navigate('RegisterHarvest')}
-            >
-              <Text style={st.primaryBtnTxt}>Register Harvest</Text>
+            <Text style={st.emptyTitle}>{tx.noBatches}</Text>
+            <Text style={st.emptySub}>{tx.registerFirst}</Text>
+            <TouchableOpacity style={[st.primaryBtn, { marginTop: 16, paddingHorizontal: 32 }]}
+              onPress={() => navigation.navigate('RegisterHarvest')}>
+              <Text style={st.primaryBtnTxt}>{tx.registerHarvest}</Text>
             </TouchableOpacity>
           </View>
         ) : (
           locations.map((loc) => {
-            const batches = harvests.filter(
-              (h) => h.locationId === loc.id || h.locationName === loc.locationName,
-            );
+            const batches = harvests.filter((h) => h.locationId === loc.id || h.locationName === loc.locationName);
             if (batches.length === 0) return null;
             return (
               <View key={loc.id} style={st.locSection}>
@@ -1146,21 +1460,15 @@ export default function StorageDashboardScreen({ navigation }) {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={st.locName}>{String(loc.locationName || '').toUpperCase()}</Text>
-                    <Text style={st.locSub}>
-                      {loc.storageType} • {loc.storageArea} {loc.areaUnit}
-                    </Text>
+                    <Text style={st.locSub}>{loc.storageType} • {loc.storageArea} {loc.areaUnit}</Text>
                   </View>
-                  <TouchableOpacity
-                    style={st.viewBtn}
-                    onPress={() =>
-                      navigation.navigate('WarehouseAnalysis', { locationId: loc.id })
-                    }
-                  >
+                  <TouchableOpacity style={st.viewBtn}
+                    onPress={() => navigation.navigate('WarehouseAnalysis', { locationId: loc.id })}>
                     <Text style={st.viewBtnTxt}>VIEW →</Text>
                   </TouchableOpacity>
                 </View>
                 {batches.map((item) => (
-                  <BatchCard key={item.id} item={item} navigation={navigation} />
+                  <BatchCard key={item.id} item={item} navigation={navigation} location={location} locData={loc} />
                 ))}
               </View>
             );
@@ -1207,25 +1515,25 @@ const st = StyleSheet.create({
   tabTxt: { fontSize: 10, fontWeight: '700', letterSpacing: 0.2 },
 
   // Section header
-  secHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 12 },
-  secIconBox: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
-  secTitle: { fontSize: 16, fontWeight: '800', color: C.ink },
+  secHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 18, gap: 12 },
+  secIconBox: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  secTitle: { fontSize: 17, fontWeight: '900', color: C.ink },
   secSub: { fontSize: 12, color: C.grey5, marginTop: 1 },
 
   // Card
   card: { backgroundColor: C.white, borderRadius: 18, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: C.grey2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
 
   // Fields
-  fieldLabel: { color: C.grey6, fontSize: 12, fontWeight: '700', marginBottom: 8, letterSpacing: 0.2 },
-  fullInput: { borderWidth: 1, borderColor: C.grey2, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 11, backgroundColor: C.grey0, color: C.ink, fontSize: 15, fontWeight: '600' },
-  compactInput: { borderWidth: 1, borderColor: C.grey2, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: C.grey0, color: C.ink, fontSize: 14, fontWeight: '600', width: 100 },
+  fieldLabel: { color: C.grey7, fontSize: 12, fontWeight: '800', marginBottom: 8, letterSpacing: 0.3 },
+  fullInput: { borderWidth: 1.5, borderColor: C.grey2, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: C.grey0, color: C.ink, fontSize: 15, fontWeight: '600' },
+  compactInput: { borderWidth: 1.5, borderColor: C.grey2, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 9, backgroundColor: C.grey0, color: C.ink, fontSize: 14, fontWeight: '600', width: 100 },
   hintText: { fontSize: 11, color: C.grey5, marginTop: -6, marginBottom: 12 },
   hintSmall: { fontSize: 11, color: C.grey5, marginBottom: 10 },
 
   // Moisture
-  moistureBox: { backgroundColor: C.grey0, borderRadius: 12, padding: 12, marginBottom: 14, borderWidth: 1, borderColor: C.grey2 },
-  mcRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  mcChip: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 8, borderWidth: 1.5, borderColor: C.grey2, alignItems: 'center', minWidth: 44 },
+  moistureBox: { backgroundColor: C.grey0, borderRadius: 14, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: C.grey2 },
+  mcRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  mcChip: { paddingHorizontal: 11, paddingVertical: 9, borderRadius: 10, borderWidth: 1.5, borderColor: C.grey2, alignItems: 'center', minWidth: 46 },
   mcChipTxt: { fontSize: 13, fontWeight: '800', color: C.grey6 },
 
   // Chips
@@ -1233,69 +1541,147 @@ const st = StyleSheet.create({
   chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 9, borderRadius: 10, borderWidth: 1.5, borderColor: C.grey2, backgroundColor: C.grey0 },
   chipTxt: { fontSize: 12, fontWeight: '700', color: C.grey6 },
 
-  bagDescBox: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10, borderWidth: 1, marginBottom: 14, backgroundColor: C.grey0 },
+  bagDescBox: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10, borderWidth: 1, marginBottom: 16, backgroundColor: C.grey0 },
   bagDescTxt: { fontSize: 12, fontWeight: '600', flex: 1 },
 
-  // Buttons
-  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: C.green, borderRadius: 12, paddingVertical: 14, marginTop: 12, gap: 6 },
-  primaryBtnTxt: { color: C.white, fontSize: 15, fontWeight: '800' },
+  // Button
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 14, paddingVertical: 16, marginTop: 12, gap: 8, shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
+  primaryBtnTxt: { color: C.white, fontSize: 15, fontWeight: '900' },
 
-  // Result box
-  resultBox: { marginTop: 16, padding: 16, borderRadius: 16, borderLeftWidth: 4, borderWidth: 1, borderColor: C.grey2, backgroundColor: C.white },
+  // ── RESULT WRAPPER ───────────────────────────────────────────────────────
+  resultWrapper: { marginTop: 20, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: C.grey2, backgroundColor: C.white, elevation: 6, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 16, shadowOffset: { height: 6, width: 0 } },
 
-  // Risk result
-  riskHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
-  riskBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-start', marginBottom: 8 },
-  riskBadgeTxt: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
-  aiVerdict: { fontSize: 14, fontWeight: '700', color: C.ink, lineHeight: 20 },
-  storageLifeBox: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: C.greenLight, borderRadius: 10, padding: 10, marginBottom: 12 },
-  storageLifeTxt: { flex: 1, fontSize: 13, color: C.greenDark },
-  gradePill: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  gradePillTxt: { fontSize: 11, fontWeight: '800' },
-  factorsBox: { marginBottom: 12 },
-  factorsTitle: { fontSize: 12, fontWeight: '800', color: C.grey6, letterSpacing: 0.3, marginBottom: 8 },
-  factorRow: { flexDirection: 'row', gap: 10, marginBottom: 8 },
-  factorDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5, flexShrink: 0 },
-  factorName: { fontSize: 13, fontWeight: '700', color: C.ink },
-  factorDetail: { fontSize: 12, color: C.grey5, marginTop: 2 },
-  aiBox: { borderRadius: 10, padding: 12, borderWidth: 1, backgroundColor: C.grey0 },
-  aiBoxLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5, marginBottom: 5 },
-  aiBoxContent: { fontSize: 13, color: C.grey7, lineHeight: 19 },
-  lossBox: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, padding: 12, backgroundColor: C.grey0, borderRadius: 10 },
-  lossLabel: { fontSize: 12, color: C.grey5, fontWeight: '600' },
-  lossValue: { fontSize: 18, fontWeight: '900' },
+  // Decorative circles in hero
+  decCircle1: { position: 'absolute', width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.06)', top: -60, right: -40 },
+  decCircle2: { position: 'absolute', width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.05)', bottom: -30, left: 10 },
 
-  // Cost result
-  costTable: { backgroundColor: C.grey0, borderRadius: 12, padding: 12, marginBottom: 12 },
-  costTableTitle: { fontSize: 12, fontWeight: '800', color: C.grey6, marginBottom: 10, letterSpacing: 0.3 },
-  costRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: C.grey2 },
-  costLbl: { fontSize: 13, color: C.grey6 },
-  costVal: { fontSize: 13, fontWeight: '700', color: C.ink },
-  costTotalRow: { borderTopWidth: 1.5, borderTopColor: C.grey3, borderBottomWidth: 0, marginTop: 4, paddingTop: 10 },
-  costTotalLbl: { fontSize: 13, fontWeight: '800', color: C.ink },
-  compareBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', backgroundColor: C.grey0, borderRadius: 12, padding: 12, marginBottom: 8 },
-  compareItem: { alignItems: 'center' },
-  compareLabel: { fontSize: 9, color: C.grey5, fontWeight: '700', marginBottom: 4 },
-  compareValue: { fontSize: 13, fontWeight: '900' },
-  breakEvenBox: { flexDirection: 'row', alignItems: 'center', gap: 6, padding: 10, backgroundColor: C.grey0, borderRadius: 8, marginBottom: 8 },
-  breakEvenTxt: { fontSize: 12, color: C.grey5, flex: 1 },
+  // ── RISK HERO ─────────────────────────────────────────────────────────────
+  riskHero: { padding: 22, paddingBottom: 26, overflow: 'hidden' },
+  riskHeroContent: { flexDirection: 'row', alignItems: 'center' },
+  riskBadgeHero: { marginTop: 10, paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10, borderWidth: 1, alignSelf: 'center' },
+  riskBadgeHeroTxt: { color: C.white, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
+  riskHeroVerdict: { fontSize: 15, fontWeight: '800', color: 'rgba(255,255,255,0.95)', lineHeight: 22 },
 
-  // Recommend result
-  recWinner: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 14, marginBottom: 14 },
-  recWinnerLabel: { fontSize: 10, color: 'rgba(255,255,255,0.8)', fontWeight: '700', letterSpacing: 0.5 },
-  recWinnerName: { fontSize: 20, fontWeight: '900', color: C.white, marginVertical: 2 },
-  recWinnerDesc: { fontSize: 12, color: 'rgba(255,255,255,0.85)', lineHeight: 17 },
-  optionRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.grey0, borderRadius: 12, padding: 12, marginBottom: 8, borderWidth: 1, borderColor: C.grey2 },
-  optionName: { fontSize: 14, fontWeight: '700' },
-  optionMeta: { fontSize: 11, color: C.grey5, marginTop: 2 },
-  optionProfit: { fontSize: 13, fontWeight: '800' },
-  stepsBox: { marginTop: 12 },
-  stepRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
-  stepNum: { width: 24, height: 24, borderRadius: 12, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  stepNumTxt: { color: C.white, fontSize: 12, fontWeight: '800' },
-  stepTxt: { flex: 1, fontSize: 13, color: C.grey7, lineHeight: 19 },
+  // ── SAFE LIFE ROW ─────────────────────────────────────────────────────────
+  safeLifeRow: { flexDirection: 'row', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: C.grey1 },
+  safeLifeIcon: { width: 50, height: 50, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginRight: 14 },
+  safeLifeLabel: { fontSize: 11, fontWeight: '800', color: C.grey5, letterSpacing: 0.5, marginBottom: 4 },
+  safeLifeVal: { fontSize: 15, fontWeight: '700', color: C.ink },
+  gradePillLarge: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 },
+  gradePillLargeTxt: { color: C.white, fontSize: 16, fontWeight: '900' },
 
-  // Batches section
+  // ── FACTORS SECTION ───────────────────────────────────────────────────────
+  factorsSection: { padding: 16, borderBottomWidth: 1, borderBottomColor: C.grey1 },
+  factorsHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
+  factorsSectionTitle: { fontSize: 12, fontWeight: '900', letterSpacing: 0.5 },
+  factorPremiumCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.grey0, borderRadius: 14, overflow: 'hidden', marginBottom: 8, borderWidth: 1, borderColor: C.grey2 },
+  factorPremiumLeft: { width: 44, height: 52, justifyContent: 'center', alignItems: 'center' },
+  factorPremiumName: { fontSize: 13, fontWeight: '800', color: C.ink },
+  factorPremiumDetail: { fontSize: 11, color: C.grey5, marginTop: 2, lineHeight: 16 },
+  deductionBadge: { marginRight: 12, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10 },
+  deductionTxt: { fontSize: 14, fontWeight: '900' },
+
+  // ── ACTION CALLOUTS ───────────────────────────────────────────────────────
+  actionCallout: { margin: 16, marginTop: 0, borderRadius: 16, padding: 16, borderWidth: 1, borderLeftWidth: 5 },
+  actionCalloutHead: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 10 },
+  actionCalloutIconBox: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  actionCalloutTitle: { fontSize: 12, fontWeight: '900', letterSpacing: 0.8, flex: 1 },
+  actionCalloutBody: { fontSize: 14, color: C.grey8, lineHeight: 22, fontWeight: '600' },
+  lossEstimateRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.08)' },
+  lossEstimateLabel: { fontSize: 12, color: C.grey6, fontWeight: '700' },
+  lossEstimateVal: { fontSize: 18, fontWeight: '900' },
+
+  // ── ECO HERO ──────────────────────────────────────────────────────────────
+  ecoHero: { padding: 22, overflow: 'hidden' },
+  ecoHeroContent: { flexDirection: 'row', alignItems: 'center' },
+  ecoHeroIconCircle: { width: 72, height: 72, borderRadius: 22, justifyContent: 'center', alignItems: 'center' },
+  ecoHeroBadge: { backgroundColor: 'rgba(255,255,255,0.25)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 8, alignSelf: 'flex-start', marginBottom: 8 },
+  ecoHeroBadgeTxt: { color: C.white, fontSize: 11, fontWeight: '900', letterSpacing: 0.8 },
+  ecoHeroVerdict: { fontSize: 14, fontWeight: '800', color: 'rgba(255,255,255,0.95)', lineHeight: 20 },
+
+  // ── PRICE COMPARE ─────────────────────────────────────────────────────────
+  priceCompareCard: { flexDirection: 'row', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: C.grey1 },
+  priceCompareItem: { flex: 1, alignItems: 'center', gap: 6 },
+  priceCompareIconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: C.grey1, justifyContent: 'center', alignItems: 'center' },
+  priceCompareLabel: { fontSize: 10, fontWeight: '800', color: C.grey5, letterSpacing: 0.5, textAlign: 'center' },
+  priceCompareValueNeutral: { fontSize: 17, fontWeight: '800', color: C.grey6 },
+  priceCompareValueBold: { fontSize: 20, fontWeight: '900' },
+  priceArrow: { width: 40, alignItems: 'center' },
+
+  // ── NET PROFIT HERO ───────────────────────────────────────────────────────
+  netProfitHero: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 18 },
+  netProfitLabel: { fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: '900', letterSpacing: 1 },
+  netProfitValue: { fontSize: 28, color: C.white, fontWeight: '900', letterSpacing: -0.5, flex: 1, textAlign: 'center' },
+
+  // ── COST BREAKDOWN ────────────────────────────────────────────────────────
+  costBreakdownCard: { margin: 16, backgroundColor: C.grey0, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: C.grey2 },
+  costBreakdownHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14 },
+  costBreakdownTitle: { fontSize: 14, fontWeight: '900', color: C.ink, flex: 1 },
+  bagsBadge: { backgroundColor: C.blueLight, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  bagsBadgeTxt: { fontSize: 11, fontWeight: '800', color: C.blue },
+  costRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: C.grey2 },
+  costRowIcon: { width: 32, height: 32, borderRadius: 9, justifyContent: 'center', alignItems: 'center' },
+  costRowLabel: { flex: 1, fontSize: 13, color: C.grey7, fontWeight: '600' },
+  costRowValue: { fontSize: 14, fontWeight: '800', color: C.ink },
+  costDivider: { height: 1.5, backgroundColor: C.grey3, marginVertical: 12 },
+  costTotalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  costTotalLabel: { fontSize: 14, fontWeight: '900', color: C.ink },
+  costTotalValue: { fontSize: 20, fontWeight: '900' },
+  costPerKgBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 10, borderRadius: 12, borderWidth: 1, marginBottom: 14 },
+  costPerKgTxt: { fontSize: 13, fontWeight: '700' },
+  plannerBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 13, borderRadius: 12, gap: 8 },
+  plannerBtnTxt: { color: C.white, fontSize: 13, fontWeight: '900' },
+
+  // ── BREAK EVEN ────────────────────────────────────────────────────────────
+  breakEvenPremium: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', margin: 16, marginTop: 0, padding: 16, backgroundColor: C.grey0, borderRadius: 14, borderWidth: 1, borderColor: C.grey2 },
+  breakEvenLeft: { flexDirection: 'row', alignItems: 'center' },
+  breakEvenTitle: { fontSize: 11, fontWeight: '800', color: C.grey5, letterSpacing: 0.5 },
+  breakEvenSub: { fontSize: 16, fontWeight: '900', color: C.ink },
+  roiBadge: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 },
+  roiTxt: { fontSize: 15, fontWeight: '900' },
+
+  // AI warning
+  aiWarnRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.redLight, padding: 10, borderRadius: 10, marginTop: 12, gap: 8 },
+  aiWarnTxt: { fontSize: 13, color: C.red, fontWeight: '800', flex: 1 },
+
+  // ── RECOMMEND HERO ────────────────────────────────────────────────────────
+  recHero: { padding: 24, overflow: 'hidden' },
+  recHeroContent: { flexDirection: 'row', alignItems: 'center' },
+  recHeroIconBox: { width: 76, height: 76, borderRadius: 24, justifyContent: 'center', alignItems: 'center' },
+  recHeroEyebrow: { fontSize: 10, color: 'rgba(255,255,255,0.85)', fontWeight: '900', letterSpacing: 1.2, marginBottom: 4 },
+  recHeroName: { fontSize: 24, fontWeight: '900', color: C.white, letterSpacing: -0.5 },
+  recHeroHeadline: { fontSize: 13, color: 'rgba(255,255,255,0.9)', lineHeight: 19, marginTop: 4, fontWeight: '600' },
+
+  // ── OPTIONS ───────────────────────────────────────────────────────────────
+  optionsSection: { padding: 16 },
+  optionsSectionTitle: { fontSize: 12, fontWeight: '900', color: C.grey6, letterSpacing: 0.5, marginBottom: 12 },
+  optionPremiumCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.white, borderRadius: 16, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: C.grey2, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 5, elevation: 1 },
+  optionFaded: { opacity: 0.45 },
+  optionPremiumIcon: { width: 46, height: 46, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  optionPremiumName: { fontSize: 15, fontWeight: '800', color: C.ink },
+  optionPremiumMeta: { fontSize: 11, color: C.grey5, marginTop: 3, fontWeight: '600' },
+  optionPremiumProfit: { fontSize: 16, fontWeight: '900' },
+  optionPremiumProfitLabel: { fontSize: 9, color: C.grey5, fontWeight: '700', textAlign: 'right' },
+  recBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 7 },
+  recBadgeTxt: { fontSize: 9, fontWeight: '900', color: C.white, letterSpacing: 0.3 },
+
+  // ── STEPS SECTION ─────────────────────────────────────────────────────────
+  stepsSection: { padding: 16, paddingTop: 0 },
+  stepsSectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 },
+  stepsSectionTitle: { fontSize: 12, fontWeight: '900', letterSpacing: 0.5 },
+  stepPremiumRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 10 },
+  stepPremiumNum: { width: 30, height: 30, borderRadius: 10, justifyContent: 'center', alignItems: 'center', flexShrink: 0, marginTop: 2 },
+  stepPremiumNumTxt: { color: C.white, fontSize: 14, fontWeight: '900' },
+  stepPremiumBubble: { flex: 1, backgroundColor: C.grey0, borderRadius: 12, padding: 12, borderWidth: 1, borderColor: C.grey2 },
+  stepPremiumTxt: { fontSize: 13, color: C.grey8, lineHeight: 20, fontWeight: '600' },
+
+  // ── WHERE TO BUY ─────────────────────────────────────────────────────────
+  whereToBuyCard: { margin: 16, marginTop: 0, borderRadius: 16, padding: 16, borderWidth: 1, overflow: 'hidden' },
+  whereToBuyHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  whereToBuyTitle: { fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
+  whereToBuyBody: { fontSize: 13, color: C.grey7, lineHeight: 21, fontWeight: '600' },
+
+  // ── BATCHES ───────────────────────────────────────────────────────────────
   batchSectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, marginTop: 4 },
   sectionTitle: { fontSize: 17, fontWeight: '800', color: C.ink },
   locSection: { marginBottom: 16 },
@@ -1305,59 +1691,35 @@ const st = StyleSheet.create({
   locSub: { fontSize: 11, color: C.grey4, marginTop: 1 },
   viewBtn: { backgroundColor: C.greenLight, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, borderWidth: 1, borderColor: '#bbf7d0' },
   viewBtnTxt: { color: C.green, fontSize: 10, fontWeight: '800' },
-  batchCard: { flexDirection: 'row', backgroundColor: C.white, padding: 14, borderRadius: 14, marginBottom: 8, alignItems: 'center', borderWidth: 1, borderColor: C.grey2, elevation: 1 },
-  batchLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  batchDot: { width: 10, height: 10, borderRadius: 5, flexShrink: 0 },
-  batchVariety: { fontSize: 14, fontWeight: '700', color: C.ink },
-  batchMeta: { fontSize: 12, color: C.grey4, marginTop: 2 },
-  batchRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  riskPill: { paddingHorizontal: 7, paddingVertical: 3, borderRadius: 6 },
-  riskPillTxt: { fontSize: 9, fontWeight: '800' },
-  advisorBtn: { backgroundColor: C.greenLight, padding: 8, borderRadius: 10, borderWidth: 1, borderColor: '#bbf7d0' },
+  batchCard: { flexDirection: 'row', padding: 16, borderRadius: 16, marginBottom: 12, alignItems: 'center', borderWidth: 1, backgroundColor: C.white, elevation: 3, shadowColor: '#16a34a', shadowOpacity: 0.1, shadowRadius: 8, shadowOffset: { height: 4, width: 0 }, overflow: 'hidden' },
+  batchLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 14 },
+  batchIconBox: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  batchVariety: { fontSize: 16, fontWeight: '900', color: C.ink, letterSpacing: -0.3 },
+  batchMeta: { fontSize: 12, color: C.grey6, marginTop: 2 },
+  batchRight: { flexDirection: 'column', alignItems: 'flex-end', gap: 8 },
+  riskPill: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  riskPillTxt: { fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
+  editBtnPremium: { padding: 6, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.7)', borderWidth: 1, borderColor: C.grey2 },
   emptyState: { padding: 48, alignItems: 'center' },
   emptyTitle: { fontSize: 17, fontWeight: '700', color: C.grey7, marginTop: 16 },
   emptySub: { fontSize: 13, color: C.grey4, marginTop: 4, textAlign: 'center' },
 
-  // Report modal
-  modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: C.grey2, backgroundColor: C.white },
-  modalTitle: { fontSize: 16, fontWeight: '800', color: C.ink },
-  reportHeaderGrad: { borderRadius: 16, padding: 20, marginBottom: 16 },
-  reportOrgName: { color: C.white, fontSize: 18, fontWeight: '900', marginLeft: 10 },
-  reportTitle: { color: C.white, fontSize: 15, fontWeight: '700', marginBottom: 6 },
-  reportStd: { color: 'rgba(255,255,255,0.6)', fontSize: 11 },
-  reportSection: { backgroundColor: C.white, borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: C.grey2 },
-  reportSectionTitle: { fontSize: 11, fontWeight: '800', letterSpacing: 1, color: C.grey5, marginBottom: 12 },
-  reportRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: C.grey1 },
-  reportKey: { fontSize: 13, color: C.grey5 },
-  reportVal: { fontSize: 13, fontWeight: '700', color: C.ink },
-  reportBody: { fontSize: 13, color: C.grey7, lineHeight: 20 },
-  gradeBig: { flex: 1, borderWidth: 1.5, borderRadius: 12, padding: 12, alignItems: 'center', justifyContent: 'center' },
-  gradeBigLbl: { fontSize: 18, fontWeight: '900', marginTop: 4 },
-  gradeBigSub: { fontSize: 10, color: C.grey5, marginTop: 2, textAlign: 'center' },
-  festivalBox: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10, borderWidth: 1, marginTop: 8, backgroundColor: C.amberLight },
-  festivalTxt: { fontSize: 12, color: '#92400e', fontWeight: '600', flex: 1 },
-  recRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 8 },
-  recNum: { width: 24, height: 24, borderRadius: 12, backgroundColor: C.green, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  recNumTxt: { color: C.white, fontSize: 12, fontWeight: '800' },
-  recTxt: { flex: 1, fontSize: 13, color: C.grey7, lineHeight: 19 },
-  reportFooter: { padding: 16, alignItems: 'center', marginTop: 8 },
-  reportFooterTxt: { fontSize: 11, color: C.grey4, lineHeight: 18 },
+  // Language bar
+  langBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 14, backgroundColor: C.white, borderRadius: 12, padding: 8, borderWidth: 1, borderColor: C.grey2 },
+  langBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: C.grey1 },
+  langBtnTxt: { fontSize: 12, fontWeight: '700', color: C.grey6 },
 
-  inputPlannerBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 12,
-    paddingVertical: 8,
-    borderWidth: 1,
-    borderColor: C.blue + '40',
-    borderRadius: 8,
-    backgroundColor: C.white,
-    gap: 6,
-  },
-  inputPlannerBtnTxt: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: C.blue,
-  },
+  // Picker
+  pickerBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderColor: C.grey2, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: C.grey0 },
+  pickerBtnTxt: { flex: 1, fontSize: 14, fontWeight: '600', color: C.ink },
+  tempBadge: { backgroundColor: '#fef3c7', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
+  tempBadgeTxt: { fontSize: 11, fontWeight: '800', color: '#92400e' },
+
+  // Modal
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: C.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '75%', paddingBottom: 30 },
+  modalTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: C.grey2 },
+  modalTopTitle: { fontSize: 16, fontWeight: '800', color: C.ink },
+  pickerItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: C.grey1 },
+  pickerItemTxt: { fontSize: 15, color: C.ink, fontWeight: '500' },
 });
