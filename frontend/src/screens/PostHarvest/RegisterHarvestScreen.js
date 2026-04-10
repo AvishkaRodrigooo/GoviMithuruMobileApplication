@@ -133,7 +133,7 @@ const searchLocations = async (query) => {
   try {
     const response = await fetch(
       `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query + ' Sri Lanka')}&format=json&limit=6&countrycodes=lk&addressdetails=1`,
-      { headers: { 'Accept-Language': 'en', 'User-Agent': 'GoviMithuru/1.0' } }
+      { headers: { 'Accept-Language': 'en', 'User-Agent': 'AgroMind/1.0' } }
     );
     const data = await response.json();
     return data.map(item => ({
@@ -217,7 +217,7 @@ export default function RegisterHarvestScreen({ navigation, route }) {
   // ─── Inspector / Chat ─────────────────────────────────────────────────────
   const [chatVisible, setChatVisible] = useState(false);
   const [chatMessages, setChatMessages] = useState([
-    { id: 1, text: 'ආයුබෝවන්! (Ayubowan!) I am your GoviMithuru Storage Inspector. I help secure your harvest safely. Ask me anything about storage, moisture, or containers.', isBot: true }
+    { id: 1, text: 'ආයුබෝවන්! (Ayubowan!) I am your AgroMind Storage Inspector. I help secure your harvest safely. Ask me anything about storage, moisture, or containers.', isBot: true }
   ]);
   const [chatInput, setChatInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -1218,7 +1218,7 @@ export default function RegisterHarvestScreen({ navigation, route }) {
                 <MaterialCommunityIcons name="robot-happy" size={24} color="#16a34a" />
               </View>
               <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={styles.chatName}>GoviMithuru Inspector</Text>
+                <Text style={styles.chatName}>AgroMind Inspector</Text>
                 <Text style={styles.chatStatus}>SLR 603:2013 Certified • Online</Text>
               </View>
               <TouchableOpacity onPress={() => setChatVisible(false)} style={styles.chatClose}>

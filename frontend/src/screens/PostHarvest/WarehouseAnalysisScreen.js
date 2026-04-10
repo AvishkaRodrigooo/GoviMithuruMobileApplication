@@ -1,5 +1,5 @@
 /**
- * WarehouseAnalysisScreen.js  —  GoviMithuru
+ * WarehouseAnalysisScreen.js  —  AgroMind
  * ─────────────────────────────────────────────────────────────────────────────
  * Shows storage details, stock inventory, and real-time 24h indoor temperature
  * fine-tuned via ML + physics hybrid from the storage location coordinates.
@@ -667,10 +667,10 @@ const s = StyleSheet.create({
     insightTxt: { flex: 1, fontSize: 13, color: '#374151', lineHeight: 20 },
 
     // Stats Grid
-    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-    statCard: { width: (SW - 32 - 16) / 3, backgroundColor: 'white', borderRadius: 14, padding: 12, borderWidth: 1, borderColor: '#e5e7eb', elevation: 1 },
-    statLabel: { color: '#9ca3af', fontSize: 10, fontWeight: '700', letterSpacing: 0.3, marginBottom: 4 },
-    statVal: { color: '#111827', fontSize: 14, fontWeight: '800' },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 8 },
+    statCard: { width: '48%', backgroundColor: 'white', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: '#e5e7eb', marginBottom: 12, elevation: 1 },
+    statLabel: { color: '#9ca3af', fontSize: 11, fontWeight: '700', letterSpacing: 0.3, marginBottom: 4 },
+    statVal: { color: '#111827', fontSize: 15, fontWeight: '800' },
 
     // Fine-tune badge
     fineTuneBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#f5f3ff', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6, marginBottom: 10, borderWidth: 1, borderColor: '#ddd6fe' },
