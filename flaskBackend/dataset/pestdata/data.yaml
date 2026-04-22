@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 6
+names: ['brown-planthopper', 'green-leafhopper', 'leaf-folder', 'rice-bug', 'stem-borer', 'whorl-maggot']
+
+roboflow:
+  workspace: laktharu
+  project: rice-pests-ztbeq
+  version: 1
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/laktharu/rice-pests-ztbeq/dataset/1

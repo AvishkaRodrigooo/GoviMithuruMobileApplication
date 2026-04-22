@@ -17,6 +17,21 @@ import NotificationScreen from './src/screens/NotificationScreen';
 import adminDashboardScreen from './src/screens/adminDashboard/adminDashboardScreen';
 import HerbicideRecommendationAdminScreen from './src/screens/adminDashboard/HerbicideRecommendationAdminScreen';
 
+//pest Management
+import PestManagementScreen from './src/screens/pestForecast/PestManagementScreen';
+import PestForecastDashboard from './src/screens/pestForecast/PestForecastDashboard';
+import PestForecastForm from './src/screens/pestForecast/PestForecastForm';
+import PestDetection from './src/screens/pestForecast/PestDetection';
+import PestLibrary from './src/screens/pestForecast/PestLibrary';
+import PestHeatMap from './src/screens/pestForecast/PestHeatMap';
+import PestAlerts from './src/screens/pestForecast/PestAlerts';
+import PestHistory from './src/screens/pestForecast/PestHistory';
+// import PestForecastHistory from './src/screens/pestForecast/PestForecastHistory';
+import PestDetectionHistory from './src/screens/pestForecast/PestDetectionHistory';
+import NotificationSettings from './src/screens/pestForecast/NotificationSettings';
+import AIPestAssistantScreen from './src/screens/pestForecast/AIPestAssistantScreen';
+
+
 //weeds controller
 import StageIdentificationScreen from './src/screens/weedsDetection/StageIdentificationScreen';
 import weesDashboardScreen from './src/screens/weedsDetection/weedsdashboard';
@@ -122,7 +137,11 @@ export default function App() {
           // User is signed in - show main app screens
           <>
 
+<<<<<<< HEAD
             <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+=======
+            <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'AgroMind' }} />
+>>>>>>> ef667088a0ced3a4c98872182e6792f2068ef8bd
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
             <Stack.Screen name="Notifications" component={NotificationScreen} options={{ title: 'Notifications' }} />
             <Stack.Screen name="AdminDashboard" component={adminDashboardScreen} options={{ title: "Admin Dashboard" }} />
@@ -133,7 +152,52 @@ export default function App() {
               component={AgroShopsScreen}
               options={{ title: "Agro Shops Nearby" }}
             />
+<<<<<<< HEAD
             <Stack.Screen name="Stagesplant" component={StagesScreen} options={{title: 'Paddy Plant Growth Stage' }}/>
+=======
+
+            {/* Pest Management */}
+            <Stack.Screen name="PestManagement" component={PestManagementScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="PestForecastDashboard" component={PestForecastDashboard} options={{ title: 'Pest Forecast' }} />
+<Stack.Screen name="PestForecastForm" component={PestForecastForm} options={{ title: 'New Forecast' }} />
+<Stack.Screen name="PestDetection" component={PestDetection} options={{ title: 'Pest Detection' }} />
+<Stack.Screen 
+  name="PestLibrary" 
+  component={PestLibrary} 
+  options={{ title: 'Pest Library' }} 
+/>
+<Stack.Screen 
+  name="PestHeatMap" 
+  component={PestHeatMap} 
+  options={{ title: 'Heat Map' }} 
+/>
+<Stack.Screen 
+  name="PestAlerts" 
+  component={PestAlerts} 
+  options={{ title: 'Alerts' }} 
+/>
+<Stack.Screen 
+  name="PestHistory" 
+  component={PestHistory} 
+  options={{ title: 'History' }} 
+/>
+
+<Stack.Screen 
+  name="PestDetectionHistory" 
+  component={PestDetectionHistory} 
+  options={{ title: 'Detection History' }} 
+/>
+<Stack.Screen 
+  name="NotificationSettings" 
+  component={NotificationSettings} 
+  options={{ title: 'Notifications' }} 
+/>
+  <Stack.Screen 
+    name="AIPestAssistant" 
+    component={AIPestAssistantScreen} 
+    options={{ headerShown: false }}
+  />
+>>>>>>> ef667088a0ced3a4c98872182e6792f2068ef8bd
 
             {/* Post Harvest Analysis Flow */}
             <Stack.Screen name="PostHarvestOnboarding" component={KnowledgeSelectionScreen} options={{ headerShown: false }} />
