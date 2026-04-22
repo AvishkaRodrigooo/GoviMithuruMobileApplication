@@ -8,11 +8,15 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  ScrollView
+  ScrollView,
+  Platform
 } from "react-native";
 
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as ImagePicker from "expo-image-picker";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 // Language translations
@@ -41,7 +45,25 @@ const translations = {
     cameraPermission: "Camera permission required",
     detectionFailed: "Detection Failed",
     error: "Error",
-    failedToConnect: "Failed to connect to detection server"
+    failedToConnect: "Failed to connect to detection server",
+    downloadPDF: "📥 Download PDF Report",
+    shareReport: "📤 Share Report",
+    generatingPDF: "Generating PDF...",
+    pdfGenerated: "PDF Generated Successfully",
+    pdfFailed: "Failed to generate PDF",
+    reportTitle: "Paddy Pest Detection Report",
+    generatedOn: "Generated on",
+    pestReport: "Pest Analysis Report",
+    fertilizerReport: "Fertilizer Recommendation Report",
+    saveReport: "Save Report",
+    noDetections: "No Pests Detected",
+    healthyReport: "Your crop appears healthy. Continuing good agricultural practices.",
+    actions: "Actions",
+    pdfReady: "PDF Report Ready",
+    pdfOptions: "What would you like to do with the report?",
+    cancel: "Cancel",
+    share: "Share",
+    save: "Save"
   },
   sinhala: {
     title: "වී පළිබෝධ හඳුනාගැනීම",
@@ -67,7 +89,25 @@ const translations = {
     cameraPermission: "කැමරා අවසරය අවශ්‍යයි",
     detectionFailed: "හඳුනාගැනීම අසාර්ථක විය",
     error: "දෝෂයකි",
-    failedToConnect: "හඳුනාගැනීමේ සේවාදායකයට සම්බන්ධ වීමට අපොහොසත් විය"
+    failedToConnect: "හඳුනාගැනීමේ සේවාදායකයට සම්බන්ධ වීමට අපොහොසත් විය",
+    downloadPDF: "📥 PDF වාර්තාව බාගන්න",
+    shareReport: "📤 වාර්තාව බෙදාගන්න",
+    generatingPDF: "PDF සකසමින්...",
+    pdfGenerated: "PDF සාර්ථකව සකස් විය",
+    pdfFailed: "PDF සැකසීම අසාර්ථක විය",
+    reportTitle: "වී පළිබෝධ හඳුනාගැනීමේ වාර්තාව",
+    generatedOn: "සකස් කළ දිනය",
+    pestReport: "පළිබෝධ විශ්ලේෂණ වාර්තාව",
+    fertilizerReport: "පොහොර නිර්දේශ වාර්තාව",
+    saveReport: "වාර්තාව සුරකින්න",
+    noDetections: "පළිබෝධ හමු නොවුණි",
+    healthyReport: "ඔබේ බෝගය නිරෝගීව පවතී. හොඳ කෘෂිකාර්මික පිළිවෙත් දිගටම කරගෙන යන්න.",
+    actions: "ක්‍රියාමාර්ග",
+    pdfReady: "PDF වාර්තාව සූදානම්",
+    pdfOptions: "වාර්තාව සමඟ කුමක් කිරීමට ඔබ කැමතිද?",
+    cancel: "අවලංගු කරන්න",
+    share: "බෙදාගන්න",
+    save: "සුරකින්න"
   }
 };
 
@@ -126,7 +166,8 @@ export default function PestDetection() {
   const [showResults, setShowResults] = useState(false);
   const [annotatedImage, setAnnotatedImage] = useState(null);
   const [fertilizerTab, setFertilizerTab] = useState('pest');
-  const [language, setLanguage] = useState('english'); // 'english' or 'sinhala'
+  const [language, setLanguage] = useState('english');
+  const [generatingPDF, setGeneratingPDF] = useState(false);
 
   const cameraRef = useRef(null);
 
@@ -192,7 +233,7 @@ export default function PestDetection() {
       }
     }
     
-    return pestName; // Return original if no translation found
+    return pestName;
   };
 
   const translateFertilizerName = (name) => {
@@ -263,7 +304,63 @@ export default function PestDetection() {
     setFertilizerTab('pest');
   };
 
-  // Get fertilizer recommendations based on detected pest
+  // 🌾 Get general fertilizer tips
+  const getGeneralFertilizerTips = () => {
+    return {
+      fertilizers: [
+        {
+          name: language === 'english'
+            ? 'Basal Fertilizer - DAP + MOP + Urea'
+            : 'මුල් පොහොර - ඩීඒපී + එම්ඕපී + යූරියා',
+          reason: language === 'english'
+            ? 'Foundation for healthy crop growth'
+            : 'නිරෝගී බෝග වර්ධනය සඳහා පදනම',
+          application: language === 'english'
+            ? 'DAP 50 kg/ha + MOP 40 kg/ha + Urea 30 kg/ha at planting'
+            : 'සිටුවීමේදී ඩීඒපී 50 + එම්ඕපී 40 + යූරියා 30 කි.ග්‍රෑ/හෙක්'
+        },
+        {
+          name: language === 'english'
+            ? 'Top Dressing 1 - Urea'
+            : 'ඉහළ පොහොර 1 - යූරියා',
+          reason: language === 'english'
+            ? 'Promotes tillering'
+            : 'ගොයම් පැල ඇරඹීම ප්‍රවර්ධනය කරයි',
+          application: language === 'english'
+            ? 'Urea 50 kg/ha at 15-20 days after transplanting'
+            : 'සිටුවීමෙන් දින 15-20කට පසු යූරියා 50 කි.ග්‍රෑ/හෙක්'
+        },
+        {
+          name: language === 'english'
+            ? 'Top Dressing 2 - Urea + MOP'
+            : 'ඉහළ පොහොර 2 - යූරියා + එම්ඕපී',
+          reason: language === 'english'
+            ? 'Supports panicle initiation'
+            : 'මල් කරල් ඇරඹීමට සහාය වේ',
+          application: language === 'english'
+            ? 'Urea 40 kg/ha + MOP 30 kg/ha at 40-45 DAT'
+            : 'දින 40-45 දී යූරියා 40 + එම්ඕපී 30 කි.ග්‍රෑ/හෙක්'
+        }
+      ],
+      tips: language === 'english'
+        ? [
+            'Conduct soil test for accurate recommendations',
+            'Maintain 2-3 cm water level during fertilizer application',
+            'Split nitrogen into 3-4 applications',
+            'Avoid fertilizer during extreme weather',
+            'Incorporate organic manure 2 weeks before planting'
+          ]
+        : [
+            'නිවැරදි නිර්දේශ සඳහා පාංශු පරීක්ෂණයක් කරන්න',
+            'පොහොර යෙදීමේදී සෙ.මී. 2-3ක් ජල මට්ටමක් පවත්වා ගන්න',
+            'නයිට්‍රජන් යෙදීම් 3-4කට බෙදන්න',
+            'අයහපත් කාලගුණය තුළ පොහොර යෙදීමෙන් වළකින්න',
+            'සිටුවීමට සති 2කට පෙර කාබනික පොහොර එකතු කරන්න'
+          ]
+    };
+  };
+
+  // 🌾 Get fertilizer recommendations based on detected pest
   const getFertilizerRecommendations = (pestName) => {
     const pestLower = pestName.toLowerCase();
     
@@ -438,6 +535,63 @@ export default function PestDetection() {
       };
     }
     
+    // Gall Midge recommendations
+    else if (pestLower.includes('gall') || pestLower.includes('midge')) {
+      return {
+        fertilizers: [
+          {
+            name: 'Silicon - Calcium Silicate',
+            reason: language === 'english'
+              ? 'Strengthens stem tissue and reduces gall formation'
+              : 'කඳ පටක ශක්තිමත් කරන අතර නාළි සෑදීම අඩු කරයි',
+            application: language === 'english'
+              ? 'Apply 500 kg/ha as basal dressing'
+              : 'මුල් පොහොර ලෙස හෙක්ටයාරයට කිලෝ 500ක් යොදන්න'
+          },
+          {
+            name: 'Potassium (K) - Muriate of Potash',
+            reason: language === 'english'
+              ? 'Improves plant resistance to gall formation'
+              : 'නාළි සෑදීමට ශාක ප්‍රතිරෝධය වැඩි දියුණු කරයි',
+            application: language === 'english'
+              ? 'Apply 40-50 kg/ha at tillering'
+              : 'ගොයම් පැල ඇරඹීමේදී හෙක්ටයාරයට කිලෝ 40-50ක් යොදන්න'
+          },
+          {
+            name: 'Zinc - Zinc Sulfate',
+            reason: language === 'english'
+              ? 'Enhances overall plant vigor'
+              : 'සමස්ත ශාක ශක්තිය වැඩි දියුණු කරයි',
+            application: language === 'english'
+              ? 'Apply 25 kg/ha at planting'
+              : 'සිටුවීමේදී හෙක්ටයාරයට කිලෝ 25ක් යොදන්න'
+          }
+        ],
+        avoid: language === 'english'
+          ? [
+              'Excessive Nitrogen - Promotes lush growth attractive to midges',
+              'Late Nitrogen application - Extends susceptible period',
+              'Fertilizers during peak midge flight'
+            ]
+          : [
+              'අධික නයිට්‍රජන් - මදුරුවන්ට ආකර්ෂණීය සශ්‍රීක වර්ධනය ප්‍රවර්ධනය කරයි',
+              'ප්‍රමාද නයිට්‍රජන් යෙදීම - ග්‍රහණය වන කාලය දීර්ඝ කරයි',
+              'මදුරු ක්‍රියාකාරකම් උච්චතම අවස්ථාවේදී පොහොර යෙදීම'
+          ],
+        tips: language === 'english'
+          ? [
+              'Use resistant varieties like Bg 304, Bg 357',
+              'Apply fertilizers in split doses',
+              'Maintain proper drainage'
+            ]
+          : [
+              'Bg 304, Bg 357 වැනි ප්‍රතිරෝධී ප්‍රභේද භාවිතා කරන්න',
+              'කොටස් වශයෙන් පොහොර යොදන්න',
+              'නිසි ජලාපවහනය පවත්වා ගන්න'
+          ]
+      };
+    }
+    
     // Default recommendations for unknown pests
     return {
       fertilizers: [
@@ -494,71 +648,399 @@ export default function PestDetection() {
     };
   };
 
-  // Get general fertilizer tips for no detection
-  const getGeneralFertilizerTips = () => {
-    return {
-      fertilizers: [
-        {
-          name: language === 'english'
-            ? 'Basal Fertilizer - DAP + MOP + Urea'
-            : 'මුල් පොහොර - ඩීඒපී + එම්ඕපී + යූරියා',
-          reason: language === 'english'
-            ? 'Foundation for healthy crop growth'
-            : 'නිරෝගී බෝග වර්ධනය සඳහා පදනම',
-          application: language === 'english'
-            ? 'DAP 50 kg/ha + MOP 40 kg/ha + Urea 30 kg/ha at planting'
-            : 'සිටුවීමේදී ඩීඒපී 50 + එම්ඕපී 40 + යූරියා 30 කි.ග්‍රෑ/හෙක්'
-        },
-        {
-          name: language === 'english'
-            ? 'Top Dressing 1 - Urea'
-            : 'ඉහළ පොහොර 1 - යූරියා',
-          reason: language === 'english'
-            ? 'Promotes tillering'
-            : 'ගොයම් පැල ඇරඹීම ප්‍රවර්ධනය කරයි',
-          application: language === 'english'
-            ? 'Urea 50 kg/ha at 15-20 days after transplanting'
-            : 'සිටුවීමෙන් දින 15-20කට පසු යූරියා 50 කි.ග්‍රෑ/හෙක්'
-        },
-        {
-          name: language === 'english'
-            ? 'Top Dressing 2 - Urea + MOP'
-            : 'ඉහළ පොහොර 2 - යූරියා + එම්ඕපී',
-          reason: language === 'english'
-            ? 'Supports panicle initiation'
-            : 'මල් කරල් ඇරඹීමට සහාය වේ',
-          application: language === 'english'
-            ? 'Urea 40 kg/ha + MOP 30 kg/ha at 40-45 DAT'
-            : 'දින 40-45 දී යූරියා 40 + එම්ඕපී 30 කි.ග්‍රෑ/හෙක්'
-        },
-        {
-          name: language === 'english'
-            ? 'Panicle Fertilizer - Urea'
-            : 'නාළි පොහොර - යූරියා',
-          reason: language === 'english'
-            ? 'Enhances grain filling'
-            : 'ධාන්‍ය පිරවීම වැඩි දියුණු කරයි',
-          application: language === 'english'
-            ? 'Urea 30 kg/ha at booting stage'
-            : 'බඩ ඉදිමීමේ අවධියේදී යූරියා 30 කි.ග්‍රෑ/හෙක්'
-        }
-      ],
-      tips: language === 'english'
-        ? [
-            'Conduct soil test for accurate recommendations',
-            'Maintain 2-3 cm water level during fertilizer application',
-            'Split nitrogen into 3-4 applications',
-            'Avoid fertilizer during extreme weather',
-            'Incorporate organic manure 2 weeks before planting'
-          ]
-        : [
-            'නිවැරදි නිර්දේශ සඳහා පාංශු පරීක්ෂණයක් කරන්න',
-            'පොහොර යෙදීමේදී සෙ.මී. 2-3ක් ජල මට්ටමක් පවත්වා ගන්න',
-            'නයිට්‍රජන් යෙදීම් 3-4කට බෙදන්න',
-            'අයහපත් කාලගුණය තුළ පොහොර යෙදීමෙන් වළකින්න',
-            'සිටුවීමට සති 2කට පෙර කාබනික පොහොර එකතු කරන්න'
-          ]
-    };
+  // 📄 Generate PDF Report - UPDATED WITH NEW FILESYSTEM API
+  const generatePDFReport = async () => {
+    try {
+      setGeneratingPDF(true);
+
+      // Get current date
+      const currentDate = new Date();
+      const formattedDate = currentDate.toLocaleDateString(language === 'english' ? 'en-US' : 'si-LK', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      // Build pest detections HTML
+      let pestDetectionsHTML = '';
+      
+      if (!results?.detections || results.detections.length === 0) {
+        // No detections
+        pestDetectionsHTML = `
+          <div class="no-detection">
+            <div class="success-icon">✅</div>
+            <h3>${getText('noPestDetected')}</h3>
+            <p>${getText('healthyReport')}</p>
+          </div>
+        `;
+      } else {
+        // Build detections list
+        results.detections.forEach((detection, index) => {
+          const pestName = getPestNameInSinhala(detection.class);
+          const confidence = (detection.confidence * 100).toFixed(1);
+          
+          pestDetectionsHTML += `
+            <div class="detection-card">
+              <div class="detection-header">
+                <span class="pest-icon">🐛</span>
+                <h3>${pestName}</h3>
+                <span class="confidence-badge">${confidence}% ${getText('confidence')}</span>
+              </div>
+              
+              <div class="detection-section">
+                <h4>📝 ${getText('description')}</h4>
+                <p>${detection.pest_details.description}</p>
+              </div>
+              
+              <div class="detection-section">
+                <h4>⚠️ ${getText('symptoms')}</h4>
+                <ul>
+                  ${detection.pest_details.symptoms.map(s => `<li>${s}</li>`).join('')}
+                </ul>
+              </div>
+              
+              <div class="detection-section">
+                <h4>🔧 ${getText('management')}</h4>
+                <ul>
+                  ${detection.pest_details.management.map(m => `<li>${m}</li>`).join('')}
+                </ul>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      // Build fertilizer recommendations HTML
+      let fertilizerHTML = '';
+      
+      if (!results?.detections || results.detections.length === 0) {
+        // General fertilizer tips
+        const generalTips = getGeneralFertilizerTips();
+        
+        fertilizerHTML = `
+          <div class="fertilizer-section">
+            <h3>🌾 ${getText('generalFertilizer')}</h3>
+            ${generalTips.fertilizers.map(fert => `
+              <div class="fertilizer-card">
+                <h4>${translateFertilizerName(fert.name)}</h4>
+                <p class="reason">${fert.reason}</p>
+                <p class="application">📌 ${fert.application}</p>
+              </div>
+            `).join('')}
+            
+            <h4>💡 ${getText('bestPractices')}</h4>
+            <ul>
+              ${generalTips.tips.map(tip => `<li>${tip}</li>`).join('')}
+            </ul>
+          </div>
+        `;
+      } else {
+        // Pest-specific recommendations
+        results.detections.forEach((detection, index) => {
+          const recommendations = getFertilizerRecommendations(detection.class);
+          const pestName = getPestNameInSinhala(detection.class);
+          
+          fertilizerHTML += `
+            <div class="fertilizer-section">
+              <h3>${getText('fertilizerPlanFor')} ${pestName}</h3>
+              
+              <h4> ${getText('recommendedFertilizers')}</h4>
+              ${recommendations.fertilizers.map(fert => `
+                <div class="fertilizer-card">
+                  <h4>${translateFertilizerName(fert.name)}</h4>
+                  <p class="reason">• ${fert.reason}</p>
+                  <p class="application">📌 ${fert.application}</p>
+                </div>
+              `).join('')}
+              
+              <h4> ${getText('avoid')}</h4>
+              <ul class="avoid-list">
+                ${recommendations.avoid.map(item => `<li>${item}</li>`).join('')}
+              </ul>
+              
+              <h4> ${getText('tips')}</h4>
+              <ul class="tips-list">
+                ${recommendations.tips.map(tip => `<li>${tip}</li>`).join('')}
+              </ul>
+              
+              ${index < results.detections.length - 1 ? '<hr/>' : ''}
+            </div>
+          `;
+        });
+      }
+
+      // Complete HTML template
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <title>${getText('reportTitle')}</title>
+            <style>
+              body {
+                font-family: ${language === 'english' ? 'Arial, Helvetica' : '"Iskoola Pota", "Noto Sans Sinhala", Arial'}, sans-serif;
+                padding: 30px;
+                color: #333;
+                max-width: 800px;
+                margin: 0 auto;
+                line-height: 1.6;
+              }
+              .header {
+                text-align: center;
+                border-bottom: 3px solid #16a34a;
+                padding-bottom: 20px;
+                margin-bottom: 30px;
+              }
+              .header h1 {
+                color: #16a34a;
+                font-size: 28px;
+                margin-bottom: 5px;
+              }
+              .header p {
+                color: #666;
+                font-size: 14px;
+              }
+              .section-title {
+                background: #f0fdf4;
+                padding: 15px;
+                border-radius: 10px;
+                margin: 20px 0 15px 0;
+                border-left: 5px solid #16a34a;
+              }
+              .section-title h2 {
+                margin: 0;
+                color: #166534;
+              }
+              .detection-card {
+                background: #fff;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 20px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+              }
+              .detection-header {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                border-bottom: 1px solid #e5e7eb;
+                padding-bottom: 10px;
+                margin-bottom: 15px;
+              }
+              .pest-icon {
+                font-size: 24px;
+              }
+              .confidence-badge {
+                background: #f0fdf4;
+                color: #16a34a;
+                padding: 4px 12px;
+                border-radius: 20px;
+                font-weight: bold;
+                font-size: 14px;
+                margin-left: auto;
+              }
+              .detection-section {
+                margin: 15px 0;
+              }
+              .detection-section h4 {
+                margin: 10px 0 5px 0;
+                color: #374151;
+              }
+              .fertilizer-section {
+                background: #fff;
+                border: 1px solid #e5e7eb;
+                border-radius: 12px;
+                padding: 20px;
+                margin-bottom: 20px;
+              }
+              .fertilizer-card {
+                background: #f9fafb;
+                border-left: 4px solid #16a34a;
+                padding: 15px;
+                margin: 10px 0;
+                border-radius: 0 8px 8px 0;
+              }
+              .fertilizer-card h4 {
+                margin: 0 0 8px 0;
+                color: #111827;
+              }
+              .reason {
+                color: #4b5563;
+                font-style: italic;
+                margin: 5px 0;
+              }
+              .application {
+                color: #2563eb;
+                font-weight: 500;
+                margin: 5px 0;
+              }
+              .no-detection {
+                text-align: center;
+                padding: 40px;
+                background: #f0fdf4;
+                border-radius: 12px;
+              }
+              .success-icon {
+                font-size: 48px;
+                margin-bottom: 10px;
+              }
+              ul {
+                margin: 5px 0;
+                padding-left: 20px;
+              }
+              li {
+                margin: 5px 0;
+                color: #4b5563;
+              }
+              .avoid-list li {
+                color: #dc2626;
+              }
+              .tips-list li {
+                color: #16a34a;
+              }
+              hr {
+                border: none;
+                border-top: 2px dashed #e5e7eb;
+                margin: 20px 0;
+              }
+              .footer {
+                margin-top: 40px;
+                text-align: center;
+                font-size: 12px;
+                color: #9ca3af;
+                border-top: 1px solid #e5e7eb;
+                padding-top: 20px;
+              }
+              .info-row {
+                display: flex;
+                justify-content: space-between;
+                background: #f9fafb;
+                padding: 10px;
+                border-radius: 8px;
+                margin: 10px 0;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header">
+              <h1>${getText('reportTitle')}</h1>
+              <p>${getText('generatedOn')}: ${formattedDate}</p>
+            </div>
+
+            <div class="section-title">
+              <h2>🐛 ${getText('pestReport')}</h2>
+            </div>
+            
+            ${pestDetectionsHTML}
+
+            <div class="section-title">
+              <h2>🌱 ${getText('fertilizerReport')}</h2>
+            </div>
+
+            ${fertilizerHTML}
+
+            <div class="footer">
+              <p>Paddy Pest Detection System - Smart Farming Solution</p>
+              <p>© ${new Date().getFullYear()} All Rights Reserved</p>
+            </div>
+          </body>
+        </html>
+      `;
+
+      // Generate PDF to temporary file
+      const { uri } = await Print.printToFileAsync({ html });
+      
+      // Create a File object from the temporary URI
+      const tempFile = new FileSystem.File(uri);
+      
+      // Create destination directory if it doesn't exist
+      const reportsDir = new FileSystem.Directory(FileSystem.Paths.document, 'PestReports');
+      if (!reportsDir.exists) {
+        await reportsDir.create();
+      }
+      
+      
+      const fileName = `Pest_Report_${new Date().getTime()}.pdf`;
+      const destinationFile = new FileSystem.File(reportsDir, fileName);
+      
+      
+      await tempFile.copy(destinationFile);
+      
+      
+      await tempFile.delete();
+
+      setGeneratingPDF(false);
+      
+      
+      Alert.alert(
+        getText('pdfReady'),
+        language === 'english' 
+          ? 'What would you like to do with the report?'
+          : 'වාර්තාව සමඟ කුමක් කිරීමට ඔබ කැමතිද?',
+        [
+          {
+            text: getText('share'),
+            onPress: () => sharePDF(destinationFile.uri)
+          },
+          {
+            text: getText('save'),
+            onPress: () => savePDF(destinationFile.uri)
+          },
+          {
+            text: getText('cancel'),
+            style: 'cancel'
+          }
+        ]
+      );
+
+    } catch (error) {
+      console.error('PDF Generation Error:', error);
+      setGeneratingPDF(false);
+      Alert.alert(getText('error'), getText('pdfFailed'));
+    }
+  };
+
+  
+  const sharePDF = async (pdfUri) => {
+    try {
+      if (await Sharing.isAvailableAsync()) {
+       
+        const file = new FileSystem.File(pdfUri);
+        
+        await Sharing.shareAsync(file.uri, {
+          mimeType: 'application/pdf',
+          dialogTitle: getText('shareReport'),
+          UTI: 'com.adobe.pdf'
+        });
+      } else {
+        
+        Alert.alert(
+          language === 'english' ? 'Sharing not available' : 'බෙදාගැනීම ලබා ගත නොහැක',
+          language === 'english' 
+            ? 'PDF saved to: ' + pdfUri
+            : 'PDF මෙහි සුරකින ලදී: ' + pdfUri
+        );
+      }
+    } catch (error) {
+      console.error('Share Error:', error);
+      Alert.alert(getText('error'), getText('pdfFailed'));
+    }
+  };
+
+  // 💾 Save PDF (show save location)
+  const savePDF = async (pdfUri) => {
+    try {
+      Alert.alert(
+        getText('pdfGenerated'),
+        language === 'english'
+          ? `PDF saved to: ${pdfUri}`
+          : `PDF මෙහි සුරකින ලදී: ${pdfUri}`
+      );
+    } catch (error) {
+      console.error('Save Error:', error);
+    }
   };
 
   const renderFertilizerContent = () => {
@@ -583,7 +1065,7 @@ export default function PestDetection() {
       );
     }
 
-    // Show recommendations for each detected pest
+    
     return results.detections.map((detection, index) => {
       const recommendations = getFertilizerRecommendations(detection.class);
       const pestName = getPestNameInSinhala(detection.class);
@@ -667,18 +1149,32 @@ export default function PestDetection() {
         </View>
       )}
 
+      {generatingPDF && (
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingCard}>
+            <ActivityIndicator size="large" color="#16a34a" />
+            <Text style={styles.loadingText}>{getText('generatingPDF')}</Text>
+          </View>
+        </View>
+      )}
+
       <Modal visible={showResults} animationType="slide">
         <View style={styles.modalHeader}>
           <TouchableOpacity onPress={() => setShowResults(false)} style={styles.closeButton}>
             <MaterialCommunityIcons name="close" size={24} color="#111827" />
           </TouchableOpacity>
           <Text style={styles.modalTitle}>{getText('detectionResults')}</Text>
-          <TouchableOpacity onPress={toggleLanguage} style={styles.modalLanguageButton}>
-            <MaterialCommunityIcons name="translate" size={20} color="#16a34a" />
-            <Text style={styles.modalLanguageText}>
-              {language === 'english' ? 'සිංහල' : 'English'}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.modalHeaderRight}>
+            <TouchableOpacity onPress={generatePDFReport} style={styles.pdfButton}>
+              <MaterialCommunityIcons name="file-pdf-box" size={24} color="#16a34a" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={toggleLanguage} style={styles.modalLanguageButton}>
+              <MaterialCommunityIcons name="translate" size={20} color="#16a34a" />
+              <Text style={styles.modalLanguageText}>
+                {language === 'english' ? 'සිංහල' : 'English'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Tab Navigation */}
@@ -763,7 +1259,7 @@ export default function PestDetection() {
               )}
             </>
           ) : (
-            // Fertilizer Recommendations Tab
+            
             <View style={styles.fertilizerMainContainer}>
               {renderFertilizerContent()}
             </View>
@@ -884,6 +1380,28 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 50
   },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000
+  },
+  loadingCard: {
+    backgroundColor: '#fff',
+    padding: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    gap: 15
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#374151'
+  },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -902,6 +1420,16 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     padding: 8
+  },
+  modalHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10
+  },
+  pdfButton: {
+    padding: 8,
+    backgroundColor: '#f0fdf4',
+    borderRadius: 8
   },
   tabContainer: {
     flexDirection: "row",

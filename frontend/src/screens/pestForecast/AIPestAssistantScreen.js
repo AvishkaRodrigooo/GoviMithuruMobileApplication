@@ -16,8 +16,8 @@ import * as Speech from 'expo-speech';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-// Initialize Gemini API
-const GEMINI_API_KEY = 'My_Key'; // Replace with your actual API key
+
+const GEMINI_API_KEY = 'My_Key'; 
 const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 
 const AIPestAssistantScreen = ({ navigation, route }) => {
@@ -131,64 +131,64 @@ const AIPestAssistantScreen = ({ navigation, route }) => {
       response: {
         en: `🔍 **Brown Planthopper (BPH) Management**
 
-🦗 **Identification:**
+ **Identification:**
 • Small brown insects at base of plants
 • Causes "hopperburn" - circular yellowing patches
 • Plants wilt and dry up like fire damage
 
-🌱 **Cultural Control:**
+ **Cultural Control:**
 • Use resistant varieties (BG 379-2, BG 400-1)
 • Maintain 2-3cm water level consistently
 • Avoid excessive nitrogen fertilizer
 • Practice alternate wetting and drying
 • Plant in synchrony with neighbors
 
-🛡️ **Biological Control:**
+ **Biological Control:**
 • Conserve natural enemies: spiders, ladybirds, damselflies
 • Release predatory insects if available
 • Avoid broad-spectrum pesticides early season
 
-🧪 **Chemical Control (if threshold exceeded):**
+ **Chemical Control (if threshold exceeded):**
 • Buprofezin 25 SC @ 600 ml/ha
 • Pymetrozine 50 WG @ 300 g/ha
 • Apply when 5-10 insects per hill
 • Rotate chemicals to avoid resistance
 
-📊 **Thresholds:**
+ **Thresholds:**
 • Vegetative stage: 5-10 insects per hill
 • Reproductive stage: 10-20 insects per hill
 
-💡 **Pro Tip:** Monitor early morning or evening when BPH are most active at base of plants.`,
+ **Pro Tip:** Monitor early morning or evening when BPH are most active at base of plants.`,
         si: `🔍 **දුඹුරු පැළ මකුණා (BPH) කළමනාකරණය**
 
-🦗 **හඳුනාගැනීම:**
+ **හඳුනාගැනීම:**
 • පැළවල පාදමේ කුඩා දුඹුරු කෘමීන්
 • "හොපර් පිළිස්සුම" - වටකුරු කහ පැහැති ලප
 • පැළ මැලවී ගිනි හානියක් මෙන් වියළී යයි
 
-🌱 **සංස්කෘතික පාලනය:**
+ **සංස්කෘතික පාලනය:**
 • ප්‍රතිරෝධී ප්‍රභේද භාවිතා කරන්න (BG 379-2, BG 400-1)
 • නිරන්තරයෙන් සෙ.මී. 2-3ක් ජල මට්ටම පවත්වා ගන්න
 • අධික නයිට්‍රජන් පොහොර වළක්වන්න
 • විකල්ප තෙත් කිරීම සහ වියළීම පුරුදු කරන්න
 • අසල්වැසියන් සමඟ සමමුහුර්තව සිටුවන්න
 
-🛡️ **ජීව විද්‍යාත්මක පාලනය:**
+ **ජීව විද්‍යාත්මක පාලනය:**
 • ස්වභාවික සතුරන් ආරක්ෂා කරන්න: මකුළුවන්, හීන් කුරුමිණියන්
 • හැකි නම් විලෝපිත කෘමීන් මුදාහරින්න
 • මුල් සමයේ පුළුල් වර්ණාවලී පළිබෝධනාශක වළක්වන්න
 
-🧪 **රසායනික පාලනය (සීමාව ඉක්මවූ විට):**
+ **රසායනික පාලනය (සීමාව ඉක්මවූ විට):**
 • බුප්‍රොෆෙසින් 25 SC @ 600 ml/ha
 • පයිමෙට්‍රොසීන් 50 WG @ 300 g/ha
 • එක් පැළයකට කෘමීන් 5-10ක් ඇති විට යොදන්න
 • ප්‍රතිරෝධය වළක්වා ගැනීමට රසායන මාරු කරන්න
 
-📊 **සීමාවන්:**
+ **සීමාවන්:**
 • පැළ වැවෙන අවධිය: එක් පැළයකට කෘමීන් 5-10
 • ප්‍රජනන අවධිය: එක් පැළයකට කෘමීන් 10-20
 
-💡 **උපදෙස්:** පැළවල පාදමේ උදේ හෝ සවස BPH වඩාත් ක්‍රියාකාරී වන විට නිරීක්ෂණය කරන්න.`
+ **උපදෙස්:** පැළවල පාදමේ උදේ හෝ සවස BPH වඩාත් ක්‍රියාකාරී වන විට නිරීක්ෂණය කරන්න.`
       }
     },
 
@@ -200,68 +200,68 @@ const AIPestAssistantScreen = ({ navigation, route }) => {
       response: {
         en: `🔍 **Rice Leaf Folder Management**
 
-🦗 **Identification:**
+ **Identification:**
 • Caterpillars fold leaves longitudinally
 • White streaks on folded leaves
 • Larvae are green with dark heads
 • Adults are small brown moths
 
-🌱 **Cultural Control:**
+ **Cultural Control:**
 • Use light traps to monitor adult moths
 • Avoid excessive nitrogen fertilizer
 • Maintain field hygiene
 • Remove and destroy folded leaves
 • Practice synchronous planting
 
-🛡️ **Biological Control:**
+ **Biological Control:**
 • Conserve parasitic wasps (Trichogramma)
 • Protect spiders and predatory beetles
 • Use Trichogramma releases at 50,000/ha
 • Apply neem-based products
 
-🧪 **Chemical Control:**
+ **Chemical Control:**
 • Chlorantraniliprole 18.5 SC @ 150 ml/ha
 • Flubendiamide 20 WG @ 125 g/ha
 • Apply at early stage of infestation
 • Focus on younger larvae for better control
 
-📊 **Thresholds:**
+ **Thresholds:**
 • Vegetative: 1-2 folded leaves per hill
 • Reproductive: 2-3 folded leaves per hill
 
-💡 **Pro Tip:** Look for white streaks on leaves - this is the first sign before leaves are fully folded.`,
+ **Pro Tip:** Look for white streaks on leaves - this is the first sign before leaves are fully folded.`,
         si: `🔍 **වී කොළ එතුම් පණුවා කළමනාකරණය**
 
-🦗 **හඳුනාගැනීම:**
+ **හඳුනාගැනීම:**
 • දළඹුවන් කොළ දිගට නවයි
 • නවන ලද කොළ මත සුදු ඉරි
 • කීටයන් කොළ පැහැති, අඳුරු හිස් සහිතයි
 • වැඩිහිටියන් කුඩා දුඹුරු සලබයන්
 
-🌱 **සංස්කෘතික පාලනය:**
+ **සංස්කෘතික පාලනය:**
 • වැඩිහිටි සලබයන් නිරීක්ෂණයට ආලෝක උගුල් භාවිතා කරන්න
 • අධික නයිට්‍රජන් පොහොර වළක්වන්න
 • කෙතේ සනීපාරක්ෂාව පවත්වා ගන්න
 • නවන ලද කොළ ඉවත් කර විනාශ කරන්න
 • සමමුහුර්ත සිටුවීම පුරුදු කරන්න
 
-🛡️ **ජීව විද්‍යාත්මක පාලනය:**
+ **ජීව විද්‍යාත්මක පාලනය:**
 • පරපෝෂිත බඹරුන් ආරක්ෂා කරන්න (ට්‍රයිකොග්‍රෑම්මා)
 • මකුළුවන් සහ විලෝපිත කුරුමිණියන් ආරක්ෂා කරන්න
 • හෙක්ටයාරයකට 50,000 බැගින් ට්‍රයිකොග්‍රෑම්මා මුදාහරින්න
 • නීම් පාදක නිෂ්පාදන යොදන්න
 
-🧪 **රසායනික පාලනය:**
+ **රසායනික පාලනය:**
 • ක්ලෝරන්ට්‍රනිලිප්‍රෝල් 18.5 SC @ 150 ml/ha
 • ෆ්ලුබෙන්ඩියාමයිඩ් 20 WG @ 125 g/ha
 • උවදුරේ මුල් අවධියේදී යොදන්න
 • වඩා හොඳ පාලනය සඳහා බාල කීටයන් ඉලක්ක කරන්න
 
-📊 **සීමාවන්:**
+ **සීමාවන්:**
 • පැළ වැවෙන අවධිය: එක් පැළයකට නවන ලද කොළ 1-2
 • ප්‍රජනන අවධිය: එක් පැළයකට නවන ලද කොළ 2-3
 
-💡 **උපදෙස්:** කොළ මත සුදු ඉරි සොයන්න - කොළ සම්පූර්ණයෙන් නැවීමට පෙර මෙය පළමු ලකුණයි.`
+ **උපදෙස්:** කොළ මත සුදු ඉරි සොයන්න - කොළ සම්පූර්ණයෙන් නැවීමට පෙර මෙය පළමු ලකුණයි.`
       }
     },
 
@@ -273,66 +273,66 @@ const AIPestAssistantScreen = ({ navigation, route }) => {
       response: {
         en: `🔍 **Paddy Bug (Rice Bug) Management**
 
-🦗 **Identification:**
+ **Identification:**
 • Shield-shaped brown/green bugs
 • Feed on developing grains at milky stage
 • Causes empty or discolored grains (pecky rice)
 • Adults and nymphs both damage grains
 
-🌱 **Cultural Control:**
+ **Cultural Control:**
 • Early planting to avoid peak populations
 • Use resistant varieties (BG 94-1, BG 352)
 • Maintain field hygiene
 • Remove alternate hosts (grassy weeds)
 • Synchronize planting with neighbors
 
-🛡️ **Biological Control:**
+ **Biological Control:**
 • Conserve egg parasitoids
 • Protect predatory ants and spiders
 • Avoid unnecessary insecticide sprays
 
-🧪 **Chemical Control:**
+ **Chemical Control:**
 • Apply at heading stage if needed
 • Deltamethrin 2.8 EC @ 500 ml/ha
 • Lambda-cyhalothrin 5 EC @ 400 ml/ha
 • Target early morning or evening when bugs are active
 
-📊 **Thresholds:**
+ **Thresholds:**
 • 2-3 bugs per 10 sweeps at heading
 • 5-6 bugs per 10 sweeps during grain filling
 
-💡 **Pro Tip:** Use sweep net to monitor - take 10 sweeps in different field spots and count bugs.`,
+ **Pro Tip:** Use sweep net to monitor - take 10 sweeps in different field spots and count bugs.`,
         si: `🔍 **වී කූඩැල්ලා කළමනාකරණය**
 
-🦗 **හඳුනාගැනීම:**
+ **හඳුනාගැනීම:**
 • පලිහ හැඩැති දුඹුරු/කොළ පැහැති කෘමීන්
 • කිරි අවධියේදී වැඩෙන ධාන්‍ය ආහාරයට ගනී
 • හිස් හෝ වර්ණවෙනස් වූ ධාන්‍ය ඇති කරයි
 • වැඩිහිටියන් සහ කීටයන් යන දෙකම ධාන්‍ය වලට හානි කරයි
 
-🌱 **සංස්කෘතික පාලනය:**
+ **සංස්කෘතික පාලනය:**
 • උච්ච ජනගහනය වළක්වා ගැනීමට ඉක්මන් සිටුවීම
 • ප්‍රතිරෝධී ප්‍රභේද භාවිතා කරන්න (BG 94-1, BG 352)
 • කෙතේ සනීපාරක්ෂාව පවත්වා ගන්න
 • විකල්ප ධාරක (තෘණ වල් පැළෑටි) ඉවත් කරන්න
 • අසල්වැසියන් සමඟ සමමුහුර්ත සිටුවීම
 
-🛡️ **ජීව විද්‍යාත්මක පාලනය:**
+ **ජීව විද්‍යාත්මක පාලනය:**
 • බිත්තර පරපෝෂිතයන් ආරක්ෂා කරන්න
 • විලෝපිත කුහුඹුවන් සහ මකුළුවන් ආරක්ෂා කරන්න
 • අනවශ්‍ය කෘමිනාශක ඉසීමෙන් වළකින්න
 
-🧪 **රසායනික පාලනය:**
+ **රසායනික පාලනය:**
 • අවශ්‍ය නම් හිස් දැමීමේ අවධියේදී යොදන්න
 • ඩෙල්ටමෙත්‍රින් 2.8 EC @ 500 ml/ha
 • ලැම්ඩා-සයිහෙලොත්‍රින් 5 EC @ 400 ml/ha
 • කෘමීන් ක්‍රියාකාරී වන උදේ හෝ සවස ඉලක්ක කරන්න
 
-📊 **සීමාවන්:**
+ **සීමාවන්:**
 • හිස් දැමීමේදී පහර 10කට කෘමීන් 2-3
 • ධාන්‍ය පිරවීමේදී පහර 10කට කෘමීන් 5-6
 
-💡 **උපදෙස්:** නිරීක්ෂණයට අතුල්ලන දැලක් භාවිතා කරන්න - කෙතේ විවිධ ස්ථානවල පහර 10ක් ගෙන කෘමීන් ගණන් කරන්න.`
+ **උපදෙස්:** නිරීක්ෂණයට අතුල්ලන දැලක් භාවිතා කරන්න - කෙතේ විවිධ ස්ථානවල පහර 10ක් ගෙන කෘමීන් ගණන් කරන්න.`
       }
     },
 
@@ -357,28 +357,28 @@ const AIPestAssistantScreen = ({ navigation, route }) => {
 • Keep fields well-drained
 • Remove crop residues after harvest
 
-🧪 **Chemical Control:**
+ **Chemical Control:**
 • Tricyclazole 75 WP @ 500 g/ha
 • Isoprothiolane 40 EC @ 1.5 L/ha
 • Apply at disease onset
 • Repeat at 10-14 day intervals if needed
 
-📊 **Favorable Conditions:**
+ **Favorable Conditions:**
 • High humidity (>90%)
 • Temperatures 25-28°C
 • Frequent rainfall or dew
 • Dense canopy with poor air circulation
 
-💡 **Pro Tip:** Monitor nursery beds carefully - early detection is key!`,
+ **Pro Tip:** Monitor nursery beds carefully - early detection is key!`,
         si: `🔍 **වී තුරුණු ලප රෝග කළමනාකරණය**
 
-🦠 **හඳුනාගැනීම:**
+ **හඳුනාගැනීම:**
 • අළු පැහැති මධ්‍යයක් සහ දුඹුරු දාර සහිත දියමන්ති හැඩැති ලප
 • කොළ, ගැට, සහ නාළිවල ලප
 • ගෙල තුරුණු ලපය නාළි නැමී කැඩී යාමට හේතු වේ
 • බිමට ඉහළ සියලුම කොටස් වලට බලපෑ හැක
 
-🌱 **සංස්කෘතික පාලනය:**
+ **සංස්කෘතික පාලනය:**
 • ප්‍රතිරෝධී ප්‍රභේද භාවිතා කරන්න (BG 357, BG 358)
 • අධික නයිට්‍රජන් පොහොර වළක්වන්න
 • නිසි පැළ පරතරයක් පවත්වා ගන්න
@@ -391,13 +391,13 @@ const AIPestAssistantScreen = ({ navigation, route }) => {
 • රෝගය ආරම්භයේදී යොදන්න
 • අවශ්‍ය නම් දින 10-14 ක පරතරයකින් නැවත යොදන්න
 
-📊 **හිතකර තත්ත්වයන්:**
+ **හිතකර තත්ත්වයන්:**
 • ඉහළ ආර්ද්‍රතාව (>90%)
 • උෂ්ණත්වය 25-28°C
 • නිතර වර්ෂාව හෝ පිනි
 • දුර්වල වායු සංසරණය සහිත ඝන වියනක්
 
-💡 **උපදෙස්:** බීජ පැල ආරක්ෂිත ප්‍රදේශ හොඳින් නිරීක්ෂණය කරන්න - මුල් හඳුනාගැනීම ඉතා වැදගත්!`
+ **උපදෙස්:** බීජ පැල ආරක්ෂිත ප්‍රදේශ හොඳින් නිරීක්ෂණය කරන්න - මුල් හඳුනාගැනීම ඉතා වැදගත්!`
       }
     },
 
@@ -409,52 +409,52 @@ const AIPestAssistantScreen = ({ navigation, route }) => {
       response: {
         en: `🔍 **Sheath Blight Management**
 
-🦠 **Identification:**
+ **Identification:**
 • Irregular oval spots on leaf sheaths
 • Spots have gray-white centers with brown margins
 • Lesions can reach up to 20-30 cm
 • Plants lodge easily when infected
 
-🌱 **Cultural Control:**
+ **Cultural Control:**
 • Use less susceptible varieties
 • Avoid dense planting
 • Maintain balanced nitrogen fertilization
 • Keep fields weed-free
 • Drain fields periodically
 
-🧪 **Chemical Control:**
+ **Chemical Control:**
 • Validamycin 3 L @ 2.5 L/ha
 • Carbendazim 50 WP @ 500 g/ha
 • Apply at booting stage
 • Focus on lower parts of plants
 
-📊 **Favorable Conditions:**
+ **Favorable Conditions:**
 • High humidity (>95%)
 • Dense crop canopy
 • Excessive nitrogen
 • Continuous flooding`,
         si: `🔍 **කොපු පිළිස්සුම් රෝග කළමනාකරණය**
 
-🦠 **හඳුනාගැනීම:**
+ **හඳුනාගැනීම:**
 • කොපු මත අක්‍රමවත් ඕවලාකාර ලප
 • ලපවල අළු-සුදු පැහැති මධ්‍යයක් සහ දුඹුරු දාර ඇත
 • තුවාල සෙ.මී. 20-30 දක්වා ළඟා විය හැක
 • ආසාදනය වූ විට පැළ පහසුවෙන් නැමී වැටේ
 
-🌱 **සංස්කෘතික පාලනය:**
+ **සංස්කෘතික පාලනය:**
 • අඩු සංවේදී ප්‍රභේද භාවිතා කරන්න
 • ඝන සිටුවීමෙන් වළකින්න
 • සමබර නයිට්‍රජන් පොහොර යෙදීම පවත්වා ගන්න
 • කෙත වල් පැළෑටි රහිතව තබා ගන්න
 • වරින් වර කෙත ජලය බැස යන්න
 
-🧪 **රසායනික පාලනය:**
+ **රසායනික පාලනය:**
 • වැලිඩාමයිසින් 3 L @ 2.5 L/ha
 • කාබෙන්ඩසිම් 50 WP @ 500 g/ha
 • මල් කරල් ඇරඹීමේ අවධියේදී යොදන්න
 • පැළවල පහළ කොටස් කෙරෙහි අවධානය යොමු කරන්න
 
-📊 **හිතකර තත්ත්වයන්:**
+ **හිතකර තත්ත්වයන්:**
 • ඉහළ ආර්ද්‍රතාව (>95%)
 • ඝන බෝග වියනක්
 • අධික නයිට්‍රජන්
@@ -470,88 +470,88 @@ const AIPestAssistantScreen = ({ navigation, route }) => {
       response: {
         en: `🌾 **Paddy Fertilizer Management**
 
-📊 **Basal Fertilizer (At planting):**
+ **Basal Fertilizer (At planting):**
 • DAP: 50 kg/ha
 • MOP: 40 kg/ha
 • Urea: 30 kg/ha
 • Mix well and incorporate into soil
 
-🌱 **Top Dressing 1 (15-20 DAT):**
+ **Top Dressing 1 (15-20 DAT):**
 • Urea: 50 kg/ha
 • Apply when field has 2-3cm water
 
-🌿 **Top Dressing 2 (35-40 DAT):**
+ **Top Dressing 2 (35-40 DAT):**
 • Urea: 40 kg/ha
 • MOP: 30 kg/ha
 • Supports panicle initiation
 
-🌾 **Panicle Fertilizer (50-55 DAT):**
+ **Panicle Fertilizer (50-55 DAT):**
 • Urea: 30 kg/ha
 • Apply at booting stage
 
-🥬 **Organic Options:**
+ **Organic Options:**
 • Compost: 5-10 tons/ha before planting
 • Green manure: Incorporate 45 days before planting
 • Azolla: Grow as bio-fertilizer
 • Vermicompost: 2-3 tons/ha
 
-🔬 **Micronutrients:**
+ **Micronutrients:**
 • Zinc: 25 kg/ha Zinc Sulfate at planting
 • Boron: 5 kg/ha Borax at panicle initiation
 • Silicon: 500 kg/ha in BPH-prone areas
 
-💡 **Best Practices:**
+ **Best Practices:**
 • Conduct soil test before application
 • Split nitrogen into 3-4 doses
 • Apply in 2-3cm standing water
 • Avoid application during extreme weather
 • Incorporate organic manure 2 weeks before planting
 
-⚠️ **Deficiency Signs:**
+ **Deficiency Signs:**
 • Yellowing: Need more nitrogen
 • Purple tinge: Phosphorus deficiency
 • Rusty spots: Potassium deficiency
 • Small panicles: Boron deficiency`,
         si: `🌾 **වී පොහොර කළමනාකරණය**
 
-📊 **මුල් පොහොර (සිටුවීමේදී):**
+ **මුල් පොහොර (සිටුවීමේදී):**
 • ඩීඒපී: 50 kg/ha
 • එම්ඕපී: 40 kg/ha
 • යූරියා: 30 kg/ha
 • හොඳින් මිශ්‍ර කර පසට එකතු කරන්න
 
-🌱 **ඉහළ පොහොර 1 (සිටුවීමෙන් දින 15-20):**
+ **ඉහළ පොහොර 1 (සිටුවීමෙන් දින 15-20):**
 • යූරියා: 50 kg/ha
 • කෙතේ සෙ.මී. 2-3ක් ජලය ඇති විට යොදන්න
 
-🌿 **ඉහළ පොහොර 2 (සිටුවීමෙන් දින 35-40):**
+ **ඉහළ පොහොර 2 (සිටුවීමෙන් දින 35-40):**
 • යූරියා: 40 kg/ha
 • එම්ඕපී: 30 kg/ha
 • මල් කරල් ඇරඹීමට සහාය වේ
 
-🌾 **නාළි පොහොර (සිටුවීමෙන් දින 50-55):**
+ **නාළි පොහොර (සිටුවීමෙන් දින 50-55):**
 • යූරියා: 30 kg/ha
 • බඩ ඉදිමීමේ අවධියේදී යොදන්න
 
-🥬 **කාබනික විකල්ප:**
+ **කාබනික විකල්ප:**
 • කොම්පෝස්ට්: සිටුවීමට පෙර ටොන් 5-10/ha
 • කොළ පොහොර: සිටුවීමට දින 45 කට පෙර එකතු කරන්න
 • අසෝලා: ජීව පොහොර ලෙස වගා කරන්න
 • වර්මිකොම්පෝස්ට්: ටොන් 2-3/ha
 
-🔬 **සූක්ෂ්ම පෝෂක:**
+ **සූක්ෂ්ම පෝෂක:**
 • සින්ක්: සිටුවීමේදී සින්ක් සල්ෆේට් 25 kg/ha
 • බෝරෝන්: නාළි ඇරඹීමේදී බෝරැක්ස් 5 kg/ha
 • සිලිකන්: BPH බහුල ප්‍රදේශවල 500 kg/ha
 
-💡 **හොඳම පිළිවෙත්:**
+ **හොඳම පිළිවෙත්:**
 • යෙදීමට පෙර පාංශු පරීක්ෂණයක් කරන්න
 • නයිට්‍රජන් මාත්‍රා 3-4 කට බෙදන්න
 • සෙ.මී. 2-3ක් නැගී සිටින ජලයේ යොදන්න
 • අයහපත් කාලගුණයේදී යෙදීමෙන් වළකින්න
 • සිටුවීමට සති 2 කට පෙර කාබනික පොහොර එකතු කරන්න
 
-⚠️ **හිඟතා ලක්ෂණ:**
+ **හිඟතා ලක්ෂණ:**
 • කහ පැහැය: වැඩි නයිට්‍රජන් අවශ්‍යයි
 • දම් පැහැය: පොස්පරස් හිඟය
 • මලකඩ පැහැ ලප: පොටෑසියම් හිඟය
@@ -567,54 +567,54 @@ const AIPestAssistantScreen = ({ navigation, route }) => {
       response: {
         en: `🌦️ **Weather & Seasonal Information**
 
-📅 **Rice Growing Seasons:**
+ **Rice Growing Seasons:**
 • **Yala Season** (May - August): Dry season, supplementary irrigation needed
 • **Maha Season** (September - March): Main rainy season
 
-🌡️ **Optimal Conditions:**
+ **Optimal Conditions:**
 • Temperature: 20-35°C (ideal 25-30°C)
 • Rainfall: 100-200 mm/month
 • Humidity: 70-80%
 
-⚠️ **Weather Warnings:**
+ **Weather Warnings:**
 • Heavy rain: Risk of flooding, disease spread
 • Drought: Water stress, increased pest pressure
 • High humidity: Fungal disease risk increases
 • Strong winds: Lodging, physical damage
 
-🌱 **Seasonal Recommendations:**
+ **Seasonal Recommendations:**
 • **Yala**: Plant short-duration varieties, ensure irrigation
 • **Maha**: Use longer-duration varieties, monitor for blast
 • **Transition periods**: Watch for pest outbreaks
 
-💡 **Monitoring Tips:**
+ **Monitoring Tips:**
 • Check weather forecasts regularly
 • Install rain gauges in fields
 • Record microclimate conditions
 • Join local weather alert systems`,
-        si: `🌦️ **කාලගුණ සහ වාර තොරතුරු**
+        si: ` **කාලගුණ සහ වාර තොරතුරු**
 
-📅 **වී වගා වාර:**
+ **වී වගා වාර:**
 • **යල වාරය** (මැයි - අගෝස්තු): වියළි සමය, අතිරේක වාරිමාර්ග අවශ්‍යයි
 • **මහ වාරය** (සැප්තැම්බර් - මාර්තු): ප්‍රධාන වැසි සමය
 
-🌡️ **ප්‍රශස්ත තත්ත්වයන්:**
+ **ප්‍රශස්ත තත්ත්වයන්:**
 • උෂ්ණත්වය: 20-35°C (සුදුසුම 25-30°C)
 • වර්ෂාපතනය: මසකට මි.මී. 100-200
 • ආර්ද්‍රතාව: 70-80%
 
-⚠️ **කාලගුණ අනතුරු ඇඟවීම්:**
+ **කාලගුණ අනතුරු ඇඟවීම්:**
 • අධික වැස්ස: ගංවතුර අවදානම, රෝග පැතිරීම
 • නියඟය: ජල ආතතිය, පළිබෝධ පීඩනය වැඩි වීම
 • ඉහළ ආර්ද්‍රතාව: දිලීර රෝග අවදානම වැඩි වේ
 • තද සුළං: පැළ නැමීම, භෞතික හානි
 
-🌱 **වාර අනුව නිර්දේශ:**
+ **වාර අනුව නිර්දේශ:**
 • **යල**: කෙටි කාල ප්‍රභේද සිටුවන්න, වාරිමාර්ග සහතික කරන්න
 • **මහ**: දිගු කාල ප්‍රභේද භාවිතා කරන්න, තුරුණු ලපය නිරීක්ෂණය කරන්න
 • **සංක්‍රාන්ති කාල**: පළිබෝධ පැතිරීම් සඳහා සූදානම් වන්න
 
-💡 **නිරීක්ෂණ උපදෙස්:**
+ **නිරීක්ෂණ උපදෙස්:**
 • නිතිපතා කාලගුණ අනාවැකි පරීක්ෂා කරන්න
 • කෙතේ වැසි මාපක ස්ථාපනය කරන්න
 • ක්ෂුද්‍ර දේශගුණික තත්ත්වයන් සටහන් කරන්න
@@ -630,62 +630,62 @@ const AIPestAssistantScreen = ({ navigation, route }) => {
       response: {
         en: `💧 **Water Management in Paddy**
 
-📊 **Water Level Guidelines:**
+ **Water Level Guidelines:**
 • **Germination to transplanting**: Moist soil
 • **Vegetative stage (0-40 DAT)**: 2-5 cm water
 • **Reproductive stage (40-70 DAT)**: 5-10 cm water
 • **Ripening stage (70-90 DAT)**: Moist soil, drain 15 days before harvest
 
-🌊 **Irrigation Methods:**
+ **Irrigation Methods:**
 • Continuous flooding (traditional)
 • Alternate wetting and drying (AWD) - water saving
 • Saturated soil condition
 • Rotational irrigation
 
-💧 **Water Saving Techniques:**
+ **Water Saving Techniques:**
 • AWD can save 30% water without yield loss
 • Direct seeding uses less water than transplanting
 • Laser land leveling for uniform water distribution
 • Short duration varieties need less water
 
-⚠️ **Water Stress Signs:**
+ **Water Stress Signs:**
 • Leaf rolling in daytime
 • Dark green leaves
 • Delayed flowering
 • Poor grain filling
 
-🌱 **Drought Management:**
+ **Drought Management:**
 • Use drought-tolerant varieties
 • Maintain organic matter in soil
 • Mulch to reduce evaporation
 • Install supplementary irrigation`,
         si: `💧 **වී වගාවේ ජල කළමනාකරණය**
 
-📊 **ජල මට්ටම් මාර්ගෝපදේශ:**
+ **ජල මට්ටම් මාර්ගෝපදේශ:**
 • **ප්‍රරෝහණයේ සිට බද්ධ කිරීම දක්වා**: තෙත් පස
 • **පැළ වැවෙන අවධිය (දින 0-40)**: සෙ.මී. 2-5 ජලය
 • **ප්‍රජනන අවධිය (දින 40-70)**: සෙ.මී. 5-10 ජලය
 • **ඉදීමේ අවධිය (දින 70-90)**: තෙත් පස, අස්වැන්නට දින 15 කට පෙර ජලය බැස යන්න
 
-🌊 **වාරිමාර්ග ක්‍රම:**
+ **වාරිමාර්ග ක්‍රම:**
 • අඛණ්ඩ ගංවතුර (සාම්ප්‍රදායික)
 • විකල්ප තෙත් කිරීම සහ වියළීම (AWD) - ජල ඉතිරිය
 • සංතෘප්ත පාංශු තත්ත්වය
 • භ්‍රමණ වාරිමාර්ග
 
-💧 **ජල ඉතිරි කිරීමේ ක්‍රම:**
+ **ජල ඉතිරි කිරීමේ ක්‍රම:**
 • AWD මගින් අස්වැන්න අඩු නොවී 30% ජලය ඉතිරි කළ හැක
 • සෘජු වපුරනය බද්ධ කිරීමට වඩා අඩු ජලය භාවිතා කරයි
 • ඒකාකාර ජල බෙදාහැරීම සඳහා ලේසර් ඉඩම් සමතලා කිරීම
 • කෙටි කාල ප්‍රභේද අඩු ජලය අවශ්‍ය කරයි
 
-⚠️ **ජල ආතති ලක්ෂණ:**
+ **ජල ආතති ලක්ෂණ:**
 • දිවා කාලයේ කොළ ඇඹරීම
 • තද කොළ පැහැති කොළ
 • ප්‍රමාද වූ මල් පිපීම
 • දුර්වල ධාන්‍ය පිරවීම
 
-🌱 **නියඟ කළමනාකරණය:**
+ **නියඟ කළමනාකරණය:**
 • නියඟ-ඉවසන ප්‍රභේද භාවිතා කරන්න
 • පසෙහි කාබනික ද්‍රව්‍ය පවත්වා ගන්න
 • වාෂ්පීකරණය අඩු කිරීමට වසුන් යොදන්න
@@ -699,14 +699,14 @@ const AIPestAssistantScreen = ({ navigation, route }) => {
         si: ['ස්වභාවික සතුරන්', 'හිතකර කෘමීන්', 'විලෝපිතයන්', 'පරපෝෂිතයන්', 'මකුළුවන්']
       },
       response: {
-        en: `🐞 **Natural Enemies of Rice Pests**
+        en: ` **Natural Enemies of Rice Pests**
 
 🕷️ **Spiders:**
 • Wolf spiders, jumping spiders, lynx spiders
 • Feed on BPH, leafhoppers, and small insects
 • Can consume 5-15 prey per day
 
-🐞 **Ladybird Beetles:**
+ **Ladybird Beetles:**
 • Adults and larvae feed on aphids, BPH eggs
 • One beetle can eat 50+ aphids daily
 • Conserve by avoiding broad-spectrum sprays
@@ -716,17 +716,17 @@ const AIPestAssistantScreen = ({ navigation, route }) => {
 • Nymphs in water feed on mosquito larvae
 • Good indicators of field health
 
-🐝 **Parasitic Wasps:**
+ **Parasitic Wasps:**
 • Trichogramma: parasitize moth eggs
 • Gonatocerus: attack leafhopper eggs
 • Release 50,000/ha for leaf folder control
 
-🐜 **Predatory Ants:**
+ **Predatory Ants:**
 • Red ants feed on small insects and eggs
 • Build nests in rice fields
 • Avoid insecticides that kill ants
 
-💚 **How to Conserve:**
+ **How to Conserve:**
 • Reduce insecticide use
 • Plant flowering plants on bunds
 • Maintain refuge areas

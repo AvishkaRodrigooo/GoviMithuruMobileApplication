@@ -111,7 +111,7 @@ export default function App() {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#16a34a" />
-        <Text style={{ marginTop: 10, color: '#16a34a' }}>Loading GoviMithuru...</Text>
+        <Text style={{ marginTop: 10, color: '#16a34a' }}>Loading AgroMind...</Text>
       </View>
     );
   }
@@ -133,7 +133,7 @@ export default function App() {
           // User is signed in - show main app screens
           <>
 
-            <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'GoviMithuru' }} />
+            <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'AgroMind' }} />
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
             <Stack.Screen name="AdminDashboard" component={adminDashboardScreen} options={{ title: "Admin Dashboard" }} />
             <Stack.Screen name="HerbicideRecommendation" component={HerbicideRecommendationAdminScreen} options={{ title: 'Herbicide Recommendation' }} />

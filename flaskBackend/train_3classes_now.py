@@ -5,14 +5,13 @@ import shutil
 from datetime import datetime
 import yaml
 
-# Get the current working directory
 current_dir = os.getcwd()
 print(f" Current directory: {current_dir}")
 
 
 data_yaml = os.path.join(current_dir, 'dataset', 'pestdata_3classes', 'data.yaml')
 
-# Update the data.yaml file with correct paths
+
 with open(data_yaml, 'r') as f:
     data_config = yaml.safe_load(f)
 

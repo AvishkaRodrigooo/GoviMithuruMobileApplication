@@ -20,7 +20,7 @@ const getBaseUrl = () => {
 
 const BASE_URL = getBaseUrl();
 
-console.log('📡 API Base URL:', BASE_URL);
+console.log(' API Base URL:', BASE_URL);
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -36,18 +36,18 @@ api.interceptors.request.use(async (config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
-  console.log(`🚀 Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
+  console.log(` Request: ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
   return config;
 });
 
 // Response interceptor for better error handling
 api.interceptors.response.use(
   (response) => {
-    console.log(`✅ Response: ${response.status} from ${response.config.url}`);
+    console.log(` Response: ${response.status} from ${response.config.url}`);
     return response;
   },
   (error) => {
-    console.error('❌ API Error:', {
+    console.error(' API Error:', {
       message: error.message,
       url: error.config?.url,
       baseURL: error.config?.baseURL,
@@ -118,10 +118,10 @@ export const pestDetectionApi = {
       const response = await axios.get(`${BASE_URL}/api/pest-detection/health`, {
         timeout: 5000,
       });
-      console.log('✅ Server connection test successful:', response.data);
+      console.log(' Server connection test successful:', response.data);
       return true;
     } catch (error) {
-      console.error('❌ Server connection test failed:', error.message);
+      console.error(' Server connection test failed:', error.message);
       return false;
     }
   },
@@ -136,10 +136,10 @@ export const pestDetectionApi = {
       }
 
       const url = `${BASE_URL}/api/pest-detection/detect`;
-      console.log('📡 Sending detection request to:', url);
+      console.log(' Sending detection request to:', url);
       
       // Log FormData contents for debugging
-      console.log('📦 FormData contents:');
+      console.log(' FormData contents:');
       for (let pair of formData._parts) {
         if (pair[0] === 'image') {
           console.log('  image:', {
@@ -153,17 +153,17 @@ export const pestDetectionApi = {
       }
       
       const response = await axios.post(url, formData, {
-        timeout: 120000, // 120 seconds timeout for detection
+        timeout: 120000, 
         headers: {
           'Content-Type': 'multipart/form-data',
           'Accept': 'application/json',
         },
       });
       
-      console.log('✅ Detection response received with status:', response.status);
+      console.log(' Detection response received with status:', response.status);
       return response.data;
     } catch (error) {
-      console.error('❌ Detection API error:');
+      console.error(' Detection API error:');
       
       if (error.response) {
         // The request was made and the server responded with a status code
@@ -207,10 +207,10 @@ export const pestDetectionApi = {
         },
       });
       
-      console.log('✅ Detection saved successfully');
+      console.log(' Detection saved successfully');
       return response.data;
     } catch (error) {
-      console.error('❌ Save detection error:', error);
+      console.error(' Save detection error:', error);
       throw error;
     }
   },
@@ -228,10 +228,10 @@ export const pestDetectionApi = {
         },
       });
       
-      console.log('✅ Detection history fetched successfully');
+      console.log(' Detection history fetched successfully');
       return response.data;
     } catch (error) {
-      console.error('❌ Detection history error:', error);
+      console.error(' Detection history error:', error);
       throw error;
     }
   },

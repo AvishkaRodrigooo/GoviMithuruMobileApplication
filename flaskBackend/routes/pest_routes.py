@@ -309,7 +309,7 @@ def make_prediction(features):
         else:
             pest_name = f"Pest_{pest_pred}"
         
-        #  confidence scores
+        #  c scores
         pest_proba = models['pest'].predict_proba(features_2d)[0]
         confidence = float(np.max(pest_proba) * 100)
         
@@ -491,7 +491,7 @@ def get_weather_forecast_for_district(district, days=7):
     return forecast
 
 def get_mock_weather(district):
-    """Get mock weather data for a district"""
+    """Get  weather data for a district"""
     # District-specific weather patterns
     weather_patterns = {
         'Anuradhapura': {'temp': 29.5, 'rain': 7.2, 'humidity': 78},
@@ -820,7 +820,7 @@ def get_prevention_tips():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
-# HEATMAP ENDPOINTS
+# HEATMAP 
 
 
 @pest_bp.route('/heatmap', methods=['GET'])

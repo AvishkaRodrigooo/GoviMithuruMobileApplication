@@ -114,7 +114,7 @@ export default function NotificationSettings({ navigation }) {
           <NotificationToggle />
         </View>
 
-        {/* Device ID (debug) */}
+        {/* Device ID  */}
         {deviceId && (
           <View style={styles.deviceInfo}>
             <MaterialCommunityIcons name="information" size={16} color="#6b7280" />

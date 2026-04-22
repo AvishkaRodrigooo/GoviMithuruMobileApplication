@@ -91,7 +91,7 @@ const WelcomeScreen = ({ navigation }) => {
                             </LinearGradient>
                         </View>
 
-                        <Text style={s.appName}>GoviMithuru</Text>
+                        <Text style={s.appName}>AgroMind</Text>
                         <View style={s.accentLine} />
 
                         <Text style={s.tagline}>

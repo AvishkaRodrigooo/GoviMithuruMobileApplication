@@ -18,7 +18,7 @@ import { Picker } from '@react-native-picker/picker';
 import { LineChart } from 'react-native-chart-kit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Remove expo-notifications import
+
 // import * as Notifications from 'expo-notifications';
 
 // Import OneSignal service
@@ -335,11 +335,11 @@ const PestForecastDashboard = ({ navigation }) => {
     const range = getIncidenceRange(incidence);
     
     const colors = {
-      "0-5%": "#16a34a",    // Green
-      "5-10%": "#ca8a04",   // Yellow
-      "10-20%": "#ea580c",  // Orange
-      "20-30%": "#dc2626",  // Red
-      "30+%": "#991b1b"     // Dark Red
+      "0-5%": "#16a34a",    
+      "5-10%": "#ca8a04",   
+      "10-20%": "#ea580c",  
+      "20-30%": "#dc2626",  
+      "30+%": "#991b1b"     
     };
     
     return colors[range] || "#6b7280";
@@ -383,17 +383,17 @@ const PestForecastDashboard = ({ navigation }) => {
       (season === 'Yala' ? 'Yala Season' : 'Maha Season');
   };
   
-  // Initialize OneSignal
+  
   useEffect(() => {
     const initNotifications = async () => {
       try {
-        // Generate a unique user ID
+        
         const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         
-        // Initialize OneSignal
+        
         NotificationService.initialize(userId);
         
-        // Set notification open handler
+        
         NotificationService.setNotificationOpenHandler((data) => {
           console.log('Notification opened:', data);
           
@@ -408,7 +408,7 @@ const PestForecastDashboard = ({ navigation }) => {
                 { 
                   text: language === 'si' ? 'බලන්න' : 'View',
                   onPress: () => {
-                    // You can navigate to details screen here
+                    
                     console.log('View details');
                   }
                 }
@@ -417,14 +417,14 @@ const PestForecastDashboard = ({ navigation }) => {
           }
         });
         
-        // Get OneSignal device ID
+        
         setTimeout(async () => {
           const deviceId = await NotificationService.getDeviceId();
           setOnesignalId(deviceId);
           console.log('OneSignal ID:', deviceId);
         }, 2000);
         
-        // Load notification preference
+        
         const savedNotifications = await AsyncStorage.getItem('notificationsEnabled');
         if (savedNotifications !== null) {
           setNotificationsEnabled(JSON.parse(savedNotifications));
@@ -438,14 +438,14 @@ const PestForecastDashboard = ({ navigation }) => {
     initNotifications();
   }, []);
   
-  // Update language tag when language changes
+  
   useEffect(() => {
     if (NotificationService.isInitialized()) {
       NotificationService.updateLanguage(language);
     }
   }, [language]);
   
-  // Load history on component mount
+ 
   useEffect(() => {
     console.log('Component mounted');
     const loadHistory = async () => {
@@ -625,7 +625,7 @@ const PestForecastDashboard = ({ navigation }) => {
     fetchWeather(value);
   };
   
-  // Replace sendLocalNotification with in-app alerts
+  
   const showInAppAlert = (title, message, riskLevel) => {
     if (riskLevel === 'High' || riskLevel === 'Very High') {
       Alert.alert(
@@ -666,7 +666,7 @@ const PestForecastDashboard = ({ navigation }) => {
     try {
       console.log('Making prediction with:', { district, paddyType, paddyAge: ageNum });
       
-      // Send location tags to OneSignal
+      
       if (NotificationService.isInitialized()) {
         NotificationService.sendLocationTags(district, getSeason(), paddyType, language);
       }
@@ -732,7 +732,7 @@ const PestForecastDashboard = ({ navigation }) => {
         
         console.log('Risk Check:', { riskLevel, severity, incidence });
         
-        // Show in-app alert for high/moderate risk
+        // Show in-app alert for high/moderate risk 
         if (riskLevel === 'Moderate' || riskLevel === 'High' || riskLevel === 'Very High') {
           const message = language === 'si'
             ? `${district} හි ${incidence}% පළිබෝධ අවදානමක් හඳුනාගෙන ඇත.\n\nපළිබෝධය: ${pestName}\nදරුණු බව: ${severity}`
@@ -1591,7 +1591,7 @@ Incidence Percentage: ${incidence}%`;
             </Text>
           </View>
           
-          {/* Age Guide */}
+          {/* Age Guide */} 
           <View style={styles.ageGuide}>
             <View style={styles.ageGuideTitleContainer}>
               <Icon name="information" size={20} color="#0ea5e9" />

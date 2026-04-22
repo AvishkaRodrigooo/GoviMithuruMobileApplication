@@ -20,7 +20,7 @@ export default function PestAlerts({ navigation }) {
 
   const loadAlerts = async () => {
     try {
-      // Mock data - replace with actual API call
+     
       const mockAlerts = [
         {
           id: '1',

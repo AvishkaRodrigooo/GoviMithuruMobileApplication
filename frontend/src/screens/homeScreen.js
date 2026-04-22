@@ -93,7 +93,7 @@ export default function HomeScreen({ navigation }) {
               <MaterialCommunityIcons name="sprout" size={28} color="#fff" />
             </View>
             <View>
-              <Text style={styles.appName}>GoviMithuru</Text>
+              <Text style={styles.appName}>AgroMind</Text>
               <Text style={styles.appSubtitle}>Smart Farming Assistant</Text>
             </View>
           </View>
