@@ -1,10 +1,106 @@
-import { View, Text, Pressable, StyleSheet, ScrollView, Animated } from 'react-native';
+import { View, Text, Pressable, StyleSheet, ScrollView, Animated, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function WeedsDashboardScreen({ navigation }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
+  const [language, setLanguage] = useState("en"); // "en", "si", "ta"
+
+  // ======================
+  // LANGUAGE TRANSLATIONS
+  // ======================
+  const translations = {
+    en: {
+      title: "Weeds Management",
+      subtitle: "Intelligent weed detection and treatment",
+      activeFields: "Active Fields",
+      allHealthy: "All healthy",
+      growthStage: "Growth Stage",
+      dayOnTrack: "Day 45 - On track",
+      tillering: "Tillering",
+      healthy: "92% Healthy",
+      alerts: "2 Alerts",
+      optimal: "Optimal",
+      aiFeatures: "AI-Powered Features",
+      localization: "Weeds Localization",
+      localizationDesc: "Detect and highlight weed-infected areas directly on the image for targeted treatment.",
+      instantResults: "Instant results",
+      identification: "Identification & Treatment",
+      identificationDesc: "Upload images to identify weed types and receive expert treatment recommendations with detailed reasoning.",
+      expertRec: "Expert recommendations",
+      herbicide: "Herbicide Recommendations",
+      herbicideDesc: "Get smart herbicide advice tailored to your crop and weed types for optimal protection.",
+      herbicideSubtitle: "Optimized spraying schedules",
+      howWorks: "How It Works",
+      capture: "Capture Image",
+      captureDesc: "Take a photo of the weed-affected area using your camera",
+      analyze: "Analyze",
+      analyzeDesc: "AI system identifies weed types and analyzes crop health",
+      results: "Get Results",
+      resultsDesc: "Receive treatment recommendations tailored to your crops"
+    },
+    si: {
+      title: "වල් පැලෑටි කළමනාකරණය",
+      subtitle: "වල් පැලෑටි හඳුනා ගැනීම සහ ප්‍රතිකාර කිරීම",
+      activeFields: "සක්‍රිය ක්ෂේත්‍ර",
+      allHealthy: "සියල්ල සෞස්ථ්ය",
+      growthStage: "වර්ධන අවස්ථාව",
+      dayOnTrack: "දින 45 - ගමන",
+      tillering: "බිම් අඩු",
+      healthy: "92% සෞඛ්ය ",
+      alerts: "2 අනතුරු ඉතුරුවීම්",
+      optimal: "ප්‍රශස්ත",
+      aiFeatures: "AI බලගතු විශේෂතා",
+      localization: "ස්ථානය හඳුනා ගන්න",
+      localizationDesc: "සරඳේ කාඩ සෙවීම සඳහා ඡායාරූපයෙහි කෝණ තීරණ කරනු ලබන කොටස් හඳුනා ගන්න.",
+      instantResults: "ක්ෂණික ප්‍රතිඵල",
+      identification: "හඳුනාගැනීම සහ ප්‍රතිකාරය",
+      identificationDesc: "කාඩ වර්ගවල හඳුනාගැනීම සඳහා ඡායාරූප උපුටා ගැනීම සහ විස්තරණ තර්කනය සහිත විශේෂඥ ප්‍රතිකාර ප්‍රস්තාවයි.",
+      expertRec: "විශේෂඥ නිර්දේශ",
+      herbicide: "වල් නාශක නිර්දේශ",
+      herbicideDesc: "ඔබේ බෝවන සහ කාඩ වර්ගවලට අනුරූපව බුද්ධිමත් නිර්බීජක උපදෙස් ලබා ගන්න.",
+      herbicideSubtitle: "ප්‍රශස්ත ඉසින ගිණුම්",
+      howWorks: "එය ක්‍රියා කරන ආකාරය",
+      capture: "ඡායාරූපය ගුණ කරන්න",
+      captureDesc: "ඔබගේ කැමරා භාවිතයෙන් කාඩ-ආසන්න ප්‍රදේශයේ ඡායාරූපයක් ගන්න",
+      analyze: "විශ්ලේෂණ කරන්න",
+      analyzeDesc: "AI පද්ධතිය කාඩ වර්ගවල හඳුනාගෙන බෝවන සෞස්ථ්යය විශ්ලේෂණ කරයි",
+      results: "ප්‍රතිඵල ලබා ගන්න",
+      resultsDesc: "ඔබේ බෝවනට අනුරූපව ප්‍රතිකාර නිර්දේශ ලබා ගන්න"
+    },
+    ta: {
+      title: "களை மேலாண்மை",
+      subtitle: "புத்திசாலி களை கண்டறிதல் மற்றும் சிகிச்சை",
+      activeFields: "செயல்படும் வயல்கள்",
+      allHealthy: "அனைத்து ஆரோக்கியமான",
+      growthStage: "வளர்ச்சி கட்டம்",
+      dayOnTrack: "நாள் 45 - பாதையில் உள்ளது",
+      tillering: "தளிர் வெளிப்பாட்டு கட்டம்",
+      healthy: "92% ஆரோக்கியமான",
+      alerts: "2 எச்சரிக்கைகள்",
+      optimal: "உகந்த",
+      aiFeatures: "AI-இயக்கப்பட்ட அம்சங்கள்",
+      localization: "களை உள்ளூர்করணம்",
+      localizationDesc: "குறிப்பிட்ட சிகிச்சைக்கான பட்டத்தின் நிலையான களை-பாதிக்கப்பட்ட பகுதிகளை கண்டறிந்து சிறப்பிக்கவும்.",
+      instantResults: "உடனடி முடிவுகள்",
+      identification: "அடையாளம் மற்றும் சிகிச்சை",
+      identificationDesc: "களை வகைகளை கண்டறிய பதிவுசெய்த படங்களை பதிவேற்றவும் மற்றும் விரிவான பகுத்தறிவுடன் நிபுணர் சிகிச்சை நிர்দேशங்களைப் பெறவும்.",
+      expertRec: "நிபுணர் பரிந்துரைகள்",
+      herbicide: "களைக்கொல்லி பரிந்துரைகள்",
+      herbicideDesc: "உங்கள் பயிர் மற்றும் களை வகைகளுக்கு ஏற்ப தயாரிக்கப்பட்ட ஸ்மார்ட் களைக்கொல்லி ஆலோசனைகளைப் பெறுங்கள்.",
+      herbicideSubtitle: "உகந்த தெளிக்கும் அட்டவணைகள்",
+      howWorks: "இது எப்படி வேலை செய்கிறது",
+      capture: "பட்டம் பிடிக்க",
+      captureDesc: "உங்கள் கேமராவைப் பயன்படுத்தி களை-பாதிக்கப்பட்ட பகுதியின் புகைப்படத்தை எடுக்கவும்",
+      analyze: "பகுப்பாய்வு",
+      analyzeDesc: "AI அமைப்பு களை வகைகளை அடையாளம் கண்டு பயிர் சுகாதாரத்தை பகுப்பாய்வு செய்கிறது",
+      results: "முடிவுகளைப் பெறுங்கள்",
+      resultsDesc: "உங்கள் பயிர்களுக்கு ஏற்ப சிகிச்சை பரிந்துரைகளைப் பெறுங்கள்"
+    }
+  };
+
+  const t = translations[language];
 
   useEffect(() => {
     Animated.parallel([
@@ -29,13 +125,53 @@ export default function WeedsDashboardScreen({ navigation }) {
           <View style={styles.headerContent}>
             <View style={styles.headerIconRow}>
               <MaterialCommunityIcons name="sprout" size={32} color="white" />
-              <Text style={styles.headerTitle}>Weeds Management</Text>
+              <Text style={styles.headerTitle}>{t.title}</Text>
             </View>
-            <Text style={styles.headerSubtitle}>Intelligent weed detection and treatment</Text>
+            <Text style={styles.headerSubtitle}>{t.subtitle}</Text>
           </View>
           <Pressable style={styles.profileIcon} onPress={() => navigation.navigate('Profile')}>
             <MaterialIcons name="account-circle" size={40} color="white" />
           </Pressable>
+        </View>
+
+        {/* LANGUAGE SELECTOR */}
+        <View style={styles.languageSelectorContainer}>
+          <TouchableOpacity
+            style={[
+              styles.langButton,
+              language === "en" && styles.langButtonActive
+            ]}
+            onPress={() => setLanguage("en")}
+          >
+            <Text style={[
+              styles.langButtonText,
+              language === "en" && styles.langButtonTextActive
+            ]}>English</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.langButton,
+              language === "si" && styles.langButtonActive
+            ]}
+            onPress={() => setLanguage("si")}
+          >
+            <Text style={[
+              styles.langButtonText,
+              language === "si" && styles.langButtonTextActive
+            ]}>සිංහල</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[
+              styles.langButton,
+              language === "ta" && styles.langButtonActive
+            ]}
+            onPress={() => setLanguage("ta")}
+          >
+            <Text style={[
+              styles.langButtonText,
+              language === "ta" && styles.langButtonTextActive
+            ]}>தமிழ்</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -51,9 +187,9 @@ export default function WeedsDashboardScreen({ navigation }) {
             <MaterialCommunityIcons name="leaf" size={28} color="#06602aff" />
           </View>
           <View style={styles.infoContent}>
-            <Text style={styles.infoLabel}>Active Fields</Text>
+            <Text style={styles.infoLabel}>{t.activeFields}</Text>
             <Text style={styles.infoValue}>3</Text>
-            <Text style={styles.infoSubtext}>All healthy</Text>
+            <Text style={styles.infoSubtext}>{t.allHealthy}</Text>
           </View>
         </View>
 
@@ -62,9 +198,9 @@ export default function WeedsDashboardScreen({ navigation }) {
             <MaterialCommunityIcons name="sprout" size={28} color="#06602aff" />
           </View>
           <View style={styles.infoContent}>
-            <Text style={styles.infoLabel}>Growth Stage</Text>
-            <Text style={[styles.infoValue, styles.stageValue]}>Tillering</Text>
-            <Text style={styles.infoSubtext}>Day 45 - On track</Text>
+            <Text style={styles.infoLabel}>{t.growthStage}</Text>
+            <Text style={[styles.infoValue, styles.stageValue]}>{t.tillering}</Text>
+            <Text style={styles.infoSubtext}>{t.dayOnTrack}</Text>
           </View>
         </View>
       </Animated.View>
@@ -73,24 +209,24 @@ export default function WeedsDashboardScreen({ navigation }) {
       <View style={styles.statsBar}>
         <View style={styles.statItem}>
           <MaterialIcons name="eco" size={20} color="#06602aff" />
-          <Text style={styles.statText}>92% Healthy</Text>
+          <Text style={styles.statText}>{t.healthy}</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
           <MaterialIcons name="warning" size={20} color="#f59e0b" />
-          <Text style={styles.statText}>2 Alerts</Text>
+          <Text style={styles.statText}>{t.alerts}</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
           <MaterialIcons name="water-drop" size={20} color="#3b82f6" />
-          <Text style={styles.statText}>Optimal</Text>
+          <Text style={styles.statText}>{t.optimal}</Text>
         </View>
       </View>
 
       {/* Features Section */}
       <View style={styles.sectionHeader}>
         <MaterialCommunityIcons name="lightning-bolt" size={24} color="#5a7c59" />
-        <Text style={styles.sectionTitle}>AI-Powered Features</Text>
+        <Text style={styles.sectionTitle}>{t.aiFeatures}</Text>
       </View>
 
       <Pressable 
@@ -103,14 +239,14 @@ export default function WeedsDashboardScreen({ navigation }) {
         </View>
         <View style={styles.featureContent}>
           <View style={styles.featureTitleRow}>
-            <Text style={styles.featureTitle}>Weeds Localization</Text>
+            <Text style={styles.featureTitle}>{t.localization}</Text>
           </View>
           <Text style={styles.featureDesc}>
-            Detect and highlight weed-infected areas directly on the image for targeted treatment.
+            {t.localizationDesc}
           </Text>
           <View style={styles.featureFooter}>
             <MaterialCommunityIcons name="lightning-bolt" size={14} color="#9ca3af" />
-            <Text style={styles.featureTime}>Instant results</Text>
+            <Text style={styles.featureTime}>{t.instantResults}</Text>
           </View>
         </View>
         <MaterialIcons name="arrow-forward-ios" size={20} color="#6b7280" />
@@ -126,14 +262,14 @@ export default function WeedsDashboardScreen({ navigation }) {
         </View>
         <View style={styles.featureContent}>
           <View style={styles.featureTitleRow}>
-            <Text style={styles.featureTitle}>Identification & Treatment</Text>
+            <Text style={styles.featureTitle}>{t.identification}</Text>
           </View>
           <Text style={styles.featureDesc}>
-            Upload images to identify weed types and receive expert treatment recommendations with detailed reasoning.
+            {t.identificationDesc}
           </Text>
           <View style={styles.featureFooter}>
             <MaterialCommunityIcons name="brain" size={14} color="#9ca3af" />
-            <Text style={styles.featureTime}>Expert recommendations</Text>
+            <Text style={styles.featureTime}>{t.expertRec}</Text>
           </View>
         </View>
         <MaterialIcons name="arrow-forward-ios" size={20} color="#6b7280" />
@@ -150,17 +286,17 @@ export default function WeedsDashboardScreen({ navigation }) {
         </View>
         <View style={styles.featureContent}>
           <View style={styles.featureTitleRow}>
-            <Text style={styles.featureTitle}>Herbicide Recommendations</Text>
+            <Text style={styles.featureTitle}>{t.herbicide}</Text>
             <View style={[styles.badge, styles.newBadge]}>
               <Text style={styles.badgeText}>NEW</Text>
             </View>
           </View>
           <Text style={styles.featureDesc}>
-            Get smart herbicide advice tailored to your crop and weed types for optimal protection.
+            {t.herbicideDesc}
           </Text>
           <View style={styles.featureFooter}>
             <MaterialCommunityIcons name="calendar-check" size={14} color="#9ca3af" />
-            <Text style={styles.featureTime}>Optimized spraying schedules</Text>
+            <Text style={styles.featureTime}>{t.herbicideSubtitle}</Text>
           </View>
         </View>
         <MaterialIcons name="arrow-forward-ios" size={20} color="#6b7280" />
@@ -171,7 +307,7 @@ export default function WeedsDashboardScreen({ navigation }) {
       <View style={styles.howItWorksSection}>
         <View style={styles.howHeaderRow}>
           <MaterialCommunityIcons name="cog" size={24} color="#5a7c59" />
-          <Text style={styles.howTitle}>How It Works</Text>
+          <Text style={styles.howTitle}>{t.howWorks}</Text>
         </View>
 
         <View style={styles.stepCard}>
@@ -179,9 +315,9 @@ export default function WeedsDashboardScreen({ navigation }) {
             <Text style={styles.stepNumberText}>1</Text>
           </View>
           <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>Capture Image</Text>
+            <Text style={styles.stepTitle}>{t.capture}</Text>
             <Text style={styles.stepDesc}>
-              Take a photo of the weed-affected area using your camera
+              {t.captureDesc}
             </Text>
           </View>
         </View>
@@ -191,9 +327,9 @@ export default function WeedsDashboardScreen({ navigation }) {
             <Text style={styles.stepNumberText}>2</Text>
           </View>
           <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>Analyze</Text>
+            <Text style={styles.stepTitle}>{t.analyze}</Text>
             <Text style={styles.stepDesc}>
-              AI system identifies weed types and analyzes crop health
+              {t.analyzeDesc}
             </Text>
           </View>
         </View>
@@ -203,9 +339,9 @@ export default function WeedsDashboardScreen({ navigation }) {
             <Text style={styles.stepNumberText}>3</Text>
           </View>
           <View style={styles.stepContent}>
-            <Text style={styles.stepTitle}>Get Results</Text>
+            <Text style={styles.stepTitle}>{t.results}</Text>
             <Text style={styles.stepDesc}>
-              Receive treatment recommendations tailored to your crops
+              {t.resultsDesc}
             </Text>
           </View>
         </View>
@@ -266,6 +402,35 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     shadowOffset: { width: 0, height: 2 },
     elevation: 5,
+  },
+  // LANGUAGE SELECTOR
+  languageSelectorContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingTop: 15,
+    paddingBottom: 0,
+  },
+  langButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  langButtonActive: {
+    backgroundColor: '#fff',
+    borderColor: '#fff',
+  },
+  langButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  langButtonTextActive: {
+    color: '#06602aff',
   },
   infoContainer: {
     flexDirection: 'row',

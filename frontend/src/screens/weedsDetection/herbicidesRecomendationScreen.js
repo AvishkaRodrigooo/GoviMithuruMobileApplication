@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
@@ -14,8 +14,129 @@ import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 const { width } = Dimensions.get('window');
 
 const HerbicideScreen = ({ navigation }) => {
+  const [language, setLanguage] = useState('en');
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideUpAnim = useRef(new Animated.Value(30)).current;
+
+  const translations = {
+    en: {
+      headerTitle: 'Herbicide Guidelines',
+      headerSubtitle: 'Choosing the right herbicide for your needs',
+      infoText: 'Select the appropriate herbicide type for your specific weed control needs',
+      agroShop: 'Agro Shop',
+      herbicideTypes: 'Herbicide Types',
+      safetyPrecautions: 'Safety Precautions',
+      applicationSchedule: 'Application Schedule',
+      backToDashboard: 'Back to Dashboard',
+      examples: 'Examples:',
+      herbicides: [
+        {
+          title: 'Pre-plant Herbicides',
+          description: 'Herbicides used to clean the field before cultivation',
+          examples: ['Glyphosate', 'Paraquat']
+        },
+        {
+          title: 'One-shot Herbicides',
+          description: 'Herbicides that provide desired results with single application',
+          examples: ['Solito 320EC', 'TebutSiriushiuron']
+        },
+        {
+          title: 'Grass Killers',
+          description: 'Herbicides for removing unwanted grass and weed plants',
+          examples: ['Clincher 10EC', 'Facet']
+        },
+        {
+          title: 'Sedges & Broad Leaves Killers',
+          description: 'Herbicides for removing sedge plants and broad-leaf weeds',
+          examples: ['Sunrice', 'Fluto']
+        }
+      ],
+      safetyTips: [
+        { title: 'Safety Equipment', description: 'Use safety equipment when applying herbicides' },
+        { title: 'Correct Dosage', description: 'Use the dosage according to manufacturer\'s instructions' },
+        { title: 'Application Time', description: 'Choose application time according to weather conditions' },
+        { title: 'Safe Storage', description: 'Store herbicides in a safe place away from children' }
+      ]
+    },
+    si: {
+      headerTitle: 'වල් නාශක මාර්ගෝපදේශ',
+      headerSubtitle: 'ඔබේ අවශ්‍යතා සඳහා නිවැරදි වල් නාශක තෝරා ගැනීම',
+      infoText: 'ඔබේ වල් නාශක පාලන අවශ්‍යතා සඳහා සුදුසු වල් නාශක වර්ගය තෝරා ගන්න',
+      agroShop: 'කෘෂි වෙලඳසල',
+      herbicideTypes: 'වල් නාශක වර්ගයන්',
+      safetyPrecautions: 'ආරක්‍ෂා පූර්වාරම්භ',
+      applicationSchedule: 'යෙදවුම් කාලසටහන',
+      backToDashboard: 'උපකරණ පුවරුවට ආපසු',
+      examples: 'උදාහරණ:',
+      herbicides: [
+        {
+          title: 'පෙර රෝපණ වල් නාශක',
+          description: 'වගා කිරීමට පෙර ක්ෂේත්ර පරිශීලනය කිරීමට භාවිතා කරන වල් නාශක',
+          examples: ['ග්ලිෆසේට්', 'පරාකේට්']
+        },
+        {
+          title: 'එක-වෙඩි වල් නාශක',
+          description: 'තනිකම යෙදවුමින් ඉපදි ප්‍රතිඵල ලබා දෙන වල් නාශක',
+          examples: ['සොලිටෝ 320EC', 'ටෙබුට් සිරියුස් හිউරෝන්']
+        },
+        {
+          title: 'තෘණ වල් නාශක',
+          description: 'අනවශ්‍ය තෘණ සහ වල් නාශක ශාකයන් ඉවත් කිරීමට වල් නාශක',
+          examples: ['ක්ලින්චර් 10EC', 'ෆේසට්']
+        },
+        {
+          title: 'තිරි සහ පුළුල් පත්‍ර වල් නාශක',
+          description: 'තිරි ශාකයන් සහ පුළුල් පත්‍ර වල් නාශක ඉවත් කිරීමට වල් නාශක',
+          examples: ['සුන්රයිස්', 'ෆ්ලූටෝ']
+        }
+      ],
+      safetyTips: [
+        { title: 'ආරක්‍ෂා උපකරණ', description: 'වල් නාශක යෙදවීමේදී ආරක්‍ෂා උපකරණ භාවිතා කරන්න' },
+        { title: 'නිවැරදි ඩෝස්', description: 'නිෂ්පාදක උපදෙස් පරිදි ඩෝස් භාවිතා කරන්න' },
+        { title: 'යෙදවුම් වේලාව', description: 'කාලගුණ තත්ත්‍ව අනුව යෙදවුම් වේලාව තෝරා ගන්න' },
+        { title: 'ආරක්ෂිත ගබඩා', description: 'වල් නාශක දරුවන්ගෙන් ඉවතට ආරක්ෂිත තැනක ගබඩා කරන්න' }
+      ]
+    },
+    ta: {
+      headerTitle: 'களைக்கொல்லி வழிகாட்டுதல்கள்',
+      headerSubtitle: 'உங்கள் தேவைக்கு சரியான களைக்கொல்லி தேர்ந்தெடுப்பது',
+      infoText: 'உங்கள் குறிப்பிட்ட களை கட்டுப்பாட்டு தேவைக்கு பொருத்தமான களைக்கொல்லி வகையைத் தேர்ந்தெடுக்கவும்',
+      agroShop: 'கிராம நிலைய கடை',
+      herbicideTypes: 'களைக்கொல்லி வகைகள்',
+      safetyPrecautions: 'பாதுகாப்பு எச்சரிக்கைகள்',
+      applicationSchedule: 'விண்ணப்ப அட்டவணை',
+      backToDashboard: 'டாஷ்போர்டுக்குத் திரும்பவும்',
+      examples: 'உதாரணங்கள்:',
+      herbicides: [
+        {
+          title: 'விதை நட்ட முன் களைக்கொல்லி',
+          description: 'விதை நட்ட முன் வயலை சுத்தம் செய்ய பயன்படுத்தப்படும் களைக்கொல்லி',
+          examples: ['க்ளைபோசேட்', 'பராகுவாட்']
+        },
+        {
+          title: 'ஒரு-வெடி களைக்கொல்லி',
+          description: 'ஒற்றை பயன்பாட்டில் விரும்பிய ফলাফல்களை வழங்கும் களைக்கொல்லி',
+          examples: ['சொலிட்டோ 320EC', 'டெபுட்சிரியுஷியுரான்']
+        },
+        {
+          title: 'புல் கொல்லிகள்',
+          description: 'தேவையற்ற புல் மற்றும் களை செடிகளை அகற்ற களைக்கொல்லி',
+          examples: ['கிளிஞ்சர் 10EC', 'ஃபேசட்']
+        },
+        {
+          title: 'கூட மற்றும் பரந்த இலை கொல்லிகள்',
+          description: 'கூட செடிகள் மற்றும் பரந்த இலை களைகளை அகற்ற களைக்கொல்லி',
+          examples: ['சன்ரைஸ்', 'ஃப்ளூட்டோ']
+        }
+      ],
+      safetyTips: [
+        { title: 'பாதுகாப்பு உपकरण', description: 'களைக்கொல்லி பயன்படுத்தும்போது பாதுகாப்பு உபकரணங்களை பயன்படுத்தவும்' },
+        { title: 'சரியான மாত்திரை', description: 'உற்பத்தியாளரின் அறிவுறுத்தல்களின்படி மாத்திரை பயன்படுத்தவும்' },
+        { title: 'விண்ணப்ப நேரம்', description: 'வானிலை நிலைமைகளுக்கு ஏற்ப விண்ணப்ப நேரம் தேர்ந்தெடுக்கவும்' },
+        { title: 'பாதுகாப்பான சேமிப்பு', description: 'களைக்கொல்லிகளை குழந்தைகளிடமிருந்து விலகி ஒரு பாதுகாப்பான இடத்தில் சேமிக்கவும்' }
+      ]
+    }
+  };
 
   useEffect(() => {
     Animated.parallel([
@@ -35,71 +156,31 @@ const HerbicideScreen = ({ navigation }) => {
   const herbicideTypes = [
     {
       id: 1,
-      title: "Pre-plant Herbicides",
-      description: "Herbicides used to clean the field before cultivation",
       icon: "seedling",
       color: "#10b981",
       borderColor: "#12ab66ff",
-      examples: ["Glyphosate", "Paraquat"],
     },
     {
       id: 2,
-      title: "One-shot Herbicides",
-      description: "Herbicides that provide desired results with single application",
       icon: "target",
       color: "#3b82f6",
       borderColor: "#3b82f6",
-      examples: ["Solito 320EC", "TebutSiriushiuron",],
-     
     },
     {
       id: 3,
-      title: "Grass Killers",
-      description: "Herbicides for removing unwanted grass and weed plants",
       icon: "grass",
       color: "#22c55e",
       borderColor: "#22c55e",
-      examples: ["Clincher 10EC", "Facet",],
-      
     },
     {
       id: 4,
-      title: "Sedges & Broad Leaves Killers",
-      description: "Herbicides for removing sedge plants and broad-leaf weeds",
       icon: "leaf",
       color: "#8b5cf6",
       borderColor: "#8b5cf6",
-      examples: ["Sunrice", "Fluto",],
-      
     },
   ];
 
-  const safetyTips = [
-    {
-      id: 1,
-      title: "Safety Equipment",
-      description: "Use safety equipment when applying herbicides",
-      icon: "shield-check"
-    },
-    {
-      id: 2,
-      title: "Correct Dosage",
-      description: "Use the dosage according to manufacturer's instructions",
-      icon: "scale"
-    },
-    {
-      id: 3,
-      title: "Application Time",
-      description: "Choose application time according to weather conditions",
-      icon: "weather-partly-cloudy"
-    },
-    {
-      id: 4,
-      title: "Safe Storage",
-      description: "Store herbicides in a safe place away from children",
-      icon: "home-lock"
-    }
-  ];
+  const safetyIcons = ['shield-check', 'scale', 'weather-partly-cloudy', 'home-lock'];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -107,14 +188,35 @@ const HerbicideScreen = ({ navigation }) => {
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header with Back Button */}
+        {/* Header with Language Selector */}
         <View style={styles.header}>
-         
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Herbicide Guidelines</Text>
-            <Text style={styles.headerSubtitle}>Choosing the right herbicide for your needs</Text>
+            <Text style={styles.headerTitle}>{translations[language].headerTitle}</Text>
+            <Text style={styles.headerSubtitle}>{translations[language].headerSubtitle}</Text>
           </View>
           <MaterialCommunityIcons name="spray-bottle" size={36} color="#95ae95ff" style={styles.headerIcon} />
+        </View>
+
+        {/* Language Selector Buttons */}
+        <View style={styles.languageButtonsContainer}>
+          <Pressable
+            style={[styles.languageButton, language === 'en' && styles.languageButtonActive]}
+            onPress={() => setLanguage('en')}
+          >
+            <Text style={[styles.languageButtonText, language === 'en' && styles.languageButtonTextActive]}>English</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.languageButton, language === 'si' && styles.languageButtonActive]}
+            onPress={() => setLanguage('si')}
+          >
+            <Text style={[styles.languageButtonText, language === 'si' && styles.languageButtonTextActive]}>සිංහල</Text>
+          </Pressable>
+          <Pressable
+            style={[styles.languageButton, language === 'ta' && styles.languageButtonActive]}
+            onPress={() => setLanguage('ta')}
+          >
+            <Text style={[styles.languageButtonText, language === 'ta' && styles.languageButtonTextActive]}>தமிழ்</Text>
+          </Pressable>
         </View>
 
         {/* Info Card */}
@@ -129,7 +231,7 @@ const HerbicideScreen = ({ navigation }) => {
         >
           <MaterialCommunityIcons name="information-outline" size={24} color="#5a7c59" />
           <Text style={styles.infoText}>
-            Select the appropriate herbicide type for your specific weed control needs
+            {translations[language].infoText}
           </Text>
         </Animated.View>
 {/* Shop Buttons */}
@@ -139,78 +241,74 @@ const HerbicideScreen = ({ navigation }) => {
   onPress={() => navigation.navigate('AgroShop')}
 >
   <MaterialCommunityIcons name="storefront" size={18} color="#fff" />
-  <Text style={styles.shopButtonText}>Agro Shop</Text>
+  <Text style={styles.shopButtonText}>{translations[language].agroShop}</Text>
 </Pressable>
-
-
- 
 </View>
 
         {/* Herbicide Types Section */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Herbicide Types</Text>
+          <Text style={styles.sectionTitle}>{translations[language].herbicideTypes}</Text>
           <MaterialIcons name="category" size={20} color="#06602aff" />
         </View>
 
-        {herbicideTypes.map((type) => (
-         <Pressable
-    key={type.id}
-    style={[
-      styles.herbicideCard,
-      { borderLeftWidth: 5, borderLeftColor: type.borderColor },
-    ]}
-    android_ripple={{ color: '#f0fdf4' }}
-    onPress={() => {
-      if (type.id === 1) {
-        navigation.navigate('PrePlantHerbicides');
-      }else if(type.id == 2){
-        navigation.navigate('OneShotHerbicides');
-      }
-      else if(type.id == 3){
-        navigation.navigate('grassKillersHerbicides');
-      }
-      else if(type.id == 4){
-        navigation.navigate('BroadLeavesHerbicides');
-      }
-    }}
-  >
-            <View style={[styles.iconContainer, { backgroundColor: type.color + '20' }]}>
-              <MaterialCommunityIcons name={type.icon} size={28} color={type.color} />
-            </View>
-            <View style={styles.contentContainer}>
-              <View style={styles.titleRow}>
-                <Text style={styles.cardTitle}>{type.title}</Text>
-                <MaterialIcons name="chevron-right" size={20} color="#9ca3af" />
+        {herbicideTypes.map((type) => {
+          const typeData = translations[language].herbicides[type.id - 1];
+          return (
+            <Pressable
+              key={type.id}
+              style={[
+                styles.herbicideCard,
+                { borderLeftWidth: 5, borderLeftColor: type.borderColor },
+              ]}
+              android_ripple={{ color: '#f0fdf4' }}
+              onPress={() => {
+                if (type.id === 1) {
+                  navigation.navigate('PrePlantHerbicides');
+                } else if (type.id === 2) {
+                  navigation.navigate('OneShotHerbicides');
+                } else if (type.id === 3) {
+                  navigation.navigate('grassKillersHerbicides');
+                } else if (type.id === 4) {
+                  navigation.navigate('BroadLeavesHerbicides');
+                }
+              }}
+            >
+              <View style={[styles.iconContainer, { backgroundColor: type.color + '20' }]}>
+                <MaterialCommunityIcons name={type.icon} size={28} color={type.color} />
               </View>
-              <Text style={styles.cardDescription}>{type.description}</Text>
-              
-              <View style={styles.examplesContainer}>
-                <Text style={styles.examplesLabel}>Examples:</Text>
-                <View style={styles.examplesList}>
-                  {type.examples.map((example, index) => (
-                    <View key={index} style={styles.exampleTag}>
-                      <Text style={styles.exampleText}>{example}</Text>
-                    </View>
-                  ))}
+              <View style={styles.contentContainer}>
+                <View style={styles.titleRow}>
+                  <Text style={styles.cardTitle}>{typeData.title}</Text>
+                  <MaterialIcons name="chevron-right" size={20} color="#9ca3af" />
+                </View>
+                <Text style={styles.cardDescription}>{typeData.description}</Text>
+                
+                <View style={styles.examplesContainer}>
+                  <Text style={styles.examplesLabel}>{translations[language].examples}</Text>
+                  <View style={styles.examplesList}>
+                    {typeData.examples.map((example, index) => (
+                      <View key={index} style={styles.exampleTag}>
+                        <Text style={styles.exampleText}>{example}</Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
               </View>
-              
-              <Text style={styles.detailsText}>{type.details}</Text>
-            </View>
-          </Pressable>
-        ))}
+            </Pressable>
+          );
+        })}
 
         {/* Safety Tips Section */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Safety Precautions</Text>
+          <Text style={styles.sectionTitle}>{translations[language].safetyPrecautions}</Text>
           <MaterialCommunityIcons name="alert-circle" size={20} color="#5a7c59" />
         </View>
 
         <View style={styles.safetyGrid}>
-          {safetyTips.map((tip) => (
-            <View key={tip.id} style={styles.safetyCard}>
+          {translations[language].safetyTips.map((tip, index) => (
+            <View key={index} style={styles.safetyCard}>
               <View style={[styles.safetyIconContainer, { backgroundColor: '#fef3c7' }]}>
-                <MaterialCommunityIcons name={tip.icon} size={24} color="#d97706" />
+                <MaterialCommunityIcons name={safetyIcons[index]} size={24} color="#d97706" />
               </View>
               <Text style={styles.safetyTitle}>{tip.title}</Text>
               <Text style={styles.safetyDescription}>{tip.description}</Text>
@@ -225,7 +323,7 @@ const HerbicideScreen = ({ navigation }) => {
             android_ripple={{ color: '#047857' }}
           >
             <MaterialCommunityIcons name="calendar-clock" size={20} color="#fff" />
-            <Text style={styles.primaryButtonText}>Application Schedule</Text>
+            <Text style={styles.primaryButtonText}>{translations[language].applicationSchedule}</Text>
           </Pressable>
           
           <Pressable 
@@ -234,7 +332,7 @@ const HerbicideScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('WeedsDashboard')}
           >
             <MaterialIcons name="dashboard" size={20} color="#374151" />
-            <Text style={styles.secondaryButtonText}>Back to Dashboard</Text>
+            <Text style={styles.secondaryButtonText}>{translations[language].backToDashboard}</Text>
           </Pressable>
         </View>
 
@@ -324,6 +422,36 @@ shopButtonText: {
   },
   headerIcon: {
     marginLeft: 'auto',
+  },
+  languageButtonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+  },
+  languageButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1.5,
+    borderColor: '#e5e7eb',
+  },
+  languageButtonActive: {
+    backgroundColor: '#5a7c59',
+    borderColor: '#5a7c59',
+  },
+  languageButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6b7280',
+  },
+  languageButtonTextActive: {
+    color: '#ffffff',
   },
   infoCard: {
     flexDirection: 'row',
