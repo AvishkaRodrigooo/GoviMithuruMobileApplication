@@ -1566,17 +1566,46 @@ def calculate_costs():
         lang             = data.get('lang', 'en')
         target_lang      = LANGUAGE_CODES.get(lang, 'english')
 
-        pf             = _get_price_forecast(variety)
-        current_price  = float(data.get('current_price',  pf['current_lkr']))
-        expected_price = float(data.get('expected_price', pf['peak_lkr']))
+        # ── Production cost & selling price per kg ─────────────────────────────
+        pf                  = _get_price_forecast(variety)
+        default_sell_price  = pf['current_lkr']
+        DEFAULT_PROD_COST   = 85.0   # SL average 2024 (Rs./kg)
 
+        production_cost_kg  = float(data.get('production_cost_kg', DEFAULT_PROD_COST))
+        selling_price_kg    = float(data.get('selling_price_kg',
+                                    data.get('selling_price', default_sell_price)))
+        daily_maint         = float(data.get('daily_maintenance_cost', 0) or 0)
+
+        # ── Storage cost breakdown ─────────────────────────────────────────────
         costs = _compute_storage_costs(
             quantity_kg, bag_type, duration_months,
-            storage_location, current_price, expected_price
+            storage_location,
+            current_price_lkr  = selling_price_kg,
+            expected_price_lkr = selling_price_kg,
         )
 
+        days                    = int(duration_months * 30)
+        maint_cost              = round(daily_maint * days) if daily_maint > 0 else 0
+        total_storage_cost      = costs['total_storage_cost'] + maint_cost
+        total_production_cost   = round(quantity_kg * production_cost_kg)
+        sell_revenue            = round(quantity_kg * selling_price_kg)
+        total_cost_all          = total_production_cost + total_storage_cost
+        net_profit              = sell_revenue - total_cost_all
+        margin_kg               = round(selling_price_kg - production_cost_kg - total_storage_cost / quantity_kg, 2) if quantity_kg > 0 else 0
+        break_even_price        = round(production_cost_kg + total_storage_cost / quantity_kg, 2) if quantity_kg > 0 else 0
+        roi_pct                 = round(net_profit / total_cost_all * 100, 1) if total_cost_all > 0 else 0
+        cost_per_kg             = round(total_storage_cost / quantity_kg, 2) if quantity_kg > 0 else 0
+
+        if net_profit > total_storage_cost * 0.5:
+            profitability = "YES"
+        elif net_profit > 0:
+            profitability = "MARGINAL"
+        else:
+            profitability = "NO"
+
         system_prompt = f"""You are the Agricultural Economist for the Department of Agriculture, Sri Lanka.
-A farmer is deciding whether to store paddy or sell now. Give direct, honest economic advice.
+A farmer has given you their ACTUAL production cost and expected selling price.
+Give direct, honest economic advice — tell them if storing is worthwhile after ALL costs.
 Use plain language. Use LKR figures from the data provided.
 
 LANGUAGE: Respond ENTIRELY in {target_lang}. Every word of the advice values must be in {target_lang}.
@@ -1584,20 +1613,27 @@ Keep ALL JSON keys in English — only the values in {target_lang}.
 
 STRICT JSON RESPONSE:
 {{
-  "economic_verdict": "2-sentence plain verdict in {target_lang} — is it worth storing?",
+  "economic_verdict": "2-sentence plain verdict in {target_lang} — is storing worth it after production + storage costs?",
   "best_advice": "specific step-by-step recommendation for this farmer's exact situation — in {target_lang}",
   "risk_warning": "the #1 financial risk if they proceed with storing — in {target_lang}",
-  "comparison": "compare storing vs selling today: exact LKR numbers — in {target_lang}"
+  "comparison": "compare selling now vs storing: exact LKR numbers and margin per kg — in {target_lang}"
 }}"""
 
         user_content = json.dumps({
-            'quantity_kg': quantity_kg, 'bag_type': bag_type,
-            'duration_months': duration_months, 'storage_location': storage_location,
-            'current_price_lkr': current_price, 'expected_price_lkr': expected_price,
-            'total_storage_cost_lkr': costs['total_storage_cost'],
-            'net_profit_lkr': costs['net_profit'], 'profitability': costs['profitability'],
-            'break_even_price': costs['break_even_price'], 'roi_pct': costs['roi_pct'],
-            'bags_required': costs['bags_required'],
+            'quantity_kg': quantity_kg, 'variety': variety,
+            'bag_type': bag_type, 'duration_months': duration_months,
+            'storage_location': storage_location,
+            'production_cost_per_kg': production_cost_kg,
+            'selling_price_per_kg': selling_price_kg,
+            'margin_per_kg_lkr': margin_kg,
+            'total_production_cost_lkr': total_production_cost,
+            'total_storage_cost_lkr': total_storage_cost,
+            'sell_revenue_lkr': sell_revenue,
+            'net_profit_lkr': net_profit,
+            'break_even_price_lkr': break_even_price,
+            'cost_per_kg_storage': cost_per_kg,
+            'roi_pct': roi_pct,
+            'profitability': profitability,
             'response_language': target_lang,
         })
 
@@ -1611,22 +1647,22 @@ STRICT JSON RESPONSE:
 
         _fallbacks = {
             'en': {
-                'verdict': "Storing looks profitable based on current data.",
-                'advice': "Proceed with storage but monitor moisture closely to avoid spoilage.",
-                'warning': "Be aware of sudden market price drops.",
-                'comparison': "Storing is projected to give a higher profit than selling today.",
+                'verdict': f"Your margin is Rs. {margin_kg}/kg. Net profit after all costs: Rs. {net_profit:,.0f}. {'Profitable to store.' if net_profit > 0 else 'Not profitable at current selling price.'}",
+                'advice': f"Break-even selling price is Rs. {break_even_price}/kg. {'You can proceed with storage.' if net_profit > 0 else 'Consider negotiating a higher selling price before storing.'}",
+                'warning': "Be aware of sudden market price drops and unseasonal moisture increases.",
+                'comparison': f"Production Rs. {production_cost_kg}/kg + Storage Rs. {cost_per_kg}/kg = Rs. {round(production_cost_kg + cost_per_kg)}/kg total. Selling at Rs. {selling_price_kg}/kg gives Rs. {margin_kg}/kg margin.",
             },
             'si': {
-                'verdict': "දැනට ඇති දත්ත අනුව ගබඩා කිරීම ලාභදායී වේ.",
-                'advice': "ගබඩා කිරීම කරගෙන යන්න, නමුත් නරක් වීම වලක්වා ගැනීමට තෙතමනය හොඳින් නිරීක්ෂණය කරන්න.",
-                'warning': "හදිසි වෙළඳපල මිල පහළ යාම් ගැන සැලකිලිමත් වන්න.",
-                'comparison': "අද විකිණීමට වඩා ගබඩා කිරීමෙන් වැඩි ලාභයක් ලැබෙනු ඇතැයි අපේක්ෂා කෙරේ.",
+                'verdict': f"ඔබේ ලාභ මාර්ජිනය Rs. {margin_kg}/kg. සියලු වියදම් කැපූ පසු ශුද්ධ ලාභය: Rs. {net_profit:,.0f}.",
+                'advice': f"ලාභ-සම මිල Rs. {break_even_price}/kg. {'ගබඩා කිරීම ඉදිරියට ගෙන යන්න.' if net_profit > 0 else 'ගබඩා කිරීමට පෙර ඉහළ විකුණුම් මිලක් ලබා ගැනීමට උත්සාහ කරන්න.'}",
+                'warning': "හදිසි වෙළඳ මිල පහළ යාම් ගැනත් ගබඩා ගැටලු ගැනත් සැලකිලිමත් වන්න.",
+                'comparison': f"නිෂ්පාදන Rs. {production_cost_kg}/kg + ගබඩා Rs. {cost_per_kg}/kg = Rs. {round(production_cost_kg + cost_per_kg)}/kg. Rs. {selling_price_kg}/kg ට විකිණූ විට Rs. {margin_kg}/kg ලාභ.",
             },
             'ta': {
-                'verdict': "தற்போதைய தரவுகளின் அடிப்படையில் சேமிப்பது லாபகரமானதாக தோன்றுகிறது.",
-                'advice': "சேமிப்பைத் தொடரவும், ஆனால் கெட்டுப்போவதைத் தவிர்க்க ஈரப்பதத்தை கண்காணிக்கவும்.",
-                'warning': "திடீர் சந்தை விலை வீழ்ச்சிகள் குறித்து எச்சரிக்கையாக இருங்கள்.",
-                'comparison': "இன்று விற்பதை விட சேமித்து வைப்பது அதிக லாபத்தை ஈட்டும் என எதிர்பார்க்கப்படுகிறது.",
+                'verdict': f"உங்கள் லாப வரம்பு Rs. {margin_kg}/kg. அனைத்து செலவுகளுக்கும் பிறகு நிகர லாபம்: Rs. {net_profit:,.0f}.",
+                'advice': f"இலாப சமன் விலை Rs. {break_even_price}/kg. {'சேமிப்பை தொடரலாம்.' if net_profit > 0 else 'சேமிக்கும் முன் அதிக விற்பனை விலை பேச முயற்சிக்கவும்.'}",
+                'warning': "சந்தை விலை வீழ்ச்சி மற்றும் ஈரப்பத அதிகரிப்பு குறித்து எச்சரிக்கையாக இருங்கள்.",
+                'comparison': f"உற்பத்தி Rs. {production_cost_kg}/kg + சேமிப்பு Rs. {cost_per_kg}/kg = Rs. {round(production_cost_kg + cost_per_kg)}/kg. Rs. {selling_price_kg}/kg க்கு விற்றால் Rs. {margin_kg}/kg லாபம்.",
             },
         }
         fb = _fallbacks.get(lang, _fallbacks['en'])
@@ -1634,11 +1670,22 @@ STRICT JSON RESPONSE:
         return jsonify({
             'success': True,
             **costs,
-            'lang': lang,
-            'ai_economic_verdict': ai_data.get('economic_verdict', fb['verdict']),
-            'ai_best_advice':      ai_data.get('best_advice', fb['advice']),
-            'ai_risk_warning':     ai_data.get('risk_warning', fb['warning']),
-            'ai_comparison':       ai_data.get('comparison', fb['comparison']),
+            'maint_cost':             maint_cost,
+            'total_storage_cost':     total_storage_cost,
+            'total_production_cost':  total_production_cost,
+            'total_cost_all':         total_cost_all,
+            'sell_revenue':           sell_revenue,
+            'net_profit':             net_profit,
+            'margin_per_kg':          margin_kg,
+            'break_even_price':       break_even_price,
+            'cost_per_kg':            cost_per_kg,
+            'roi_pct':                roi_pct,
+            'profitability':          profitability,
+            'lang':                   lang,
+            'ai_economic_verdict':    ai_data.get('economic_verdict', fb['verdict']),
+            'ai_best_advice':         ai_data.get('best_advice', fb['advice']),
+            'ai_risk_warning':        ai_data.get('risk_warning', fb['warning']),
+            'ai_comparison':          ai_data.get('comparison', fb['comparison']),
         }), 200
 
     except Exception as exc:

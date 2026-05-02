@@ -10,7 +10,7 @@ import { Platform } from 'react-native';
  */
 
 // 1. Manually specify your IP here as a fallback or for production
-const MANUAL_BACKEND_IP = '192.168.100.198';
+const MANUAL_BACKEND_IP = '192.168.100.200';
 const BACKEND_PORT = '5000';
 
 const getBaseUrl = () => {

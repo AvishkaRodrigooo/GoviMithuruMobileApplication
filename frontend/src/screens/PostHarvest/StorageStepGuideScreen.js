@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
     View, Text, StyleSheet, SafeAreaView, TouchableOpacity,
     ScrollView, Dimensions, Animated, Alert, TextInput,
-    ActivityIndicator, Modal, StatusBar, Platform, KeyboardAvoidingView
+    ActivityIndicator, Modal, StatusBar, Platform, KeyboardAvoidingView,
+    Keyboard
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -24,7 +25,10 @@ export default function StorageStepGuideScreen({ navigation, route }) {
     const [lang, setLang] = useState('en');
     const [chatInput, setChatInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
     const chatScrollRef = useRef(null);
+    const mainScrollRef = useRef(null);
+    const inputRef = useRef(null);
 
     // ── Language label map ───────────────────────────────────────────────────
     const LANG_API_MAP = { en: 'en', si: 'si', ta: 'ta' };
@@ -132,7 +136,6 @@ export default function StorageStepGuideScreen({ navigation, route }) {
         },
     };
 
-    // ── Bot greeting per language ────────────────────────────────────────────
     const getBotGreeting = (stepTitle, language) => {
         const greetings = {
             en: `I am your Post-Harvest Storage Advisor. I'll help you with "${stepTitle}". Ask me anything about this step, SLR 603 standards, drying methods, or pest control!`,
@@ -147,6 +150,30 @@ export default function StorageStepGuideScreen({ navigation, route }) {
     ]);
 
     const progressAnim = useRef(new Animated.Value(0)).current;
+
+    // ── Keyboard listeners ───────────────────────────────────────────────────
+    useEffect(() => {
+        const showSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+            (e) => {
+                setKeyboardHeight(e.endCoordinates.height);
+                // Scroll to end of chat after keyboard appears
+                setTimeout(() => {
+                    chatScrollRef.current?.scrollToEnd({ animated: true });
+                }, 150);
+            }
+        );
+        const hideSub = Keyboard.addListener(
+            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+            () => {
+                setKeyboardHeight(0);
+            }
+        );
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
 
     // ── Reset chat and progress when step or language changes ────────────────
     useEffect(() => {
@@ -183,7 +210,7 @@ export default function StorageStepGuideScreen({ navigation, route }) {
         }
     };
 
-    // ── Send chat message via Ollama qwen2.5:7b ──────────────────────────────
+    // ── Send chat message ────────────────────────────────────────────────────
     const handleSendMessage = async () => {
         if (!chatInput.trim()) return;
 
@@ -227,7 +254,7 @@ export default function StorageStepGuideScreen({ navigation, route }) {
             }
         } catch (e) {
             const fallbackMsgs = {
-                en: 'I\'m having trouble connecting to the advisor. Key tip: Always store paddy at 13% moisture or below (SLR 603 Grade A).',
+                en: "I'm having trouble connecting to the advisor. Key tip: Always store paddy at 13% moisture or below (SLR 603 Grade A).",
                 si: 'සම්බන්ධ වීමට නොහැකිය. ප්‍රධාන ඉඟිය: SLR 603 ශ්‍රේණිය A සඳහා 13% ට අඩු තෙතමනයෙන් වී ගබඩා කරන්න.',
                 ta: 'இணைப்பதில் சிக்கல் உள்ளது. முக்கிய குறிப்பு: SLR 603 Grade A க்கு 13% க்கும் குறைவான ஈரப்பதத்தில் நெல்லை சேமிக்கவும்.',
             };
@@ -246,39 +273,49 @@ export default function StorageStepGuideScreen({ navigation, route }) {
     // ─────────────────────────────────────────────────────────────────────────
     return (
         <SafeAreaView style={styles.root}>
-            <KeyboardAvoidingView style={{ flex: 1, paddingBottom: Platform.OS === 'ios' ? 70 : 0 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-                <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
+            <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
 
+            {/* ── KeyboardAvoidingView wraps everything ── */}
+            <KeyboardAvoidingView
+                style={{ flex: 1 }}
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+            >
                 {/* ── Header ── */}
-                <View style={styles.header}>
-                    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                        <MaterialCommunityIcons name="chevron-left" size={28} color="#16a34a" />
-                    </TouchableOpacity>
-                    <View style={{ flex: 1 }}>
-                        <Text style={styles.headerTitle} numberOfLines={1}>
-                            {guideData.title || subCategory}
-                        </Text>
-                        <Text style={styles.headerSub}>{storageType} Specialist Guide</Text>
+                <View style={styles.headerContainer}>
+                    <View style={styles.headerRow}>
+                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+                            <MaterialCommunityIcons name="chevron-left" size={28} color="#16a34a" />
+                        </TouchableOpacity>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.headerTitle} numberOfLines={1}>
+                                {guideData.title || subCategory}
+                            </Text>
+                            <Text style={styles.headerSub}>{storageType} Specialist Guide</Text>
+                        </View>
+                        <TouchableOpacity onPress={() => setShowCalendar(true)} style={styles.calBtn}>
+                            <MaterialCommunityIcons name="calendar-clock" size={24} color="#16a34a" />
+                        </TouchableOpacity>
                     </View>
 
                     {/* Language Switcher */}
-                    <View style={styles.langRow}>
-                        {['en', 'si', 'ta'].map(l => (
+                    <View style={styles.langRowFull}>
+                        {[
+                            { code: 'en', label: 'English' },
+                            { code: 'si', label: 'සිංහල' },
+                            { code: 'ta', label: 'தமிழ்' }
+                        ].map(l => (
                             <TouchableOpacity
-                                key={l}
-                                onPress={() => setLang(l)}
-                                style={[styles.langBtn, lang === l && styles.langBtnActive]}
+                                key={l.code}
+                                onPress={() => setLang(l.code)}
+                                style={[styles.langBtnFull, lang === l.code && styles.langBtnActiveFull]}
                             >
-                                <Text style={[styles.langText, lang === l && styles.langTextActive]}>
-                                    {l.toUpperCase()}
+                                <Text style={[styles.langTextFull, lang === l.code && styles.langTextActiveFull]}>
+                                    {l.label}
                                 </Text>
                             </TouchableOpacity>
                         ))}
                     </View>
-
-                    <TouchableOpacity onPress={() => setShowCalendar(true)} style={styles.calBtn}>
-                        <MaterialCommunityIcons name="calendar-clock" size={24} color="#16a34a" />
-                    </TouchableOpacity>
                 </View>
 
                 {/* ── Banner ── */}
@@ -317,8 +354,14 @@ export default function StorageStepGuideScreen({ navigation, route }) {
                     </View>
                 </View>
 
-                {/* ── Main content ── */}
-                <ScrollView contentContainerStyle={styles.scroll}>
+                {/* ── Main scrollable content ── */}
+                <ScrollView
+                    ref={mainScrollRef}
+                    style={{ flex: 1 }}
+                    contentContainerStyle={styles.scroll}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
                     <View style={styles.card}>
                         {/* Step Icon */}
                         <View style={styles.iconCircle}>
@@ -518,18 +561,19 @@ export default function StorageStepGuideScreen({ navigation, route }) {
                         )}
                     </View>
 
-                    {/* ── Ollama qwen2.5:7b Multilingual Chat ── */}
+                    {/* ── Chat messages area (inside scroll) ── */}
                     <View style={styles.chatSection}>
                         <View style={styles.chatHeader}>
                             <MaterialCommunityIcons name="robot-outline" size={22} color="#10b981" />
                             <Text style={styles.chatTitle}>{UI.chatTitle}</Text>
                         </View>
 
-                        <View style={styles.chatBox}>
+                        <View style={styles.chatMessagesBox}>
                             <ScrollView
                                 ref={chatScrollRef}
                                 style={styles.chatScroll}
                                 nestedScrollEnabled
+                                showsVerticalScrollIndicator={false}
                                 onContentSizeChange={() =>
                                     chatScrollRef.current?.scrollToEnd({ animated: true })
                                 }
@@ -548,12 +592,7 @@ export default function StorageStepGuideScreen({ navigation, route }) {
                                                 />
                                             </View>
                                         )}
-                                        <Text
-                                            style={[
-                                                styles.msgText,
-                                                !m.isBot && { color: '#fff' },
-                                            ]}
-                                        >
+                                        <Text style={[styles.msgText, !m.isBot && { color: '#fff' }]}>
                                             {m.text}
                                         </Text>
                                     </View>
@@ -571,29 +610,40 @@ export default function StorageStepGuideScreen({ navigation, route }) {
                                     </View>
                                 )}
                             </ScrollView>
-
-                            <View style={styles.inputRow}>
-                                <TextInput
-                                    style={styles.input}
-                                    placeholder={UI.placeholder}
-                                    value={chatInput}
-                                    onChangeText={setChatInput}
-                                    placeholderTextColor="#94a3b8"
-                                    onSubmitEditing={handleSendMessage}
-                                    returnKeyType="send"
-                                    multiline={false}
-                                />
-                                <TouchableOpacity
-                                    onPress={handleSendMessage}
-                                    style={[styles.sendBtn, !chatInput.trim() && { opacity: 0.5 }]}
-                                    disabled={!chatInput.trim()}
-                                >
-                                    <MaterialCommunityIcons name="send" size={18} color="#fff" />
-                                </TouchableOpacity>
-                            </View>
                         </View>
                     </View>
+
+                    {/* Bottom padding so footer doesn't cover last content */}
+                    <View style={{ height: 20 }} />
                 </ScrollView>
+
+                {/* ── Chat Input Row — FIXED above footer, always visible ── */}
+                <View style={styles.chatInputContainer}>
+                    <TextInput
+                        ref={inputRef}
+                        style={styles.input}
+                        placeholder={UI.placeholder}
+                        value={chatInput}
+                        onChangeText={setChatInput}
+                        placeholderTextColor="#94a3b8"
+                        onSubmitEditing={handleSendMessage}
+                        returnKeyType="send"
+                        multiline={false}
+                        onFocus={() => {
+                            // Scroll main scroll to bottom so input is visible
+                            setTimeout(() => {
+                                mainScrollRef.current?.scrollToEnd({ animated: true });
+                            }, 300);
+                        }}
+                    />
+                    <TouchableOpacity
+                        onPress={handleSendMessage}
+                        style={[styles.sendBtn, !chatInput.trim() && { opacity: 0.5 }]}
+                        disabled={!chatInput.trim()}
+                    >
+                        <MaterialCommunityIcons name="send" size={18} color="#fff" />
+                    </TouchableOpacity>
+                </View>
 
                 {/* ── Footer Buttons ── */}
                 <View style={styles.footer}>
@@ -627,11 +677,7 @@ export default function StorageStepGuideScreen({ navigation, route }) {
                             {steps.map((s, i) => (
                                 <View key={i} style={styles.historyRow}>
                                     <MaterialCommunityIcons
-                                        name={
-                                            completedSteps[i]
-                                                ? 'checkbox-marked-circle'
-                                                : 'checkbox-blank-circle-outline'
-                                        }
+                                        name={completedSteps[i] ? 'checkbox-marked-circle' : 'checkbox-blank-circle-outline'}
                                         size={24}
                                         color={completedSteps[i] ? '#10b981' : '#334155'}
                                     />
@@ -644,10 +690,7 @@ export default function StorageStepGuideScreen({ navigation, route }) {
                                 </View>
                             ))}
                         </ScrollView>
-                        <TouchableOpacity
-                            onPress={() => setShowCalendar(false)}
-                            style={styles.closeBtn}
-                        >
+                        <TouchableOpacity onPress={() => setShowCalendar(false)} style={styles.closeBtn}>
                             <Text style={styles.closeBtnText}>{UI.close}</Text>
                         </TouchableOpacity>
                     </View>
@@ -659,31 +702,56 @@ export default function StorageStepGuideScreen({ navigation, route }) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-    root: { flex: 1, backgroundColor: '#f9fafb', paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0 },
+    root: {
+        flex: 1,
+        backgroundColor: '#f9fafb',
+        paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+    },
 
     // Header
-    header: {
-        flexDirection: 'row', alignItems: 'center', padding: 16,
-        paddingTop: 16, gap: 12, backgroundColor: '#fff',
-        borderBottomWidth: 1, borderBottomColor: '#e5e7eb', elevation: 2,
+    headerContainer: {
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#e5e7eb',
+        elevation: 2,
+        paddingBottom: 12,
+    },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        gap: 12,
     },
     backBtn: {
-        width: 44, height: 44, borderRadius: 12, backgroundColor: '#f0fdf4',
+        width: 44, height: 44, borderRadius: 12,
+        backgroundColor: '#f0fdf4',
         justifyContent: 'center', alignItems: 'center',
         borderWidth: 1, borderColor: '#bbf7d0',
     },
     headerTitle: { color: '#111827', fontSize: 16, fontWeight: '800' },
     headerSub: { color: '#16a34a', fontSize: 11, fontWeight: '700' },
-    langRow: {
-        flexDirection: 'row', gap: 4, marginRight: 4,
-        backgroundColor: '#f3f4f6', padding: 4, borderRadius: 10,
+    langRowFull: {
+        flexDirection: 'row',
+        gap: 8,
+        marginHorizontal: 16,
+        backgroundColor: '#f3f4f6',
+        padding: 6,
+        borderRadius: 12,
+        justifyContent: 'space-between',
     },
-    langBtn: { paddingHorizontal: 7, paddingVertical: 5, borderRadius: 6 },
-    langBtnActive: { backgroundColor: '#fff', elevation: 1, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 2 },
-    langText: { fontSize: 10, fontWeight: '900', color: '#94a3b8' },
-    langTextActive: { color: '#16a34a' },
+    langBtnFull: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
+    langBtnActiveFull: {
+        backgroundColor: '#fff',
+        elevation: 1,
+        shadowColor: '#000',
+        shadowOpacity: 0.08,
+        shadowRadius: 2,
+    },
+    langTextFull: { fontSize: 13, fontWeight: '700', color: '#6b7280' },
+    langTextActiveFull: { color: '#16a34a', fontWeight: '900' },
     calBtn: {
-        width: 44, height: 44, borderRadius: 12, backgroundColor: '#f0fdf4',
+        width: 44, height: 44, borderRadius: 12,
+        backgroundColor: '#f0fdf4',
         justifyContent: 'center', alignItems: 'center',
         borderWidth: 1, borderColor: '#bbf7d0',
     },
@@ -691,150 +759,260 @@ const styles = StyleSheet.create({
     // Banner
     welcomeBanner: { marginHorizontal: 16, marginTop: 16 },
     welcomeGrad: {
-        padding: 16, borderRadius: 20,
-        flexDirection: 'row', alignItems: 'center',
+        padding: 16,
+        borderRadius: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     welcomeTitle: { color: '#fff', fontSize: 15, fontWeight: '900' },
     welcomeSub: { color: '#34d399', fontSize: 11, fontWeight: '700', marginTop: 2 },
 
     // Progress
     progressSection: {
-        paddingHorizontal: 16, paddingVertical: 12, backgroundColor: '#fff',
-        borderBottomWidth: 1, borderBottomColor: '#f3f4f6',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        backgroundColor: '#fff',
+        borderBottomWidth: 1,
+        borderBottomColor: '#f3f4f6',
     },
-    progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+    progressRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginBottom: 8,
+    },
     progressText: { color: '#6b7280', fontSize: 12, fontWeight: '700' },
     progressPct: { color: '#16a34a', fontSize: 12, fontWeight: '900' },
     track: { height: 6, backgroundColor: '#e5e7eb', borderRadius: 3, overflow: 'hidden' },
     fill: { height: '100%', backgroundColor: '#16a34a', borderRadius: 3 },
 
     // Scroll content
-    scroll: { paddingBottom: 130 },
+    scroll: { paddingBottom: 8 },
 
     // Main card
     card: {
-        margin: 16, backgroundColor: '#fff', borderRadius: 24,
-        padding: 20, borderWidth: 1, borderColor: '#e5e7eb', elevation: 2,
+        margin: 16,
+        backgroundColor: '#fff',
+        borderRadius: 24,
+        padding: 20,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+        elevation: 2,
     },
     iconCircle: {
-        width: 70, height: 70, borderRadius: 35, backgroundColor: '#dcfce7',
+        width: 70, height: 70,
+        borderRadius: 35,
+        backgroundColor: '#dcfce7',
         justifyContent: 'center', alignItems: 'center',
         marginBottom: 15, alignSelf: 'center',
     },
     stepTitle: {
-        color: '#111827', fontSize: 20, fontWeight: '900',
-        textAlign: 'center', marginBottom: 25,
+        color: '#111827',
+        fontSize: 20,
+        fontWeight: '900',
+        textAlign: 'center',
+        marginBottom: 25,
     },
     costBadge: {
-        flexDirection: 'row', backgroundColor: '#dcfce7', alignSelf: 'center',
-        paddingVertical: 6, paddingHorizontal: 12, borderRadius: 10,
-        alignItems: 'center', gap: 6, marginBottom: 20,
+        flexDirection: 'row',
+        backgroundColor: '#dcfce7',
+        alignSelf: 'center',
+        paddingVertical: 6,
+        paddingHorizontal: 12,
+        borderRadius: 10,
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 20,
     },
     costText: { color: '#16a34a', fontSize: 13, fontWeight: '900' },
 
     // Sections
     section: { marginBottom: 25 },
     sectionTitle: {
-        color: '#9ca3af', fontSize: 11, fontWeight: '900',
-        letterSpacing: 1.5, marginBottom: 15,
+        color: '#9ca3af',
+        fontSize: 11,
+        fontWeight: '900',
+        letterSpacing: 1.5,
+        marginBottom: 15,
     },
     listItem: {
-        flexDirection: 'row', alignItems: 'flex-start',
-        marginBottom: 12, gap: 10,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        marginBottom: 12,
+        gap: 10,
     },
     bullet: {
-        width: 6, height: 6, borderRadius: 3,
-        backgroundColor: '#16a34a', marginTop: 6,
+        width: 6, height: 6,
+        borderRadius: 3,
+        backgroundColor: '#16a34a',
+        marginTop: 6,
     },
     listText: { color: '#374151', fontSize: 14, lineHeight: 22, flex: 1 },
 
     optionBox: {
-        backgroundColor: '#f9fafb', padding: 15, borderRadius: 14,
-        marginBottom: 12, borderWidth: 1, borderColor: '#e5e7eb',
+        backgroundColor: '#f9fafb',
+        padding: 15,
+        borderRadius: 14,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
     },
     optHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
     optName: { color: '#111827', fontSize: 15, fontWeight: '800' },
     optCost: { color: '#16a34a', fontSize: 14, fontWeight: '900' },
     optDesc: { color: '#6b7280', fontSize: 13, marginTop: 4, lineHeight: 20 },
 
-    checkRow: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 12 },
+    checkRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginBottom: 12,
+    },
     ruleRow: {
-        flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-        marginBottom: 12, backgroundColor: '#fef9c3',
-        padding: 12, borderRadius: 14,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 12,
+        marginBottom: 12,
+        backgroundColor: '#fef9c3',
+        padding: 12,
+        borderRadius: 14,
     },
     logicRow: {
-        flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-        marginBottom: 12, backgroundColor: '#f0fdf4',
-        padding: 12, borderRadius: 14,
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 12,
+        marginBottom: 12,
+        backgroundColor: '#f0fdf4',
+        padding: 12,
+        borderRadius: 14,
     },
     routineBlock: {
-        marginBottom: 15, backgroundColor: '#f9fafb',
-        padding: 15, borderRadius: 16,
-        borderWidth: 1, borderColor: '#e5e7eb',
+        marginBottom: 15,
+        backgroundColor: '#f9fafb',
+        padding: 15,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
     },
     routineHeader: {
-        color: '#16a34a', fontSize: 10, fontWeight: '900',
-        marginBottom: 10, letterSpacing: 1,
+        color: '#16a34a',
+        fontSize: 10,
+        fontWeight: '900',
+        marginBottom: 10,
+        letterSpacing: 1,
     },
     statsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     statChip: {
-        backgroundColor: '#f0fdf4', padding: 12, borderRadius: 14,
-        minWidth: '45%', flexGrow: 1,
-        borderWidth: 1, borderColor: '#bbf7d0',
+        backgroundColor: '#f0fdf4',
+        padding: 12,
+        borderRadius: 14,
+        minWidth: '45%',
+        flexGrow: 1,
+        borderWidth: 1,
+        borderColor: '#bbf7d0',
     },
     statLabel: { color: '#16a34a', fontSize: 10, fontWeight: '900', marginBottom: 4 },
     statValue: { color: '#111827', fontSize: 13, fontWeight: '800' },
     warningBox: {
-        flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-        backgroundColor: '#fef2f2', padding: 15, borderRadius: 16,
-        marginBottom: 12, borderWidth: 1, borderColor: '#fecaca',
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 10,
+        backgroundColor: '#fef2f2',
+        padding: 15,
+        borderRadius: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#fecaca',
     },
-    warningText: { color: '#ef4444', fontSize: 13, lineHeight: 20, flex: 1, fontWeight: '700' },
+    warningText: {
+        color: '#ef4444',
+        fontSize: 13,
+        lineHeight: 20,
+        flex: 1,
+        fontWeight: '700',
+    },
 
-    // ── Chat ──────────────────────────────────────────────────────────────────
-    chatSection: { marginHorizontal: 16, marginBottom: 30 },
+    // ── Chat section (messages only, inside main scroll) ──────────────────────
+    chatSection: { marginHorizontal: 16, marginBottom: 12 },
     chatHeader: {
-        flexDirection: 'row', alignItems: 'center',
-        gap: 8, marginBottom: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
     },
     chatTitle: { color: '#16a34a', fontSize: 14, fontWeight: '900' },
-    chatBox: {
-        backgroundColor: '#fff', borderRadius: 20, padding: 14,
-        height: 340, borderWidth: 1, borderColor: '#e5e7eb', elevation: 1,
+    chatMessagesBox: {
+        backgroundColor: '#fff',
+        borderRadius: 20,
+        padding: 14,
+        height: 220,                      // ← shorter so it doesn't dominate
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+        elevation: 1,
     },
     chatScroll: { flex: 1 },
     message: {
-        padding: 12, borderRadius: 16, marginBottom: 10,
-        maxWidth: '88%', flexDirection: 'row', alignItems: 'flex-start',
+        padding: 12,
+        borderRadius: 16,
+        marginBottom: 10,
+        maxWidth: '88%',
+        flexDirection: 'row',
+        alignItems: 'flex-start',
     },
     botMsg: {
-        alignSelf: 'flex-start', backgroundColor: '#f9fafb',
-        borderBottomLeftRadius: 4, borderWidth: 1, borderColor: '#e5e7eb',
+        alignSelf: 'flex-start',
+        backgroundColor: '#f9fafb',
+        borderBottomLeftRadius: 4,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
     },
     userMsg: {
-        alignSelf: 'flex-end', backgroundColor: '#16a34a',
-        borderBottomRightRadius: 4, flexDirection: 'row-reverse',
+        alignSelf: 'flex-end',
+        backgroundColor: '#16a34a',
+        borderBottomRightRadius: 4,
+        flexDirection: 'row-reverse',
     },
     botIcon: { marginRight: 6, marginTop: 2 },
     msgText: { fontSize: 14, lineHeight: 21, color: '#374151', flex: 1 },
-    inputRow: { flexDirection: 'row', gap: 10, marginTop: 10 },
+
+    // ── Chat Input — fixed above footer ───────────────────────────────────────
+    chatInputContainer: {
+        flexDirection: 'row',
+        gap: 10,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        backgroundColor: '#fff',
+        borderTopWidth: 1,
+        borderTopColor: '#f0fdf4',
+        alignItems: 'center',
+    },
     input: {
-        flex: 1, backgroundColor: '#f9fafb', borderRadius: 14,
-        paddingHorizontal: 15, color: '#111827', height: 46,
-        borderWidth: 1, borderColor: '#e5e7eb', fontSize: 13,
+        flex: 1,
+        backgroundColor: '#f9fafb',
+        borderRadius: 14,
+        paddingHorizontal: 15,
+        color: '#111827',
+        height: 46,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
+        fontSize: 13,
     },
     sendBtn: {
-        width: 46, height: 46, borderRadius: 14,
+        width: 46, height: 46,
+        borderRadius: 14,
         backgroundColor: '#16a34a',
-        justifyContent: 'center', alignItems: 'center',
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 
     // Footer
     footer: {
-        position: 'absolute', bottom: 0, left: 0, right: 0,
-        padding: 16, flexDirection: 'row', gap: 12,
-        backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#e5e7eb',
+        padding: 16,
+        paddingBottom: Platform.OS === 'android' ? 20 : 28,
+        flexDirection: 'row',
+        gap: 12,
+        backgroundColor: '#fff',
+        borderTopWidth: 1,
+        borderTopColor: '#e5e7eb',
         elevation: 8,
     },
     prevBtn: {
@@ -846,32 +1024,45 @@ const styles = StyleSheet.create({
     completeBtn: { flex: 2, height: 56, borderRadius: 16, overflow: 'hidden' },
     completeGrad: {
         width: '100%', height: '100%',
-        flexDirection: 'row', justifyContent: 'center',
-        alignItems: 'center', gap: 10,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: 10,
     },
     completeText: { color: '#fff', fontSize: 14, fontWeight: '900' },
 
     // Modal
     modalOverlay: {
-        flex: 1, backgroundColor: 'rgba(0,0,0,0.5)',
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
         justifyContent: 'flex-end',
     },
     modalContent: {
-        backgroundColor: '#fff', borderTopLeftRadius: 28,
-        borderTopRightRadius: 28, padding: 24, height: '60%',
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 28,
+        borderTopRightRadius: 28,
+        padding: 24,
+        height: '60%',
     },
     modalTitle: { color: '#111827', fontSize: 20, fontWeight: '900', marginBottom: 20 },
     historyRow: {
-        flexDirection: 'row', alignItems: 'center',
-        backgroundColor: '#f9fafb', padding: 14,
-        borderRadius: 16, marginBottom: 10,
-        borderWidth: 1, borderColor: '#e5e7eb',
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#f9fafb',
+        padding: 14,
+        borderRadius: 16,
+        marginBottom: 10,
+        borderWidth: 1,
+        borderColor: '#e5e7eb',
     },
     historyTitle: { color: '#111827', fontSize: 15, fontWeight: '700' },
     historyDate: { color: '#9ca3af', fontSize: 12, marginTop: 2 },
     closeBtn: {
-        backgroundColor: '#16a34a', padding: 18,
-        borderRadius: 16, marginTop: 10, alignItems: 'center',
+        backgroundColor: '#16a34a',
+        padding: 18,
+        borderRadius: 16,
+        marginTop: 10,
+        alignItems: 'center',
     },
     closeBtnText: { color: '#fff', fontSize: 14, fontWeight: '900' },
 });

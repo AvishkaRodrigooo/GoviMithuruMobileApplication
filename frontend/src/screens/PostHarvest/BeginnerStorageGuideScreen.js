@@ -370,56 +370,57 @@ export default function BeginnerStorageGuideScreen({ navigation }) {
                 </View>
             </View>
 
-            {/* Chat Area */}
-            <FlatList
-                ref={flatListRef}
-                data={messages}
-                renderItem={renderMessage}
-                keyExtractor={item => item.id}
-                contentContainerStyle={styles.chatContent}
-                showsVerticalScrollIndicator={false}
-                ListHeaderComponent={
-                    showQuickActions && messages.length === 1 ? (
-                        <View style={styles.quickActionsContainer}>
-                            <Text style={styles.quickActionsTitle}>Quick Actions</Text>
-                            <View style={styles.quickActionsGrid}>
-                                {QUICK_ACTIONS.map(action => (
-                                    <TouchableOpacity
-                                        key={action.id}
-                                        style={styles.quickActionButton}
-                                        onPress={() => sendMessage(action.languages[currentLanguage] || action.label)}
-                                    >
-                                        <Text style={styles.quickActionText}>
-                                            {action.languages[currentLanguage] || action.label}
-                                        </Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-                        </View>
-                    ) : null
-                }
-                ListFooterComponent={
-                    loading ? (
-                        <View style={styles.typingContainer}>
-                            <View style={styles.assistantAvatar}>
-                                <LinearGradient colors={['#16a34a', '#15803d']} style={styles.avatarGrad}>
-                                    <MaterialCommunityIcons name="robot" size={18} color="#fff" />
-                                </LinearGradient>
-                            </View>
-                            <View style={styles.typingBubble}>
-                                <TypingIndicator />
-                                <Text style={styles.typingText}>AI is thinking...</Text>
-                            </View>
-                        </View>
-                    ) : null
-                }
-            />
-
-            {/* Input Area */}
             <KeyboardAvoidingView
+                style={{ flex: 1 }}
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
             >
+                {/* Chat Area */}
+                <FlatList
+                    ref={flatListRef}
+                    data={messages}
+                    renderItem={renderMessage}
+                    keyExtractor={item => item.id}
+                    contentContainerStyle={styles.chatContent}
+                    showsVerticalScrollIndicator={false}
+                    ListHeaderComponent={
+                        showQuickActions && messages.length === 1 ? (
+                            <View style={styles.quickActionsContainer}>
+                                <Text style={styles.quickActionsTitle}>Quick Actions</Text>
+                                <View style={styles.quickActionsGrid}>
+                                    {QUICK_ACTIONS.map(action => (
+                                        <TouchableOpacity
+                                            key={action.id}
+                                            style={styles.quickActionButton}
+                                            onPress={() => sendMessage(action.languages[currentLanguage] || action.label)}
+                                        >
+                                            <Text style={styles.quickActionText}>
+                                                {action.languages[currentLanguage] || action.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            </View>
+                        ) : null
+                    }
+                    ListFooterComponent={
+                        loading ? (
+                            <View style={styles.typingContainer}>
+                                <View style={styles.assistantAvatar}>
+                                    <LinearGradient colors={['#16a34a', '#15803d']} style={styles.avatarGrad}>
+                                        <MaterialCommunityIcons name="robot" size={18} color="#fff" />
+                                    </LinearGradient>
+                                </View>
+                                <View style={styles.typingBubble}>
+                                    <TypingIndicator />
+                                    <Text style={styles.typingText}>AI is thinking...</Text>
+                                </View>
+                            </View>
+                        ) : null
+                    }
+                />
+
+                {/* Input Area */}
                 <View style={styles.inputContainer}>
                     <View style={styles.inputWrapper}>
                         <TextInput
