@@ -30,6 +30,7 @@ import PestHistory from './src/screens/pestForecast/PestHistory';
 import PestDetectionHistory from './src/screens/pestForecast/PestDetectionHistory';
 import NotificationSettings from './src/screens/pestForecast/NotificationSettings';
 import AIPestAssistantScreen from './src/screens/pestForecast/AIPestAssistantScreen';
+import PestAlertsList from './src/screens/pestForecast/PestAlertsList';
 
 
 //weeds controller
@@ -137,11 +138,8 @@ export default function App() {
           // User is signed in - show main app screens
           <>
 
-<<<<<<< HEAD
             <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
-=======
-            <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'AgroMind' }} />
->>>>>>> ef667088a0ced3a4c98872182e6792f2068ef8bd
+            {/* <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'AgroMind' }} /> */}
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
             <Stack.Screen name="Notifications" component={NotificationScreen} options={{ title: 'Notifications' }} />
             <Stack.Screen name="AdminDashboard" component={adminDashboardScreen} options={{ title: "Admin Dashboard" }} />
@@ -152,12 +150,14 @@ export default function App() {
               component={AgroShopsScreen}
               options={{ title: "Agro Shops Nearby" }}
             />
-<<<<<<< HEAD
             <Stack.Screen name="Stagesplant" component={StagesScreen} options={{title: 'Paddy Plant Growth Stage' }}/>
-=======
-
             {/* Pest Management */}
-            <Stack.Screen name="PestManagement" component={PestManagementScreen} options={{ headerShown: false }} />
+            <Stack.Screen 
+  name="PestManagementScreen" 
+  component={PestManagementScreen} 
+  options={{ title: 'Pest Management', headerShown: false }} 
+/>
+
             <Stack.Screen name="PestForecastDashboard" component={PestForecastDashboard} options={{ title: 'Pest Forecast' }} />
 <Stack.Screen name="PestForecastForm" component={PestForecastForm} options={{ title: 'New Forecast' }} />
 <Stack.Screen name="PestDetection" component={PestDetection} options={{ title: 'Pest Detection' }} />
@@ -197,10 +197,13 @@ export default function App() {
     component={AIPestAssistantScreen} 
     options={{ headerShown: false }}
   />
->>>>>>> ef667088a0ced3a4c98872182e6792f2068ef8bd
+  <Stack.Screen 
+  name="PestAlertsList" 
+  component={PestAlertsList} 
+  options={{ title: 'All Alerts' }} 
+/>
 
             {/* Post Harvest Analysis Flow */}
-            <Stack.Screen name="PostHarvestOnboarding" component={KnowledgeSelectionScreen} options={{ headerShown: false }} />
             <Stack.Screen name="KnowledgeQuiz" component={KnowledgeQuizScreen} options={{ headerShown: false }} />
             <Stack.Screen name="WarehouseAnalysis" component={WarehouseAnalysisScreen} options={{ headerShown: false }} />
 

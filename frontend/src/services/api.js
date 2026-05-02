@@ -9,7 +9,7 @@ import { Platform } from 'react-native';
 
 const getBaseUrl = () => {
   // For physical device with computer's IP
-  return 'http://192.168.1.105:5005';
+  return 'http://192.168.1.102:5005';
   
   // Uncomment for Android emulator:
   // return 'http://10.0.2.2:5005';
@@ -72,15 +72,15 @@ export const pestForecastApi = {
   },
 
   // Get forecast history
-  // getHistory: async (userId, limit = 10) => {
-  //   try {
-  //     const response = await api.get(`/api/pest/forecast/history?user_id=${userId}&limit=${limit}`);
-  //     return response.data;
-  //   } catch (error) {
-  //     console.error('History API error:', error);
-  //     throw error;
-  //   }
-  // },
+  getHistory: async (userId, limit = 10) => {
+    try {
+      const response = await api.get(`/api/pest/forecast/history?user_id=${userId}&limit=${limit}`);
+      return response.data;
+    } catch (error) {
+      console.error('History API error:', error);
+      throw error;
+    }
+  },
 
   // Toggle notifications
   toggleNotifications: async (userId, enabled, onesignalId) => {
@@ -286,6 +286,17 @@ export const pestLibraryApi = {
       throw error;
     }
   },
+};
+
+// Add to pestLibraryApi object in api.js
+getPestInfoById: async (pestId, lang = 'en') => {
+  try {
+    const response = await api.get(`/api/pest/library/id/${pestId}?lang=${lang}`);
+    return response.data;
+  } catch (error) {
+    console.error('Pest info by ID error:', error);
+    throw error;
+  }
 };
 
 // ==================== WEATHER API ====================

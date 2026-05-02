@@ -18,22 +18,11 @@ import { Picker } from '@react-native-picker/picker';
 import { LineChart } from 'react-native-chart-kit';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Import custom alert components
+import CustomRiskAlert from '../../components/CustomRiskAlert';
+import AlertManager from '../../services/alertManager';
 
-// import * as Notifications from 'expo-notifications';
-
-// Import OneSignal service
-import NotificationService from '../../services/notificationService';
-
-const API_BASE_URL = 'http://192.168.1.105:5005/api/pest';
-
-// Remove Notification handler
-// Notifications.setNotificationHandler({
-//   handleNotification: async () => ({
-//     shouldShowAlert: true,
-//     shouldPlaySound: true,
-//     shouldSetBadge: true,
-//   }),
-// });
+const API_BASE_URL = 'http://192.168.1.102:5005/api/pest';
 
 const Icon = ({ name, size, color, style }) => {
   const iconMap = {
@@ -101,6 +90,10 @@ const PestForecastDashboard = ({ navigation }) => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [mlEngineStatus, setMlEngineStatus] = useState('Checking...');
   const [onesignalId, setOnesignalId] = useState(null);
+  
+  // Alert modal state
+  const [showRiskModal, setShowRiskModal] = useState(false);
+  const [currentAlert, setCurrentAlert] = useState(null);
   
   // Translations 
   const translations = {
@@ -383,69 +376,15 @@ const PestForecastDashboard = ({ navigation }) => {
       (season === 'Yala' ? 'Yala Season' : 'Maha Season');
   };
   
-  
+  // Subscribe to alerts from AlertManager
   useEffect(() => {
-    const initNotifications = async () => {
-      try {
-        
-        const userId = 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        
-        
-        NotificationService.initialize(userId);
-        
-        
-        NotificationService.setNotificationOpenHandler((data) => {
-          console.log('Notification opened:', data);
-          
-          if (data.type === 'pest_alert') {
-            Alert.alert(
-              language === 'si' ? '🚨 පළිබෝධ ඇඟවීම' : '🚨 Pest Alert',
-              language === 'si' 
-                ? `${data.district} හි ${data.risk_level} අවදානමක් හඳුනාගෙන ඇත`
-                : `${data.risk_level} risk detected in ${data.district}`,
-              [
-                { text: language === 'si' ? 'හරි' : 'OK' },
-                { 
-                  text: language === 'si' ? 'බලන්න' : 'View',
-                  onPress: () => {
-                    
-                    console.log('View details');
-                  }
-                }
-              ]
-            );
-          }
-        });
-        
-        
-        setTimeout(async () => {
-          const deviceId = await NotificationService.getDeviceId();
-          setOnesignalId(deviceId);
-          console.log('OneSignal ID:', deviceId);
-        }, 2000);
-        
-        
-        const savedNotifications = await AsyncStorage.getItem('notificationsEnabled');
-        if (savedNotifications !== null) {
-          setNotificationsEnabled(JSON.parse(savedNotifications));
-        }
-        
-      } catch (error) {
-        console.log('Notification init error:', error);
-      }
-    };
-    
-    initNotifications();
+    const unsubscribe = AlertManager.addListener((alert) => {
+      setCurrentAlert(alert);
+      setShowRiskModal(true);
+    });
+    return () => unsubscribe();
   }, []);
   
-  
-  useEffect(() => {
-    if (NotificationService.isInitialized()) {
-      NotificationService.updateLanguage(language);
-    }
-  }, [language]);
-  
- 
   useEffect(() => {
     console.log('Component mounted');
     const loadHistory = async () => {
@@ -460,20 +399,6 @@ const PestForecastDashboard = ({ navigation }) => {
     };
     loadHistory();
   }, []);
-  
-  // Remove expo-notifications permission useEffect
-  // useEffect(() => {
-  //   const requestPermissions = async () => {
-  //     try {
-  //       const { status } = await Notifications.requestPermissionsAsync();
-  //       setNotificationsEnabled(status === 'granted');
-  //     } catch (error) {
-  //       console.log('Notification permission error:', error);
-  //       setNotificationsEnabled(false);
-  //     }
-  //   };
-  //   requestPermissions();
-  // }, []);
   
   useEffect(() => {
     fetchInitialData();
@@ -625,21 +550,40 @@ const PestForecastDashboard = ({ navigation }) => {
     fetchWeather(value);
   };
   
-  
-  const showInAppAlert = (title, message, riskLevel) => {
-    if (riskLevel === 'High' || riskLevel === 'Very High') {
-      Alert.alert(
-        language === 'si' ? 'අධික අවදානම් ඇඟවීම' : 'High Risk Alert',
-        message,
-        [{ text: 'OK' }]
-      );
-    } else if (riskLevel === 'Moderate') {
-      Alert.alert(
-        language === 'si' ? 'මධ්‍යස්ථ අවදානම' : 'Moderate Risk Alert',
-        message,
-        [{ text: 'OK' }]
-      );
+  // Updated showInAppAlert with custom modal
+  const showInAppAlert = (title, message, riskLevel, predictionData) => {
+    // Show custom modal for high/moderate risk
+    if (riskLevel === 'High' || riskLevel === 'Very High' || riskLevel === 'Moderate') {
+      const alertData = {
+        risk_level: riskLevel,
+        predicted_pest: predictionData?.predicted_pest || 'Unknown Pest',
+        severity: predictionData?.severity || 'Unknown',
+        incidence_percent: predictionData?.incidence_percent || 0,
+        district: district,
+      };
+      
+      // Send to AlertManager for storage and modal display
+      AlertManager.showAlert(alertData);
+      
+      // Also show simple alert as backup
+      Alert.alert(title, message, [{ text: 'OK' }]);
+    } else {
+      // Low risk - just alert
+      Alert.alert(title, message, [{ text: 'OK' }]);
     }
+  };
+  
+  // Handler for when user clicks "View Details" on the modal
+  const handleViewAlertDetails = (alertData) => {
+    setShowRiskModal(false);
+    // Show detailed info
+    Alert.alert(
+      language === 'si' ? 'විස්තර' : 'Details',
+      language === 'si'
+        ? `පළිබෝධය: ${alertData.predicted_pest}\nදරුණු බව: ${alertData.severity}\nප්‍රහාර මට්ටම: ${alertData.incidence_percent}%\nදිස්ත්‍රික්කය: ${alertData.district}`
+        : `Pest: ${alertData.predicted_pest}\nSeverity: ${alertData.severity}\nIncidence: ${alertData.incidence_percent}%\nDistrict: ${alertData.district}`,
+      [{ text: 'OK' }]
+    );
   };
 
   // Handle prediction with real weather
@@ -666,11 +610,6 @@ const PestForecastDashboard = ({ navigation }) => {
     try {
       console.log('Making prediction with:', { district, paddyType, paddyAge: ageNum });
       
-      
-      if (NotificationService.isInitialized()) {
-        NotificationService.sendLocationTags(district, getSeason(), paddyType, language);
-      }
-      
       const response = await fetch(`${API_BASE_URL}/predict`, {
         method: 'POST',
         headers: {
@@ -681,7 +620,6 @@ const PestForecastDashboard = ({ navigation }) => {
           paddy_type: paddyType,
           paddy_age: ageNum,
           language: language,
-          onesignal_id: notificationsEnabled ? onesignalId : null
         }),
       });
       
@@ -741,7 +679,8 @@ const PestForecastDashboard = ({ navigation }) => {
           showInAppAlert(
             riskLevel === 'High' || riskLevel === 'Very High' ? 'High Risk Alert' : 'Moderate Risk Alert',
             message,
-            riskLevel
+            riskLevel,
+            { predicted_pest: pestName, severity: severity, incidence_percent: incidence }
           );
         } else {
           Alert.alert(
@@ -919,7 +858,8 @@ const PestForecastDashboard = ({ navigation }) => {
       showInAppAlert(
         riskLevel === 'High' || riskLevel === 'Very High' ? 'High Risk Alert' : 'Moderate Risk Alert',
         message,
-        riskLevel
+        riskLevel,
+        { predicted_pest: selectedPest.en, severity: severity, incidence_percent: incidence }
       );
     }
     
@@ -1102,22 +1042,10 @@ Incidence Percentage: ${incidence}%`;
     setNotificationsEnabled(value);
     savePreference('notificationsEnabled', value);
     
-    if (value && onesignalId) {
-      fetch(`${API_BASE_URL}/notifications/toggle`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: 'user_' + Date.now(),
-          enabled: true,
-          onesignal_id: onesignalId
-        })
-      }).catch(err => console.log('Register error:', err));
-      
-      Alert.alert(
-        language === 'si' ? 'සාර්ථකයි' : 'Success',
-        language === 'si' ? 'දැනුම්දීම් සක්‍රීය කරන ලදී' : 'Notifications enabled'
-      );
-    }
+    Alert.alert(
+      language === 'si' ? 'සාර්ථකයි' : 'Success',
+      language === 'si' ? 'දැනුම්දීම් සක්‍රීය කරන ලදී' : 'Notifications enabled'
+    );
   };
 
   const renderWeatherSource = () => (
@@ -1161,7 +1089,7 @@ Incidence Percentage: ${incidence}%`;
     );
   };
   
-  // Settings Modal with OneSignal integration
+  // Settings Modal
   const renderSettingsModal = () => (
     <Modal
       animationType="slide"
@@ -1192,9 +1120,6 @@ Incidence Percentage: ${incidence}%`;
                   const newLanguage = language === 'en' ? 'si' : 'en';
                   setLanguage(newLanguage);
                   savePreference('language', newLanguage);
-                  if (NotificationService.isInitialized()) {
-                    NotificationService.updateLanguage(newLanguage);
-                  }
                 }}
               >
                 <Text style={styles.languageToggleText}>
@@ -1250,43 +1175,6 @@ Incidence Percentage: ${incidence}%`;
               />
             </View>
             
-            {/* OneSignal Status */}
-            {onesignalId ? (
-              <View style={styles.onesignalStatus}>
-                <Icon name="check-circle" size={16} color="#16a34a" />
-                <Text style={styles.onesignalStatusText}>
-                  {t('notificationsReady')}
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.onesignalStatus}>
-                <Icon name="alert-circle" size={16} color="#f97316" />
-                <Text style={styles.onesignalStatusText}>
-                  {t('notificationsSettingUp')}
-                </Text>
-              </View>
-            )}
-            
-            {/* Test Notification Button (Development Only) */}
-            {__DEV__ && onesignalId && (
-              <TouchableOpacity
-                style={styles.testButton}
-                onPress={() => {
-                  NotificationService.sendTestNotification();
-                  Alert.alert(
-                    language === 'si' ? 'පරීක්ෂණ දැනුම්දීම' : 'Test Notification',
-                    language === 'si' ? 'පරීක්ෂණ දැනුම්දීමක් යවන ලදී' : 'Test notification sent',
-                    [{ text: 'OK' }]
-                  );
-                }}
-              >
-                <Icon name="bell-ring" size={20} color="#0369a1" />
-                <Text style={styles.testButtonText}>
-                  {language === 'si' ? '🔔 පරීක්ෂණ දැනුම්දීමක් යවන්න' : '🔔 Send Test Notification'}
-                </Text>
-              </TouchableOpacity>
-            )}
-            
             <View style={styles.dataSourceInfo}>
               <View style={styles.dataSourceHeader}>
                 <Icon name="database" size={20} color="#0ea5e9" />
@@ -1307,12 +1195,6 @@ Incidence Percentage: ${incidence}%`;
                   <Icon name="bug-report" size={16} color="#4b5563" />
                   <Text style={styles.dataSourceText}>
                     {t('mlEngine')}: {mlEngineStatus}
-                  </Text>
-                </View>
-                <View style={styles.dataSourceItem}>
-                  <Icon name="bell" size={16} color="#4b5563" />
-                  <Text style={styles.dataSourceText}>
-                    Push: {onesignalId ? 'Connected' : 'Connecting...'}
                   </Text>
                 </View>
               </View>
@@ -1337,7 +1219,7 @@ Incidence Percentage: ${incidence}%`;
               onPress={() => {
                 Alert.alert(
                   t('about'),
-                  `${t('version')}\n\n${t('subtitle')}\n\n${language === 'si' ? 'කෘෂිකර්ම දෙපාර්තමේන්තුව සහයෙන්' : 'Supported by Department of Agriculture'}\n\nPowered by OneSignal Push Notifications\nID: ${onesignalId || 'Not available'}`
+                  `${t('version')}\n\n${t('subtitle')}\n\n${language === 'si' ? 'කෘෂිකර්ම දෙපාර්තමේන්තුව සහයෙන්' : 'Supported by Department of Agriculture'}`
                 );
               }}
             >
@@ -2112,6 +1994,15 @@ Incidence Percentage: ${incidence}%`;
       </ScrollView>
       
       {renderSettingsModal()}
+      
+      {/* Custom Risk Alert Modal */}
+      <CustomRiskAlert
+        visible={showRiskModal}
+        riskData={currentAlert}
+        onClose={() => setShowRiskModal(false)}
+        onViewDetails={handleViewAlertDetails}
+        language={language}
+      />
     </View>
   );
 };
@@ -3289,8 +3180,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6b7280',
   },
-  
-  // New styles for OneSignal
   onesignalStatus: {
     flexDirection: 'row',
     alignItems: 'center',

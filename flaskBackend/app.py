@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 from ultralytics import YOLO
 import numpy as np
+from pymongo import MongoClient 
 
 # Load environment variables
 load_dotenv()
@@ -14,13 +15,13 @@ app = Flask(__name__)
 CORS(app) # Enable CORS for all routes
 
 
-app.stage_model = joblib.load("models/paddy_stage_model.pkl")
+# app.stage_model = joblib.load("models/paddy_stage_model.pkl")
 # MongoDB connection
 MONGO_URI = os.getenv('MONGO_URI', "mongodb://localhost:27017/")
-client = MongoClient(MONGO_URI)
-db = client['my_database']
-app = Flask(__name__)
-CORS(app)
+# client = MongoClient(MONGO_URI)
+# db = client['my_database']
+# app = Flask(__name__)
+# CORS(app)
 
 # MongoDB Connection 
 
@@ -50,7 +51,8 @@ from routes.stages import stages_bp
 
 app.register_blueprint(stages_bp)
 # Register blueprints
-from routes.weed_predict import weed_predict_bp
+# from routes.weed_predict import weed_predict_bp
+
 
 # Load YOLO model for pest detection with multiple path support
 

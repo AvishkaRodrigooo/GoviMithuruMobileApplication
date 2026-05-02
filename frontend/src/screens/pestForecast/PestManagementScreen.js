@@ -250,7 +250,7 @@ export default function PestManagementScreen({ navigation }) {
         ) : (
           <TouchableOpacity 
             style={styles.newForecastCard}
-            onPress={() => navigation.navigate('PestForecastForm')}
+            onPress={() => navigation.navigate('PestForecastDashboard')}
           >
             <MaterialCommunityIcons name="plus-circle" size={40} color="#16a34a" />
             <Text style={styles.newForecastText}>Get New Forecast</Text>

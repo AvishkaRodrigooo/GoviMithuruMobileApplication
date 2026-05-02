@@ -23,25 +23,86 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
+# FORCE MAPPING - Direct class ID to pest name mapping
+# This is the most reliable method - change these if your model uses different class IDs
+CLASS_ID_TO_PEST = {
+    0: 'Brown Planthopper (BPH)',
+    1: 'Rice Leaf-folder',
+    2: 'Paddy Bug'
+}
+
+# Also store reverse mapping for debugging
+PEST_TO_CLASS_ID = {
+    'Brown Planthopper (BPH)': 0,
+    'Rice Leaf-folder': 1,
+    'Paddy Bug': 2
+}
+
 def map_yolo_class_to_pest_name(yolo_class_name, class_id=None, confidence=None):
     """
-    Map YOLO detection class names to pest library keys
-    This handles variations in naming between model and library
+    Map YOLO detection class names/IDs to pest library keys
+    Uses class_id as primary key for accuracy
     """
-    # First, check what the YOLO class name is
-    print(f" Mapping YOLO class: '{yolo_class_name}' (ID: {class_id}, Confidence: {confidence})")
+    print(f"🔍 Mapping: class_id={class_id}, name='{yolo_class_name}', conf={confidence}")
     
-    # HARD-CODED MAPPING for y specific 3 classes
-    hardcoded_mapping = {
-        # String mappings
-        '0': 'Brown Planthopper (BPH)',
-        '1': 'Rice Leaf-folder',
-        '2': 'Paddy Bug',
-        # Integer mappings
-        0: 'Brown Planthopper (BPH)',
-        1: 'Rice Leaf-folder',
-        2: 'Paddy Bug',
-        # Name mappings
+    # METHOD 1: Use class_id (most reliable)
+    if class_id is not None:
+        if class_id in CLASS_ID_TO_PEST:
+            mapped_name = CLASS_ID_TO_PEST[class_id]
+            print(f"✅ Class ID {class_id} -> {mapped_name}")
+            return mapped_name
+        else:
+            print(f"⚠️ Class ID {class_id} not found in mapping. Available: {list(CLASS_ID_TO_PEST.keys())}")
+    
+    # METHOD 2: Try to parse numeric string
+    yolo_str = str(yolo_class_name).strip()
+    if yolo_str.isdigit():
+        class_id_from_str = int(yolo_str)
+        if class_id_from_str in CLASS_ID_TO_PEST:
+            mapped_name = CLASS_ID_TO_PEST[class_id_from_str]
+            print(f"✅ Converted digit '{yolo_str}' -> {mapped_name}")
+            return mapped_name
+    
+    # METHOD 3: String matching based on common names
+    yolo_lower = yolo_class_name.lower().strip() if yolo_class_name else ""
+    
+    # Check for BPH
+    if any(word in yolo_lower for word in ['brown', 'planthopper', 'bph']):
+        print(f"✅ String match (BPH) -> Brown Planthopper (BPH)")
+        return 'Brown Planthopper (BPH)'
+    
+    # Check for Rice Leaf-folder
+    if ('leaf' in yolo_lower or 'folder' in yolo_lower) and ('rice' in yolo_lower or 'paddy' in yolo_lower):
+        print(f"✅ String match (Leaf-folder) -> Rice Leaf-folder")
+        return 'Rice Leaf-folder'
+    
+    # Check for Paddy Bug
+    if 'paddy' in yolo_lower or ('bug' in yolo_lower and 'rice' in yolo_lower):
+        print(f"✅ String match (Paddy Bug) -> Paddy Bug")
+        return 'Paddy Bug'
+    
+    # METHOD 4: Check model's class names
+    try:
+        from flask import current_app
+        if hasattr(current_app, 'pest_detection_model'):
+            model = current_app.pest_detection_model
+            if hasattr(model, 'names') and model.names:
+                for idx, name in model.names.items():
+                    if class_id == idx:
+                        name_lower = name.lower()
+                        if 'brown' in name_lower or 'planthopper' in name_lower:
+                            return 'Brown Planthopper (BPH)'
+                        elif 'leaf' in name_lower and 'folder' in name_lower:
+                            return 'Rice Leaf-folder'
+                        elif 'paddy' in name_lower or 'bug' in name_lower:
+                            return 'Paddy Bug'
+                        # If none match but we have the name, try to map it
+                        return name
+    except Exception as e:
+        print(f"Error checking model names: {e}")
+    
+    # METHOD 5: Hardcoded name mappings
+    hardcoded = {
         'brown planthopper': 'Brown Planthopper (BPH)',
         'brown_planthopper': 'Brown Planthopper (BPH)',
         'brown-planthopper': 'Brown Planthopper (BPH)',
@@ -58,165 +119,120 @@ def map_yolo_class_to_pest_name(yolo_class_name, class_id=None, confidence=None)
         'rice_bug': 'Paddy Bug'
     }
     
-    # IMPORTANT:  model is outputting actual class IDs (0, 1, 2)
-    #  mapping by class_id (most reliable)
+    if yolo_lower in hardcoded:
+        print(f"✅ Hardcoded match -> {hardcoded[yolo_lower]}")
+        return hardcoded[yolo_lower]
+    
+    # DEFAULT: Return original with warning
+    print(f"⚠️ WARNING: No mapping found for class_id={class_id}, name='{yolo_class_name}'")
+    print(f"   Defaulting to 'Brown Planthopper (BPH)' - PLEASE CHECK YOUR MODEL'S CLASS MAPPING!")
+    
+    # As a last resort, try to guess based on class_id range
     if class_id is not None:
-        if class_id in hardcoded_mapping:
-            mapped_name = hardcoded_mapping[class_id]
-            print(f"✅ ID mapping found for class {class_id}: '{mapped_name}'")
-            return mapped_name
-        else:
-            print(f"⚠️ Class ID {class_id} not found in mapping")
+        if class_id == 0:
+            return 'Brown Planthopper (BPH)'
+        elif class_id == 1:
+            return 'Rice Leaf-folder'
+        elif class_id == 2:
+            return 'Paddy Bug'
     
-    # If class_id didn't work, try mapping by the raw yolo_class_name
-    yolo_lower = str(yolo_class_name).lower().strip()
-    
-    # Check if it's a digit string
-    if str(yolo_class_name).isdigit():
-        class_id_from_str = int(yolo_class_name)
-        if class_id_from_str in hardcoded_mapping:
-            mapped_name = hardcoded_mapping[class_id_from_str]
-            print(f"Converted digit '{yolo_class_name}' to ID mapping: '{mapped_name}'")
-            return mapped_name
-    
-    # Try direct string mapping
-    if yolo_lower in hardcoded_mapping:
-        mapped_name = hardcoded_mapping[yolo_lower]
-        print(f"String mapping found: '{mapped_name}'")
-        return mapped_name
-    
-    # If no exact match, try partial matching
-    if any(word in yolo_lower for word in ['brown', 'planthopper', 'bph']):
-        print(f"Partial match (BPH): 'Brown Planthopper (BPH)'")
-        return 'Brown Planthopper (BPH)'
-    elif any(word in yolo_lower for word in ['leaf', 'folder']) and ('rice' in yolo_lower or 'paddy' in yolo_lower):
-        print(f"Partial match (Leaf folder): 'Rice Leaf-folder'")
-        return 'Rice Leaf-folder'
-    elif any(word in yolo_lower for word in ['paddy', 'bug']) or 'rice bug' in yolo_lower:
-        print(f"Partial match (Paddy Bug): 'Paddy Bug'")
-        return 'Paddy Bug'
-    
-    # Try to find partial match in pest library keys
-    try:
-        for pest_key in pest_library.pests.keys():
-            pest_key_lower = pest_key.lower()
-            # Check if any word from YOLO class appears in pest key
-            yolo_words = yolo_lower.split()
-            for word in yolo_words:
-                if len(word) > 3 and word in pest_key_lower:
-                    print(f" Library match found: '{pest_key}' (matched word: '{word}')")
-                    return pest_key
-            
-            #  try reverse: check if pest key words appear in YOLO class
-            pest_words = pest_key_lower.split()
-            for word in pest_words:
-                if len(word) > 3 and word in yolo_lower:
-                    print(f"Library match found: '{pest_key}' (matched word: '{word}')")
-                    return pest_key
-    except Exception as e:
-        print(f" Error accessing pest library: {e}")
-    
-    # If still no match, check against current app's class names
-    try:
-        app_class_names = current_app.pest_class_names
-        for class_id_val, class_name in app_class_names.items():
-            if class_name.lower() == yolo_lower:
-                print(f"App class match: '{class_name}'")
-                return class_name
-    except:
-        pass
-    
-    # Return original if no mapping found with a warning
-    print(f" No mapping found for: '{yolo_class_name}' - using original")
-    return yolo_class_name
+    return 'Brown Planthopper (BPH)'
 
-def run_detection(image_path, model, confidence_threshold=0.25):
-    """Run detection and return formatted results"""
+
+def run_detection(image_path, model, confidence_threshold=0.5):
+    """Run detection and return formatted results with smarter filtering"""
     try:
         print(f"🔬 Running inference with confidence threshold: {confidence_threshold}")
         
-        # Print model debugging
         if hasattr(model, 'names'):
-            print(f" Model class names: {model.names}")
-        else:
-            print(" Model doesn't have 'names' attribute")
-        
-        # Run inference
+            print(f"📋 Model class names: {model.names}")
+
+        # 🔥 IMPORTANT: increase confidence threshold
         results = model(image_path, conf=confidence_threshold)
-        
+
         detections = []
-        for result_idx, result in enumerate(results):
+
+        # Collect all detections
+        for result in results:
             boxes = result.boxes
-            if boxes is not None and len(boxes) > 0:
-                print(f" Found {len(boxes)} detections in result {result_idx}")
-                
-                for box_idx, box in enumerate(boxes):
+            if boxes is not None:
+                for box in boxes:
                     class_id = int(box.cls[0])
                     confidence = float(box.conf[0])
-                    
-                    
-                    if hasattr(result, 'names') and result.names and class_id in result.names:
+
+                    # Get class name
+                    if hasattr(result, 'names') and class_id in result.names:
                         yolo_class_name = result.names[class_id]
+                    elif hasattr(model, 'names') and class_id in model.names:
+                        yolo_class_name = model.names[class_id]
                     else:
                         yolo_class_name = str(class_id)
-                    
-                    print(f"   Detection {box_idx}: class='{yolo_class_name}' (ID:{class_id}), conf={confidence:.3f}")
-                    
-                    
-                    pest_name = map_yolo_class_to_pest_name(yolo_class_name, class_id, confidence)
-                    
-                    # Get bounding box coordinates
-                    bbox = []
-                    if hasattr(box, 'xyxy') and len(box.xyxy) > 0:
-                        bbox = box.xyxy[0].tolist()
-                    
-                    detection = {
-                        'class': pest_name,
-                        'yolo_class': yolo_class_name,
+
+                    detections.append({
                         'class_id': class_id,
                         'confidence': confidence,
-                        'bbox': bbox
-                    }
-                    detections.append(detection)
-            else:
-                print(f"📭 No detections in result {result_idx}")
-        
-        # Generate annotated image
+                        'yolo_class_name': yolo_class_name,
+                        'box': box
+                    })
+
+        print(f"📊 Raw detections: {len(detections)}")
+
+        # ❌ No detections
+        if len(detections) == 0:
+            return [], ""
+
+        # ✅ SORT by confidence
+        detections = sorted(detections, key=lambda x: x['confidence'], reverse=True)
+
+        top1 = detections[0]
+        top2 = detections[1] if len(detections) > 1 else None
+
+        # 🎯 FIX 1: ignore low confidence
+        if top1['confidence'] < 0.5:
+            print("⚠️ Low confidence detection ignored")
+            return [], ""
+
+        # 🎯 FIX 2: avoid always BPH (class_id = 0)
+        if top1['class_id'] == 0 and top2:
+            diff = abs(top1['confidence'] - top2['confidence'])
+            if diff < 0.15:
+                print("⚠️ Switching to second best prediction")
+                top1 = top2
+
+        # 🎯 Final detection
+        final_box = top1['box']
+        final_class_id = top1['class_id']
+        final_conf = top1['confidence']
+        yolo_class_name = top1['yolo_class_name']
+
+        pest_name = map_yolo_class_to_pest_name(yolo_class_name, final_class_id, final_conf)
+
+        bbox = []
+        if hasattr(final_box, 'xyxy') and len(final_box.xyxy) > 0:
+            bbox = final_box.xyxy[0].tolist()
+
+        final_detection = {
+            'class': pest_name,
+            'yolo_class': yolo_class_name,
+            'class_id': final_class_id,
+            'confidence': final_conf,
+            'bbox': bbox
+        }
+
+        # 📸 Annotated image
         annotated_base64 = ""
         try:
-            if len(results) > 0 and len(detections) > 0:
-                # Plot detections on image
-                annotated_img = results[0].plot()
-                # Convert to base64
-                _, buffer = cv2.imencode('.jpg', annotated_img)
-                annotated_base64 = base64.b64encode(buffer).decode('utf-8')
-            else:
-                #  no results or no detections, return original image
-                img = cv2.imread(image_path)
-                if img is not None:
-                    _, buffer = cv2.imencode('.jpg', img)
-                    annotated_base64 = base64.b64encode(buffer).decode('utf-8')
+            annotated_img = results[0].plot()
+            _, buffer = cv2.imencode('.jpg', annotated_img)
+            annotated_base64 = base64.b64encode(buffer).decode('utf-8')
         except Exception as e:
-            print(f" Error generating annotated image: {e}")
-        
-        return detections, annotated_base64
-        
+            print(f"⚠️ Annotation error: {e}")
+
+        return [final_detection], annotated_base64
+
     except Exception as e:
-        print(f" Error in run_detection: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        # Return empty detections but still  to encode image
-        try:
-            img = cv2.imread(image_path)
-            if img is not None:
-                _, buffer = cv2.imencode('.jpg', img)
-                annotated_base64 = base64.b64encode(buffer).decode('utf-8')
-            else:
-                annotated_base64 = ""
-        except:
-            annotated_base64 = ""
-        
-        return [], annotated_base64
+        print(f"❌ Error in run_detection: {str(e)}")
+        return [], ""
 
 @pest_detection_bp.route('/detect', methods=['POST'])
 def detect_pest():
@@ -237,8 +253,8 @@ def detect_pest():
                 'error': 'Pest detection model not loaded. Please check server logs.'
             }), 500
         
-        #  parameters from request
-        confidence_threshold = 0.25
+        # Get parameters from request
+        confidence_threshold = 0.5
         language = 'en'  
         
         if request.is_json:
@@ -250,7 +266,7 @@ def detect_pest():
         
         print(f"📋 Request parameters: confidence={confidence_threshold}, language={language}")
         
-        #  file upload
+        # Handle file upload
         if 'image' in request.files:
             file = request.files['image']
             if file and allowed_file(file.filename):
@@ -258,7 +274,7 @@ def detect_pest():
                 filename = f"{uuid.uuid4()}.{ext}"
                 temp_path = os.path.join(UPLOAD_FOLDER, filename)
                 file.save(temp_path)
-                print(f" Image saved temporarily: {temp_path}")
+                print(f"📸 Image saved temporarily: {temp_path}")
                 print(f"   Original filename: {file.filename}")
                 print(f"   File size: {os.path.getsize(temp_path)} bytes")
             else:
@@ -275,29 +291,29 @@ def detect_pest():
             
             temp_path = os.path.join(UPLOAD_FOLDER, f"temp_{uuid.uuid4()}.jpg")
             image.save(temp_path)
-            print(f" Base64 image saved temporarily: {temp_path}")
+            print(f"📸 Base64 image saved temporarily: {temp_path}")
             print(f"   Image size: {image.size}, mode: {image.mode}")
             
         else:
             return jsonify({'success': False, 'error': 'No image provided'}), 400
         
-        
+        # Verify file exists
         if not os.path.exists(temp_path):
             return jsonify({'success': False, 'error': 'Failed to save image'}), 500
         
         # Run detection
-        print(f" Running detection on {temp_path}...")
+        print(f"🔍 Running detection on {temp_path}...")
         detections, annotated_base64 = run_detection(temp_path, model, confidence_threshold)
-        print(f" Found {len(detections)} detections")
+        print(f"📊 Found {len(detections)} detections")
         
         # Clean up temp file
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)
-            print(f" Temporary file cleaned up: {temp_path}")
+            print(f"🧹 Temporary file cleaned up: {temp_path}")
         
-        #  no detections, return a specific response
+        # No detections case
         if len(detections) == 0:
-            print(" No pests detected in the image")
+            print("✅ No pests detected in the image")
             return jsonify({
                 'success': True,
                 'no_detections': True,
@@ -313,23 +329,23 @@ def detect_pest():
         enhanced_detections = []
         for detection in detections:
             pest_name = detection['class']
-            print(f" Looking up pest info for: '{pest_name}'")
+            print(f"📚 Looking up pest info for: '{pest_name}'")
             
             # Try to get pest info from library
             pest_info = None
             try:
                 pest_info = pest_library.get_pest_info(pest_name, language)
             except Exception as e:
-                print(f" Error getting pest info: {e}")
+                print(f"⚠️ Error getting pest info: {e}")
             
             if pest_info:
-                print(f" Found info in library for: {pest_name}")
+                print(f"✅ Found info in library for: {pest_name}")
                 enhanced_detection = {
                     **detection,
                     'pest_details': pest_info
                 }
             else:
-                print(f" No library info for: {pest_name}")
+                print(f"⚠️ No library info for: {pest_name}")
                 # Try to find by alternative name
                 alternative_name = None
                 pest_lower = pest_name.lower()
@@ -345,7 +361,7 @@ def detect_pest():
                     try:
                         pest_info = pest_library.get_pest_info(alternative_name, language)
                         if pest_info:
-                            print(f" Found info using alternative name: {alternative_name}")
+                            print(f"✅ Found info using alternative name: {alternative_name}")
                             enhanced_detection = {
                                 **detection,
                                 'class': alternative_name,
@@ -360,12 +376,12 @@ def detect_pest():
             
             enhanced_detections.append(enhanced_detection)
         
-        #  general prevention tips
+        # Get general prevention tips
         prevention_tips = []
         try:
             prevention_tips = pest_library.get_prevention_tips()
         except Exception as e:
-            print(f" Error getting prevention tips: {e}")
+            print(f"⚠️ Error getting prevention tips: {e}")
             prevention_tips = ["Practice good field hygiene", "Monitor crops regularly", "Use resistant varieties"]
         
         print(f"✅ Returning {len(enhanced_detections)} enhanced detections")
@@ -391,7 +407,7 @@ def detect_pest():
                 pass
         
         import traceback
-        print(f" Error in pest detection: {str(e)}")
+        print(f"❌ Error in pest detection: {str(e)}")
         print(traceback.format_exc())
         
         return jsonify({
@@ -400,12 +416,13 @@ def detect_pest():
             'details': traceback.format_exc()
         }), 500
 
+
 def create_default_pest_info(detection, language):
     """Create default pest info when library lookup fails"""
     pest_name = detection['class']
     confidence = detection.get('confidence', 0)
     
-    print(f" Creating default info for: {pest_name} (conf: {confidence:.3f})")
+    print(f"📝 Creating default info for: {pest_name} (conf: {confidence:.3f})")
     
     # Try to create meaningful default info based on class name
     pest_lower = pest_name.lower()
@@ -441,7 +458,16 @@ def create_default_pest_info(detection, language):
             }
         }
     else:
-        # Generic pest info
+        # Generic pest info based on class_id if available
+        class_id = detection.get('class_id')
+        if class_id == 0:
+            return create_default_pest_info({**detection, 'class': 'Brown Planthopper (BPH)'}, language)
+        elif class_id == 1:
+            return create_default_pest_info({**detection, 'class': 'Rice Leaf-folder'}, language)
+        elif class_id == 2:
+            return create_default_pest_info({**detection, 'class': 'Paddy Bug'}, language)
+        
+        # Ultimate fallback
         return {
             **detection,
             'pest_details': {
@@ -452,10 +478,12 @@ def create_default_pest_info(detection, language):
             }
         }
 
+
 @pest_detection_bp.route('/detect-from-camera', methods=['POST'])
 def detect_from_camera():
     """Handle image captured from camera"""
     return detect_pest()
+
 
 @pest_detection_bp.route('/classes', methods=['GET'])
 def get_detection_classes():
@@ -469,19 +497,20 @@ def get_detection_classes():
                 'error': 'Model not loaded'
             }), 500
         
-        #  model classes
+        # Get model classes
         if hasattr(model, 'names') and model.names:
-            yolo_classes = list(model.names.values())
+            yolo_classes = model.names
+            print(f"📋 Model classes from model: {yolo_classes}")
         else:
-            #  model doesn't have names 
-            yolo_classes = ['Brown Planthopper (BPH)', 'Rice Leaf-folder', 'Paddy Bug']
+            # Model doesn't have names attribute
+            yolo_classes = {0: '0', 1: '1', 2: '2'}
+            print(f"⚠️ Model has no names, using indices: {yolo_classes}")
         
-        print(f" Model classes: {yolo_classes}")
-        
-        # Map to library pest names
+        # Map to library pest names using our mapping
         mapped_classes = []
-        for i, yolo_class in enumerate(yolo_classes):
-            pest_name = map_yolo_class_to_pest_name(yolo_class, i)
+        for class_id in sorted(yolo_classes.keys()):
+            yolo_class = yolo_classes[class_id]
+            pest_name = map_yolo_class_to_pest_name(yolo_class, class_id)
             
             # Check if pest exists in library
             available = False
@@ -491,7 +520,7 @@ def get_detection_classes():
                 available = False
             
             mapped_classes.append({
-                'class_id': i,
+                'class_id': class_id,
                 'yolo_class': yolo_class,
                 'library_pest': pest_name,
                 'available_in_library': available
@@ -501,13 +530,15 @@ def get_detection_classes():
             'success': True,
             'data': {
                 'classes': mapped_classes,
-                'count': len(mapped_classes)
+                'count': len(mapped_classes),
+                'mapping_info': 'Class IDs: 0=BPH, 1=Rice Leaf-folder, 2=Paddy Bug'
             }
         })
         
     except Exception as e:
         print(f"❌ Error in get_detection_classes: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @pest_detection_bp.route('/library/search', methods=['GET'])
 def search_pest_library():
@@ -530,8 +561,9 @@ def search_pest_library():
         })
         
     except Exception as e:
-        print(f" Error in search_pest_library: {str(e)}")
+        print(f"❌ Error in search_pest_library: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @pest_detection_bp.route('/library/all', methods=['GET'])
 def get_all_pests():
@@ -549,8 +581,9 @@ def get_all_pests():
         })
         
     except Exception as e:
-        print(f" Error in get_all_pests: {str(e)}")
+        print(f"❌ Error in get_all_pests: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @pest_detection_bp.route('/library/<pest_name>', methods=['GET'])
 def get_pest_details(pest_name):
@@ -572,8 +605,9 @@ def get_pest_details(pest_name):
             }), 404
         
     except Exception as e:
-        print(f" Error in get_pest_details: {str(e)}")
+        print(f"❌ Error in get_pest_details: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @pest_detection_bp.route('/library/prevention-tips', methods=['GET'])
 def get_prevention_tips():
@@ -595,11 +629,13 @@ def get_prevention_tips():
         })
         
     except Exception as e:
-        print(f" Error in get_prevention_tips: {str(e)}")
+        print(f"❌ Error in get_prevention_tips: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 # Simple in-memory storage
 detection_history = []
+
 
 @pest_detection_bp.route('/history', methods=['GET'])
 def get_detection_history():
@@ -608,11 +644,10 @@ def get_detection_history():
         user_id = request.args.get('user_id', 'anonymous')
         limit = int(request.args.get('limit', 20))
         
-  
         user_history = [h for h in detection_history if h.get('user_id') == user_id]
         
-        # Return last  items
-        recent_history = user_history[-limit:]
+        # Return last items
+        recent_history = user_history[-limit:] if user_history else []
         
         return jsonify({
             'success': True,
@@ -620,8 +655,9 @@ def get_detection_history():
         })
         
     except Exception as e:
-        print(f" Error in get_detection_history: {str(e)}")
+        print(f"❌ Error in get_detection_history: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @pest_detection_bp.route('/save-detection', methods=['POST'])
 def save_detection():
@@ -630,7 +666,6 @@ def save_detection():
         data = request.json
         if not data:
             return jsonify({'success': False, 'error': 'No data provided'}), 400
-        
         
         data['id'] = str(uuid.uuid4())
         data['timestamp'] = datetime.now().isoformat()
@@ -650,8 +685,9 @@ def save_detection():
         })
         
     except Exception as e:
-        print(f" Error in save_detection: {str(e)}")
+        print(f"❌ Error in save_detection: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
 
 @pest_detection_bp.route('/health', methods=['GET'])
 def health_check():
@@ -661,18 +697,19 @@ def health_check():
         class_names = current_app.pest_class_names if hasattr(current_app, 'pest_class_names') else {}
         
         # Get model classes if available
-        model_classes = []
+        model_classes = {}
         if model is not None:
             if hasattr(model, 'names') and model.names:
-                model_classes = list(model.names.values())
+                model_classes = model.names
             else:
-                model_classes = ['Brown Planthopper (BPH)', 'Rice Leaf-folder', 'Paddy Bug']
+                model_classes = {0: 'Class 0', 1: 'Class 1', 2: 'Class 2'}
         
         return jsonify({
             'status': 'healthy',
             'model_loaded': model is not None,
             'classes': class_names,
             'model_classes': model_classes,
+            'class_mapping': CLASS_ID_TO_PEST,
             'endpoints': [
                 '/detect',
                 '/detect-from-camera', 
@@ -690,9 +727,40 @@ def health_check():
         }), 200
         
     except Exception as e:
-        print(f" Error in health_check: {str(e)}")
+        print(f"❌ Error in health_check: {str(e)}")
         return jsonify({
             'status': 'unhealthy',
             'error': str(e),
             'timestamp': datetime.now().isoformat()
         }), 500
+
+
+# Debug endpoint to test class mapping
+@pest_detection_bp.route('/test-mapping', methods=['GET'])
+def test_mapping():
+    """Test endpoint to verify class mapping"""
+    test_cases = [
+        {'class_id': 0, 'name': 'brown planthopper', 'expected': 'Brown Planthopper (BPH)'},
+        {'class_id': 1, 'name': 'rice leaf-folder', 'expected': 'Rice Leaf-folder'},
+        {'class_id': 2, 'name': 'paddy bug', 'expected': 'Paddy Bug'},
+        {'class_id': 0, 'name': '0', 'expected': 'Brown Planthopper (BPH)'},
+        {'class_id': 1, 'name': '1', 'expected': 'Rice Leaf-folder'},
+        {'class_id': 2, 'name': '2', 'expected': 'Paddy Bug'},
+    ]
+    
+    results = []
+    for test in test_cases:
+        mapped = map_yolo_class_to_pest_name(test['name'], test['class_id'])
+        results.append({
+            'input_class_id': test['class_id'],
+            'input_name': test['name'],
+            'mapped_to': mapped,
+            'expected': test['expected'],
+            'correct': mapped == test['expected']
+        })
+    
+    return jsonify({
+        'success': True,
+        'test_results': results,
+        'current_mapping': CLASS_ID_TO_PEST
+    })

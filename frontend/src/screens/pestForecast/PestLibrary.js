@@ -8,9 +8,24 @@ import {
   TextInput,
   ActivityIndicator,
   Image,
+  Dimensions,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { pestLibraryApi } from '../../services/api';
+
+const { width } = Dimensions.get('window');
+
+// Remote image URLs for each pest
+const pestImageURLs = {
+  'bph': 'https://doa.gov.lk/wp-content/uploads/2020/06/RRDI_BPH_1.jpg',
+  'leaf_folder': 'https://pestsofbhutan.nppc.gov.bt/wp-content/uploads/2017/03/Caseworm-1440x1440.jpg',
+  'stem_borer': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRJXi3tfsexrD4JkXjyCBJw04FNmavRIEGGxg&s',
+  'paddy_bug': 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSds4yDTLUxAOuV_q2vzqvoNVCYMkRyRswmYQ&s',
+  'gall_midge': 'https://ipm.ucanr.edu/PMG/IMAGES/D/I-DP-DGLE-AD.003.jpg',
+};
+
+// Alternative: Use placeholder images for better reliability
+const DEFAULT_PEST_IMAGE = 'https://via.placeholder.com/300/16a34a/ffffff?text=Pest';
 
 export default function PestLibrary({ navigation }) {
   const [pests, setPests] = useState([]);
@@ -19,14 +34,17 @@ export default function PestLibrary({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPest, setSelectedPest] = useState(null);
   const [language, setLanguage] = useState('en');
+  const [imageErrors, setImageErrors] = useState({});
 
   useEffect(() => {
     loadPests();
-  }, []);
+  }, [language]);
 
   const loadPests = async () => {
     try {
+      setLoading(true);
       const response = await pestLibraryApi.getAllPests(language);
+      console.log('Loaded pests:', response);
       if (response.success) {
         setPests(response.data);
         setFilteredPests(response.data);
@@ -42,23 +60,152 @@ export default function PestLibrary({ navigation }) {
     setSearchQuery(text);
     const filtered = pests.filter(pest => 
       pest.name.toLowerCase().includes(text.toLowerCase()) ||
-      pest.scientific_name?.toLowerCase().includes(text.toLowerCase())
+      (pest.scientific_name && pest.scientific_name.toLowerCase().includes(text.toLowerCase()))
     );
     setFilteredPests(filtered);
   };
 
-  const loadPestDetails = async (pestName) => {
+  const getPestImageUrl = (pestId, pestName) => {
+    // Try by ID first
+    if (pestImageURLs[pestId]) {
+      return pestImageURLs[pestId];
+    }
+    // Try by name
+    if (pestImageURLs[pestName?.toLowerCase().replace(/\s+/g, '_')]) {
+      return pestImageURLs[pestName.toLowerCase().replace(/\s+/g, '_')];
+    }
+    // Return default
+    return DEFAULT_PEST_IMAGE;
+  };
+
+  const handleImageError = (pestId) => {
+    setImageErrors(prev => ({ ...prev, [pestId]: true }));
+  };
+
+  const loadPestDetails = async (pestId, pestName) => {
     try {
-      const response = await pestLibraryApi.getPestInfo(pestName, language);
-      if (response.success) {
-        setSelectedPest(response.data);
+      let response = await pestLibraryApi.getPestInfoById?.(pestId, language);
+      if (!response?.success) {
+        response = await pestLibraryApi.getPestInfo(pestName, language);
+      }
+      if (response?.success) {
+        setSelectedPest({ ...response.data, id: pestId });
+      } else {
+        setSelectedPest({ ...getMockPestData(pestName, language), id: pestId });
       }
     } catch (error) {
       console.error('Failed to load pest details:', error);
+      setSelectedPest({ ...getMockPestData(pestName, language), id: pestId });
     }
   };
 
+  const getMockPestData = (pestName, lang) => {
+    const mockData = {
+      'Brown Planthopper (BPH)': {
+        en: {
+          name: 'Brown Planthopper (BPH)',
+          scientific_name: 'Nilaparvata lugens',
+          description: 'Small brown insects that cluster at the base of rice plants, causing hopperburn and wilting.',
+          symptoms: ['Yellowing of leaves', 'Stunted growth', 'Wilting', 'Hopperburn patches'],
+          management: ['Use resistant varieties', 'Maintain proper spacing', 'Avoid excess nitrogen', 'Apply Buprofezin or Imidacloprid'],
+          favorable_conditions: ['High humidity (>70%)', 'High temperature (28-32°C)', 'Excess nitrogen fertilizer']
+        },
+        si: {
+          name: 'දුඹුරු පැහැති කොළ මකුණා',
+          scientific_name: 'Nilaparvata lugens',
+          description: 'කුඩා දුඹුරු පැහැති කෘමීන් වී ශාකයේ පාදමේ රැස් වී, දඬු ගිනි ගැනීම සහ මැලවීම සිදු කරයි.',
+          symptoms: ['කොළ කහ පැහැ ගැන්වීම', 'වර්ධනය අඩාල වීම', 'මැලවීම', 'දඬු ගිනි ගැනීමේ පැල්ලම්'],
+          management: ['ප්‍රතිරෝධී ප්‍රභේද භාවිතා කරන්න', 'නිසි පරතරය පවත්වා ගන්න', 'අධික නයිට්‍රජන් වළක්වන්න', 'බුප්‍රොෆෙසින් හෝ ඉමිඩාක්ලොප්‍රිඩ් යොදන්න'],
+          favorable_conditions: ['අධික ආර්ද්‍රතාව (>70%)', 'අධික උෂ්ණත්වය (28-32°C)', 'අධික නයිට්‍රජන් පොහොර']
+        }
+      },
+      'Rice Leaf-folder': {
+        en: {
+          name: 'Rice Leaf-folder',
+          scientific_name: 'Cnaphalocrocis medinalis',
+          description: 'Larvae fold rice leaves and feed on green tissue, causing white streaks.',
+          symptoms: ['Folded leaves', 'White streaks', 'Scraped leaf tissues'],
+          management: ['Encourage natural predators', 'Use light traps', 'Apply Chlorantraniliprole'],
+          favorable_conditions: ['Moderate rainfall', 'Cloudy warm weather', 'High nitrogen']
+        },
+        si: {
+          name: 'වී කොළ ගඩොල්',
+          scientific_name: 'Cnaphalocrocis medinalis',
+          description: 'ද්‍රෝණි වී කොළ නවා ඇතුළත කොළ පටක ආහාරයට ගෙන සුදු ඉරි ඇති කරයි.',
+          symptoms: ['නවන ලද කොළ', 'සුදු ඉරි', 'සීරීම් ලකුණු සහිත කොළ පටක'],
+          management: ['ස්වභාවික විලෝපිකයන් දිරිගන්වන්න', 'ආලෝක උගුල් භාවිතා කරන්න', 'ක්ලෝරන්ට්‍රනිලිප්‍රෝල් යොදන්න'],
+          favorable_conditions: ['මධ්‍යස්ථ වර්ෂාපතනය', 'වළාකුළු සහිත උණුසුම් කාලගුණය', 'අධික නයිට්‍රජන්']
+        }
+      },
+      'Stem Borer': {
+        en: {
+          name: 'Stem Borer',
+          scientific_name: 'Scirpophaga incertulas',
+          description: 'Larvae bore into rice stems causing "dead hearts" and "white heads".',
+          symptoms: ['Dead heart in vegetative stage', 'White heads in reproductive stage', 'Bored holes in stems'],
+          management: ['Use resistant varieties', 'Remove egg masses', 'Apply Cartap hydrochloride'],
+          favorable_conditions: ['High humidity', 'Dense planting', 'Continuous flooding']
+        },
+        si: {
+          name: 'කඳ කටුව',
+          scientific_name: 'Scirpophaga incertulas',
+          description: 'ද්‍රෝණි වී කඳන් තුළට විනිවිද ගොස් "මැරුණු හදවත්" සහ "සුදු හිස්" ඇති කරයි.',
+          symptoms: ['ශාකමය අවධියේදී මැරුණු හදවත්', 'ප්‍රජනන අවධියේදී සුදු හිස්', 'කඳන්හි සිදුරු'],
+          management: ['ප්‍රතිරෝධී ප්‍රභේද භාවිතා කරන්න', 'බිත්තර පොකුරු ඉවත් කරන්න', 'කාටප් හයිඩ්‍රොක්ලෝරයිඩ් යොදන්න'],
+          favorable_conditions: ['අධික ආර්ද්‍රතාව', 'ඝන රෝපණ', 'අඛණ්ඩ ජලය රැඳීම']
+        }
+      },
+      'Paddy Bug': {
+        en: {
+          name: 'Paddy Bug',
+          scientific_name: 'Leptocorisa oratorius',
+          description: 'Sucking pests that attack grains causing empty or discolored grains.',
+          symptoms: ['Empty grains', 'Discolored grains', 'Dark spots on grains'],
+          management: ['Use sweep nets', 'Neem sprays', 'Maintain clean bunds'],
+          favorable_conditions: ['Flowering stage', 'Adjacent weedy areas', 'Dry conditions']
+        },
+        si: {
+          name: 'වී කුරුමිණියා',
+          scientific_name: 'Leptocorisa oratorius',
+          description: 'ධාන්‍ය වලට පහර දෙන උරා බොන පළිබෝධකයන් හිස් හෝ විකෘති වූ ධාන්‍ය ඇති කරයි.',
+          symptoms: ['හිස් ධාන්‍ය', 'විකෘති වූ ධාන්‍ය', 'ධාන්‍ය මත තද පැහැ ලප'],
+          management: ['දැල් භාවිතා කරන්න', 'නීම් ඉසින භාවිතා කරන්න', 'පිරිසිදු බැමි පවත්වා ගන්න'],
+          favorable_conditions: ['මල් හටගැනීමේ අවධිය', 'යාබද වල් ප්‍රදේශ', 'වියළි තත්වයන්']
+        }
+      },
+      'Rice Gall Midge': {
+        en: {
+          name: 'Rice Gall Midge',
+          scientific_name: 'Orseolia oryzae',
+          description: 'Causes tube-like galls called "silver shoots" preventing panicle formation.',
+          symptoms: ['Tube-like galls', 'Silver shoots', 'Onion-like leaves'],
+          management: ['Use resistant varieties', 'Remove weeds', 'Apply Carbofuran at planting'],
+          favorable_conditions: ['Early tillering stage', 'High humidity', 'Close planting']
+        },
+        si: {
+          name: 'වී ගැල් මිජ්',
+          scientific_name: 'Orseolia oryzae',
+          description: '"රිදී රිකිලි" ලෙස හැඳින්වෙන නල ආකාර ගෝල ඇති කර පුෂ්ප මංජරිය සෑදීම වළක්වයි.',
+          symptoms: ['නල ආකාර ගෝල', 'රිදී රිකිලි', 'ලූනු වැනි කොළ'],
+          management: ['ප්‍රතිරෝධී ප්‍රභේද භාවිතා කරන්න', 'වල් ඉවත් කරන්න', 'රෝපණයේදී කාබෝෆියුරාන් යොදන්න'],
+          favorable_conditions: ['මුල් කොළ වැකීමේ අවධිය', 'අධික ආර්ද්‍රතාව', 'සමීප රෝපණ']
+        }
+      }
+    };
+
+    for (const [key, value] of Object.entries(mockData)) {
+      if (pestName.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(pestName.toLowerCase())) {
+        return value[lang] || value['en'];
+      }
+    }
+    return mockData['Brown Planthopper (BPH)'][lang] || mockData['Brown Planthopper (BPH)']['en'];
+  };
+
+  // Render pest detail with image
   if (selectedPest) {
+    const imageUrl = getPestImageUrl(selectedPest.id, selectedPest.name);
+    const hasImageError = imageErrors[selectedPest.id];
+
     return (
       <ScrollView style={styles.container}>
         <View style={styles.header}>
@@ -70,6 +217,22 @@ export default function PestLibrary({ navigation }) {
         </View>
 
         <View style={styles.detailCard}>
+          {/* Pest Image Section */}
+          <View style={styles.imageContainer}>
+            {!hasImageError ? (
+              <Image 
+                source={{ uri: imageUrl }}
+                style={styles.pestImage}
+                resizeMode="cover"
+                onError={() => handleImageError(selectedPest.id)}
+              />
+            ) : (
+              <View style={[styles.pestImage, styles.imagePlaceholder]}>
+                <MaterialCommunityIcons name="bug" size={50} color="#9ca3af" />
+              </View>
+            )}
+          </View>
+
           <View style={styles.detailHeader}>
             <View style={[styles.detailIcon, { backgroundColor: '#fef3c7' }]}>
               <MaterialCommunityIcons name="bug" size={32} color="#f59e0b" />
@@ -119,6 +282,7 @@ export default function PestLibrary({ navigation }) {
     );
   }
 
+  // Render pest list with images
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -126,7 +290,11 @@ export default function PestLibrary({ navigation }) {
           <MaterialCommunityIcons name="arrow-left" size={24} color="#111827" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Pest Library</Text>
-        <TouchableOpacity onPress={() => setLanguage(lang => lang === 'en' ? 'si' : 'en')}>
+        <TouchableOpacity onPress={() => {
+          const newLang = language === 'en' ? 'si' : 'en';
+          setLanguage(newLang);
+          loadPests();
+        }}>
           <MaterialCommunityIcons 
             name="translate" 
             size={24} 
@@ -156,22 +324,38 @@ export default function PestLibrary({ navigation }) {
         </View>
       ) : (
         <ScrollView style={styles.list}>
-          {filteredPests.map((pest, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.pestCard}
-              onPress={() => loadPestDetails(pest.id || pest.name)}
-            >
-              <View style={[styles.pestIcon, { backgroundColor: '#fef3c7' }]}>
-                <MaterialCommunityIcons name="bug" size={24} color="#f59e0b" />
-              </View>
-              <View style={styles.pestInfo}>
-                <Text style={styles.pestName}>{pest.name}</Text>
-                <Text style={styles.pestScientific}>{pest.scientific_name}</Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={20} color="#9ca3af" />
-            </TouchableOpacity>
-          ))}
+          {filteredPests.map((pest, index) => {
+            const imageUrl = getPestImageUrl(pest.id, pest.name);
+            const hasError = imageErrors[pest.id];
+            
+            return (
+              <TouchableOpacity
+                key={index}
+                style={styles.pestCard}
+                onPress={() => loadPestDetails(pest.id, pest.name)}
+              >
+                <View style={styles.pestImageContainer}>
+                  {!hasError ? (
+                    <Image 
+                      source={{ uri: imageUrl }}
+                      style={styles.pestThumbnail}
+                      resizeMode="cover"
+                      onError={() => handleImageError(pest.id)}
+                    />
+                  ) : (
+                    <View style={[styles.pestThumbnail, styles.thumbnailPlaceholder]}>
+                      <MaterialCommunityIcons name="bug" size={30} color="#9ca3af" />
+                    </View>
+                  )}
+                </View>
+                <View style={styles.pestInfo}>
+                  <Text style={styles.pestName}>{pest.name}</Text>
+                  <Text style={styles.pestScientific}>{pest.scientific_name}</Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={20} color="#9ca3af" />
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       )}
     </View>
@@ -227,18 +411,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    padding: 16,
+    padding: 12,
     borderRadius: 12,
     marginBottom: 10,
     elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
   },
-  pestIcon: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+  pestImageContainer: {
+    marginRight: 15,
+  },
+  pestThumbnail: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  thumbnailPlaceholder: {
+    backgroundColor: '#f3f4f6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 15,
   },
   pestInfo: {
     flex: 1,
@@ -260,6 +453,24 @@ const styles = StyleSheet.create({
     padding: 20,
     borderRadius: 16,
     elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  imageContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  pestImage: {
+    width: width - 80,
+    height: 200,
+    borderRadius: 16,
+  },
+  imagePlaceholder: {
+    backgroundColor: '#f3f4f6',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   detailHeader: {
     flexDirection: 'row',
@@ -289,10 +500,10 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   detailSectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#374151',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   detailText: {
     fontSize: 14,
@@ -301,17 +512,18 @@ const styles = StyleSheet.create({
   },
   bulletPoint: {
     flexDirection: 'row',
-    marginBottom: 6,
+    marginBottom: 8,
     paddingLeft: 8,
   },
   bullet: {
     fontSize: 14,
     color: '#16a34a',
-    marginRight: 8,
+    marginRight: 10,
   },
   bulletText: {
     fontSize: 14,
     color: '#6b7280',
     flex: 1,
+    lineHeight: 20,
   },
 });

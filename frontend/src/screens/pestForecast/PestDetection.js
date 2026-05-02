@@ -259,7 +259,7 @@ export default function PestDetection() {
       });
 
       const response = await fetch(
-        "http://192.168.1.105:5005/api/pest-detection/detect",
+        "http://192.168.1.102:5005/api/pest-detection/detect",
         {
           method: "POST",
           headers: {
