@@ -1,0 +1,58 @@
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
+/**
+ * API CONFIGURATION
+ * 
+ * This utility automatically detects the local IP address of your machine
+ * when running in development mode (Expo). This means you don't have to
+ * manually change the IP every time you switch networks.
+ */
+
+// 1. Manually specify your IP here as a fallback or for production
+const MANUAL_BACKEND_IP = '192.168.100.200';
+const BACKEND_PORT = '5000';
+
+const getBaseUrl = () => {
+    // In development, hostUri typically contains the IP:Port of the dev server
+    // Check multiple potential locations for the hostUri (different Expo versions)
+    const hostUri = Constants.expoConfig?.hostUri ||
+        Constants.manifest?.debuggerHost ||
+        Constants.manifest2?.extra?.expoGo?.debuggerHost;
+
+    if (hostUri) {
+        // Extract only the IP part (before the colon)
+        const ip = hostUri.split(':').shift();
+        if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
+            const detectedUrl = `http://${ip}:${BACKEND_PORT}`;
+            console.log(`[API Config] ✅ Auto-detected Backend: ${detectedUrl}`);
+            return detectedUrl;
+        }
+    }
+
+    // Special case for Android Emulators if hostUri is still not found/valid
+    if (Platform.OS === 'android') {
+        // 10.0.2.2 is the default IP for the host machine in Android Emulators
+        console.log(`[API Config] 📱 Android detected. Using 10.0.2.2 (Emulator)`);
+        return `http://10.0.2.2:${BACKEND_PORT}`;
+    }
+
+    // Fallback to manual IP if auto-detection fails
+    const fallbackUrl = `http://${MANUAL_BACKEND_IP}:${BACKEND_PORT}`;
+    console.log(`[API Config] ⚠️ Auto-detection failed. Using manual fallback: ${fallbackUrl}`);
+    return fallbackUrl;
+};
+
+export const BASE_URL = getBaseUrl();
+
+// Useful for debugging
+export const API_ENDPOINTS = {
+    PREDICT_STORAGE: `${BASE_URL}/api/guardian/weather/predict-storage`,
+    WEATHER: `${BASE_URL}/api/guardian/weather`,
+    ADVISE: `${BASE_URL}/api/guardian/advice`,
+    POST_HARVEST_PREDICT: `${BASE_URL}/api/guardian/predict`,
+    CHAT: `${BASE_URL}/api/guardian/chat`,
+    ASSESS_KNOWLEDGE: `${BASE_URL}/api/guardian/assess-knowledge`,
+};
+
+export default BASE_URL;

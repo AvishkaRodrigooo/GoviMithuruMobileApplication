@@ -11,6 +11,7 @@ import HomeScreen from './src/screens/homeScreen';
 import ProfileScreen from './src/screens/profileScreen';
 import WeatherForecastScreen from './src/screens/weatherForecastScreen';
 import WelcomeScreen from './src/screens/WelcomeScreen';
+import NotificationScreen from './src/screens/NotificationScreen';
 
 // Admin Dashboard
 import adminDashboardScreen from './src/screens/adminDashboard/adminDashboardScreen';
@@ -49,9 +50,10 @@ import SensorConnectionScreen from './src/screens/PostHarvest/SensorConnectionSc
 import MarketTrackingScreen from './src/screens/PostHarvest/MarketTrackingScreen';
 import InventoryListScreen from './src/screens/PostHarvest/InventoryListScreen';
 import PostHarvestAdvisorScreen from './src/screens/PostHarvest/PostHarvestAdvisorScreen';
-import DealerDashboardScreen from './src/screens/PostHarvest/DealerDashboardScreen';
+import DealerDashboardScreen from './src/screens/DealerDashboard/DealerDashboardScreen';
 import StorageStepGuideScreen from './src/screens/PostHarvest/StorageStepGuideScreen';
 import StorageExpertGuideScreen from './src/screens/PostHarvest/StorageExpertGuideScreen';
+import BeginnerStorageGuideScreen from './src/screens/PostHarvest/BeginnerStorageGuideScreen';
 
 // Pricing Placeholder
 function PricingForecastScreen() {
@@ -98,7 +100,7 @@ export default function App() {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
         <ActivityIndicator size="large" color="#16a34a" />
-        <Text style={{ marginTop: 10, color: '#16a34a' }}>Loading GoviMithuru...</Text>
+        <Text style={{ marginTop: 10, color: '#16a34a' }}>Loading AgroMind...</Text>
       </View>
     );
   }
@@ -120,8 +122,9 @@ export default function App() {
           // User is signed in - show main app screens
           <>
 
-            <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'GoviMithuru' }} />
+            <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
             <Stack.Screen name="Profile" component={ProfileScreen} options={{ title: 'My Profile' }} />
+            <Stack.Screen name="Notifications" component={NotificationScreen} options={{ title: 'Notifications' }} />
             <Stack.Screen name="AdminDashboard" component={adminDashboardScreen} options={{ title: "Admin Dashboard" }} />
             <Stack.Screen name="HerbicideRecommendation" component={HerbicideRecommendationAdminScreen} options={{ title: 'Herbicide Recommendation' }} />
             <Stack.Screen name="WeatherForecast" component={WeatherForecastScreen} options={{ title: 'Weather Forecast' }} />
@@ -147,6 +150,7 @@ export default function App() {
             <Stack.Screen name="DealerDashboard" component={DealerDashboardScreen} options={{ headerShown: false }} />
             <Stack.Screen name="StorageStepGuide" component={StorageStepGuideScreen} options={{ headerShown: false }} />
             <Stack.Screen name="StorageExpertGuide" component={StorageExpertGuideScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="BeginnerStorageGuide" component={BeginnerStorageGuideScreen} options={{ headerShown: false }} />
 
             {/* weeds detection */}
             <Stack.Screen name="Stages" component={StageIdentificationScreen} options={{ title: 'Stage Identification' }} />
@@ -161,21 +165,21 @@ export default function App() {
 
 
 
-        {/* crop establishment planner */}
+            {/* crop establishment planner */}
 
-        <Stack.Screen name="InputPlanner" component={InputPlannerScreen} options={{ title: 'Input Planner' }} />
-        <Stack.Screen name="CropRecommender" component={CropRecommenderScreen} options={{ title: 'Crop Recommender' }} />
-        <Stack.Screen name="CropRecommendationResults" component={CropRecommendationResultsScreen} options={{ title: 'Crop Recommendation Results' }} />
-        <Stack.Screen name="CropCalendar" component={CropCalendarScreen}options={{ title: 'Crop Calendar' }} />
-        <Stack.Screen name="ProfitabilitySimulation" component={ProfitabilitySimulationScreen}options={{ title: 'Profitability Simulation' }} />
-        <Stack.Screen name="AdminPriceManagement" component={AdminPriceManagementScreen} />
+            <Stack.Screen name="InputPlanner" component={InputPlannerScreen} options={{ title: 'Input Planner' }} />
+            <Stack.Screen name="CropRecommender" component={CropRecommenderScreen} options={{ title: 'Crop Recommender' }} />
+            <Stack.Screen name="CropRecommendationResults" component={CropRecommendationResultsScreen} options={{ title: 'Crop Recommendation Results' }} />
+            <Stack.Screen name="CropCalendar" component={CropCalendarScreen} options={{ title: 'Crop Calendar' }} />
+            <Stack.Screen name="ProfitabilitySimulation" component={ProfitabilitySimulationScreen} options={{ title: 'Profitability Simulation' }} />
+            <Stack.Screen name="AdminPriceManagement" component={AdminPriceManagementScreen} />
 
 
             <Stack.Screen name="Pest" component={PricingForecastScreen} options={{ title: 'Pest Forecast' }} />
             <Stack.Screen name="Pricing" component={PricingForecastScreen} options={{ title: 'Price Forecast' }} />
 
 
-           
+
           </>
 
 

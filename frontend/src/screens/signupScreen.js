@@ -162,7 +162,7 @@ const SignUpScreen = ({ navigation }) => {
         <View style={styles.innerContainer}>
           <View style={styles.header}>
 
-            <Text style={styles.title}>Join GoviMithuru</Text>
+            <Text style={styles.title}>Join AgroMind</Text>
             <Text style={styles.subtitle}>Create New account</Text>
           </View>
 
@@ -314,7 +314,7 @@ const SignUpScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.featuresContainer}>
-            <Text style={styles.featuresTitle}>Why Join GoviMithuru?</Text>
+            <Text style={styles.featuresTitle}>Why Join AgroMind?</Text>
             <View style={styles.featureItem}>
               <Text style={styles.featureIcon}>🌱</Text>
               <Text style={styles.featureText}>Weed Detection with AI</Text>

@@ -13,6 +13,7 @@ import {
 import * as ImagePicker from "expo-image-picker";
 import { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
+import { BASE_URL } from "../../utils/apiConfig";
 import { File, Directory, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
@@ -101,7 +102,11 @@ export default function WeedsClassificationScreen() {
         type: "image/jpeg",
       });
 
+
       const response = await fetch("http://10.11.204.131:5000/weed_predict", {
+
+      const response = await fetch(`${BASE_URL}/weed_predict`, {
+
         method: "POST",
         headers: {
           "Content-Type": "multipart/form-data",
@@ -116,7 +121,7 @@ export default function WeedsClassificationScreen() {
         setConfidence(data.confidence);
         setWeedDetails(data.details);
         setCurrentPage(2);
-        
+
         Alert.alert("Success", "Weed identified successfully!");
       } else {
         Alert.alert("Prediction Error", data.error || "Unknown error occurred");
@@ -146,24 +151,24 @@ export default function WeedsClassificationScreen() {
 
     try {
       const now = new Date();
-      
+
       // Create report header
       let reportContent = `════════════════════════════════════════════════════\n`;
       reportContent += `         🌾 WEED IDENTIFICATION REPORT 🌾\n`;
       reportContent += `════════════════════════════════════════════════════\n\n`;
-      
+
       reportContent += `📅 DATE: ${now.toLocaleDateString()}\n`;
       reportContent += `⏰ TIME: ${now.toLocaleTimeString()}\n`;
       reportContent += `🆔 REPORT ID: WD-${Date.now()}\n\n`;
-      
+
       // DETECTION RESULTS SECTION
       reportContent += `════════════════════════════════════════════════════\n`;
       reportContent += `          🔍 DETECTION RESULTS\n`;
       reportContent += `════════════════════════════════════════════════════\n\n`;
-      
+
       reportContent += `🌿 IDENTIFIED WEED: ${predictedWeed || 'N/A'}\n`;
       reportContent += `🎯 CONFIDENCE LEVEL: ${confidence ? confidence.toFixed(2) : 'N/A'}%\n`;
-      
+
       if (confidence) {
         if (confidence >= 90) {
           reportContent += `📊 ACCURACY RATING: Excellent - Very High Confidence\n`;
@@ -175,11 +180,11 @@ export default function WeedsClassificationScreen() {
           reportContent += `📊 ACCURACY RATING: Low - Please verify manually\n`;
         }
       }
-      
+
       if (image) {
         reportContent += `📸 IMAGE SOURCE: User captured/uploaded image\n`;
       }
-      
+
       reportContent += `\n════════════════════════════════════════════════════\n`;
       reportContent += `              BASIC INFORMATION\n`;
       reportContent += `════════════════════════════════════════════════════\n\n`;
@@ -187,12 +192,12 @@ export default function WeedsClassificationScreen() {
       reportContent += `🇬🇧 ENGLISH NAME  : ${weedDetails?.english_name || 'N/A'}\n`;
       reportContent += `🔬 SCIENTIFIC NAME: ${weedDetails?.scientific_name || 'N/A'}\n`;
       reportContent += `🌱 TYPE          : ${weedDetails?.type || 'N/A'}\n\n`;
-      
+
       // DISTRIBUTION
       reportContent += `════════════════════════════════════════════════════\n`;
       reportContent += `                 DISTRIBUTION\n`;
       reportContent += `════════════════════════════════════════════════════\n\n`;
-      
+
       if (weedDetails?.distribution && weedDetails.distribution.length > 0) {
         weedDetails.distribution.forEach(item => {
           reportContent += `   • ${item}\n`;
@@ -201,12 +206,12 @@ export default function WeedsClassificationScreen() {
         reportContent += `   No distribution data available\n`;
       }
       reportContent += `\n`;
-      
+
       // MORPHOLOGY
       reportContent += `════════════════════════════════════════════════════\n`;
       reportContent += `                 MORPHOLOGY\n`;
       reportContent += `════════════════════════════════════════════════════\n\n`;
-      
+
       if (weedDetails?.morphology && weedDetails.morphology.length > 0) {
         weedDetails.morphology.forEach(item => {
           reportContent += `   • ${item}\n`;
@@ -215,12 +220,12 @@ export default function WeedsClassificationScreen() {
         reportContent += `   No morphology data available\n`;
       }
       reportContent += `\n`;
-      
+
       // REPRODUCTION
       reportContent += `════════════════════════════════════════════════════\n`;
       reportContent += `                REPRODUCTION\n`;
       reportContent += `════════════════════════════════════════════════════\n\n`;
-      
+
       if (weedDetails?.reproduction && weedDetails.reproduction.length > 0) {
         weedDetails.reproduction.forEach(item => {
           reportContent += `   • ${item}\n`;
@@ -229,12 +234,12 @@ export default function WeedsClassificationScreen() {
         reportContent += `   No reproduction data available\n`;
       }
       reportContent += `\n`;
-      
+
       // IMPACT ON PADDY
       reportContent += `════════════════════════════════════════════════════\n`;
       reportContent += `              IMPACT ON PADDY\n`;
       reportContent += `════════════════════════════════════════════════════\n\n`;
-      
+
       if (weedDetails?.impact_on_paddy && weedDetails.impact_on_paddy.length > 0) {
         weedDetails.impact_on_paddy.forEach(item => {
           reportContent += `   ⚠️ ${item}\n`;
@@ -243,12 +248,12 @@ export default function WeedsClassificationScreen() {
         reportContent += `   No impact data available\n`;
       }
       reportContent += `\n`;
-      
+
       // WEED MANAGEMENT
       reportContent += `════════════════════════════════════════════════════\n`;
       reportContent += `              WEED MANAGEMENT\n`;
       reportContent += `════════════════════════════════════════════════════\n`;
-      
+
       if (weedDetails?.management) {
         if (weedDetails.management.mechanical) {
           reportContent += `\n🔧 MECHANICAL CONTROL:\n${weedDetails.management.mechanical}\n`;
@@ -265,7 +270,7 @@ export default function WeedsClassificationScreen() {
       } else {
         reportContent += `\n   No management data available\n`;
       }
-      
+
       // ADDITIONAL NOTES
       if (reportNotes && reportNotes.trim()) {
         reportContent += `\n════════════════════════════════════════════════════\n`;
@@ -273,18 +278,18 @@ export default function WeedsClassificationScreen() {
         reportContent += `════════════════════════════════════════════════════\n\n`;
         reportContent += `${reportNotes}\n\n`;
       }
-      
+
       // RECOMMENDATIONS
       reportContent += `════════════════════════════════════════════════════\n`;
       reportContent += `           📌 RECOMMENDATIONS\n`;
       reportContent += `════════════════════════════════════════════════════\n\n`;
-      
+
       reportContent += `1. Based on the detection results, take appropriate action\n`;
       reportContent += `2. Implement control measures as suggested in management section\n`;
       reportContent += `3. Monitor the affected area regularly for re-growth\n`;
       reportContent += `4. Consult with agricultural extension officer if infestation is severe\n`;
       reportContent += `5. Keep this report for future reference\n\n`;
-      
+
       reportContent += `════════════════════════════════════════════════════\n`;
       reportContent += `      End of Report - Weeds Identification System\n`;
       reportContent += `════════════════════════════════════════════════════\n`;
@@ -292,7 +297,7 @@ export default function WeedsClassificationScreen() {
       // --- NEW FileSystem API (File class) ---
       const safeWeedName = predictedWeed?.replace(/[^a-zA-Z0-9]/g, '_') || 'Unknown';
       const fileName = `Weed_Report_${safeWeedName}_${Date.now()}.txt`;
-      
+
       // Create a File object for the document directory
       const reportFile = new File(Paths.document, fileName);
 
@@ -345,7 +350,7 @@ export default function WeedsClassificationScreen() {
 
     try {
       const now = new Date();
-      
+
       // Determine confidence rating
       let confidenceRating = '';
       let confidenceColor = '';
@@ -555,30 +560,30 @@ export default function WeedsClassificationScreen() {
 
           <div class="section">
             <div class="section-title">📍 Distribution</div>
-            ${weedDetails?.distribution && weedDetails.distribution.length > 0 ? 
-              weedDetails.distribution.map(item => `<div class="list-item">• ${item}</div>`).join('') : 
-              '<p>No distribution data available</p>'}
+            ${weedDetails?.distribution && weedDetails.distribution.length > 0 ?
+          weedDetails.distribution.map(item => `<div class="list-item">• ${item}</div>`).join('') :
+          '<p>No distribution data available</p>'}
           </div>
 
           <div class="section">
             <div class="section-title">🌱 Morphology</div>
-            ${weedDetails?.morphology && weedDetails.morphology.length > 0 ? 
-              weedDetails.morphology.map(item => `<div class="list-item">• ${item}</div>`).join('') : 
-              '<p>No morphology data available</p>'}
+            ${weedDetails?.morphology && weedDetails.morphology.length > 0 ?
+          weedDetails.morphology.map(item => `<div class="list-item">• ${item}</div>`).join('') :
+          '<p>No morphology data available</p>'}
           </div>
 
           <div class="section">
             <div class="section-title">🌾 Reproduction</div>
-            ${weedDetails?.reproduction && weedDetails.reproduction.length > 0 ? 
-              weedDetails.reproduction.map(item => `<div class="list-item">• ${item}</div>`).join('') : 
-              '<p>No reproduction data available</p>'}
+            ${weedDetails?.reproduction && weedDetails.reproduction.length > 0 ?
+          weedDetails.reproduction.map(item => `<div class="list-item">• ${item}</div>`).join('') :
+          '<p>No reproduction data available</p>'}
           </div>
 
           <div class="section">
             <div class="section-title">⚠️ Impact on Paddy</div>
-            ${weedDetails?.impact_on_paddy && weedDetails.impact_on_paddy.length > 0 ? 
-              weedDetails.impact_on_paddy.map(item => `<div class="impact-item">${item}</div>`).join('') : 
-              '<p>No impact data available</p>'}
+            ${weedDetails?.impact_on_paddy && weedDetails.impact_on_paddy.length > 0 ?
+          weedDetails.impact_on_paddy.map(item => `<div class="impact-item">${item}</div>`).join('') :
+          '<p>No impact data available</p>'}
           </div>
 
           <div class="section">
@@ -623,7 +628,7 @@ export default function WeedsClassificationScreen() {
       // Create final filename
       const safeWeedName = predictedWeed?.replace(/[^a-zA-Z0-9]/g, '_') || 'Unknown';
       const fileName = `Weed_Report_${safeWeedName}_${Date.now()}.pdf`;
-      
+
       // Create File objects for temp and final locations
       const tempFile = new File(tempUri);
       const finalFile = new File(Paths.document, fileName);
@@ -732,7 +737,7 @@ export default function WeedsClassificationScreen() {
 
       {/* Report Button */}
       {predictedWeed && (
-        <Pressable 
+        <Pressable
           style={styles.reportButton}
           onPress={() => setReportModalVisible(true)}
         >

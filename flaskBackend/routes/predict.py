@@ -77,7 +77,7 @@ def load_soil_model():
 # Try to load on module import
 load_soil_model()
 
-# ========== EXISTING YOLO ENDPOINTS ==========
+# ========== EXISTING YOLO ENDPOINTS weeds bonding box
 @predict_bp.route("/predict", methods=["POST"])
 def predict():
     if "image" not in request.files:

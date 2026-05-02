@@ -201,14 +201,14 @@ export default function ProfileScreen({ navigation }) {
         
         <TouchableOpacity 
           style={[styles.actionButton, styles.supportButton]}
-          onPress={() => Alert.alert('Support', 'Contact support at: support@govimithuru.com')}
+          onPress={() => Alert.alert('Support', 'Contact support at: support@agromind.com')}
         >
           <Text style={styles.actionButtonText}>📞 Contact Support</Text>
         </TouchableOpacity>
 
         <TouchableOpacity 
           style={[styles.actionButton, styles.aboutButton]}
-          onPress={() => Alert.alert('About', 'GoviMithuru - FarmerApp 2026')}
+          onPress={() => Alert.alert('About', 'AgroMind - FarmerApp 2026')}
         >
           <Text style={styles.actionButtonText}>ℹ️ About App</Text>
         </TouchableOpacity>
@@ -221,7 +221,7 @@ export default function ProfileScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.footerText}>GoviMithuru © 2024</Text>
+      <Text style={styles.footerText}>AgroMind © 2024</Text>
     </ScrollView>
   );
 }

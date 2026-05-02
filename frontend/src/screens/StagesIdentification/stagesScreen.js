@@ -1,129 +1,407 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TextInput,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
-  Platform,
-  Modal,
-  Share
-} from 'react-native';
-import { Picker } from '@react-native-picker/picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import * as Print from 'expo-print';
-import * as Sharing from 'expo-sharing';
+  ScrollView,
+  Alert,
+  Share,
+  Platform
+} from "react-native";
+import { Picker } from "@react-native-picker/picker";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import * as Speech from 'expo-speech';
 
 const StagesScreen = () => {
+
+  // ======================
+  // STATES
+  // ======================
+  const [variety, setVariety] = useState("BG300");
   const [plantingDate, setPlantingDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  const [variety, setVariety] = useState("BG300");
-  const [leafCount, setLeafCount] = useState("");
-  const [tillersCount, setTillersCount] = useState("");
-  const [plantHeight, setPlantHeight] = useState("");
-  const [leafColor, setLeafColor] = useState("Green");
-
-  const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [generatingReport, setGeneratingReport] = useState(false);
+  const [result, setResult] = useState(null);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [language, setLanguage] = useState("en"); // "en", "si", "ta"
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [ttsReady, setTtsReady] = useState(true);
 
-  const calculateDAP = () => {
-    const today = new Date();
-    const diff = today - plantingDate;
-    const dap = Math.floor(diff / (1000 * 60 * 60 * 24));
-    return dap >= 0 ? dap : 0;
+  // ======================
+  // INITIALIZE TTS
+  // ======================
+  useEffect(() => {
+    // Initialize speech system
+    const initTTS = async () => {
+      try {
+        // Check if speech is available
+        const isAvailable = await Speech.isSpeakingAsync();
+        setTtsReady(true);
+      } catch (error) {
+        console.log("TTS Error:", error);
+        setTtsReady(false);
+      }
+    };
+    initTTS();
+  }, []);
+
+  // ======================
+  // LANGUAGE TRANSLATIONS
+  // ======================
+  const translations = {
+    en: {
+      title: "🌾 Paddy Growth Stage",
+      variety: "Variety",
+      plantingDate: "Planting Date",
+      dapLabel: "DAP:",
+      days: "Days",
+      identifyBtn: "Identify Stage",
+      page: "Page",
+      of: "of",
+      page1Title: "🌾 Growth Stage Overview",
+      page1Helper: "📌 This stage requires specific care and management practices.",
+      page2Title: "📊 Plant Metrics",
+      leafColor: "Leaf Color",
+      leafCount: "Leaf Count",
+      tillers: "Tillers",
+      height: "Height",
+      cm: "cm",
+      page3Title: "🌱 Fertilizer & Water",
+      fertilizerMgmt: "🌱 Fertilizer Management",
+      waterMgmt: "💧 Water Management",
+      page4Title: "🌿 Weed Control",
+      weedControl: "🌿 Weed Control Strategy",
+      farmerTip: "💡 Farmer's Tip",
+      tipText: "Regular monitoring and timely intervention are key to effective weed control during this stage.",
+      prevBtn: "← Previous",
+      nextBtn: "Next →",
+      exportBtn: "📄 Export as Report",
+      listenBtn: "🔊 Listen",
+      stopBtn: "⏹️ Stop",
+      installMsg: "Please install Sinhala voice in your device settings"
+    },
+    si: {
+      title: "🌾 වී වර්ධන අවධිය",
+      variety: "ප්‍රභේදය",
+      plantingDate: "පැල් කිරීමේ දිනය",
+      dapLabel: "DAP:",
+      days: "දින",
+      identifyBtn: "අවස්ථාව හඳුනා ගන්න",
+      page: "පිටුව",
+      of: "සිට",
+      page1Title: "🌾 වර්ධන අවස්ථා දළ විශ්ලේෂණය",
+      page1Helper: "📌 මෙම අවස්ථාවට විශේෂ සත්කාර සහ කළමනාකරණ ක්‍රම අවශ්‍ය වේ.",
+      page2Title: "📊 පැල සමිතිය",
+      leafColor: "පත්‍ර වර්ණය",
+      leafCount: "පත්‍ර ගණන",
+      tillers: "පැළ",
+      height: "උස",
+      cm: "cm",
+      page3Title: "🌱 පොහොර සහ ජලය",
+      fertilizerMgmt: "🌱 පොහොර කළමනාකරණය",
+      waterMgmt: "💧 ජල කළමනාකරණය",
+      page4Title: "🌿 වල් පාලනය",
+      weedControl: "🌿 වල් පාලන උපාය මාර්ගය",
+      farmerTip: "💡 ගොවියාගේ ඉඟිය",
+      tipText: "නිතිපතා නිරීක්ෂණය සහ කාලෝචිත මැදිහත්වීම මෙම අවස්ථාවේදී ඵලදායී වල් පාලනය සඳහා ප්‍රධාන වේ.",
+      prevBtn: "← පෙර",
+      nextBtn: "ඊළඟ →",
+      exportBtn: "📄 වාර්තාවක් ලෙස නිකුත් කරන්න",
+      listenBtn: "🔊 අසන්න",
+      stopBtn: "⏹️ නවත්වන්න",
+      installMsg: "කරුණාකර ඔබගේ උපාංගයේ සිංහල හඩ ස්ථාපනය කරන්න"
+    },
+    ta: {
+      title: "🌾 நெல் வளர்ச்சி கட்டம்",
+      variety: "வகை",
+      plantingDate: "நடவு தேதி",
+      dapLabel: "DAP:",
+      days: "நாட்கள்",
+      identifyBtn: "கட்டத்தை அடையாளப்படுத்து",
+      page: "பக்கம்",
+      of: "இன்",
+      page1Title: "🌾 வளர்ச்சி கட்ட மேலோட்டம்",
+      page1Helper: "📌 இந்த கட்டத்திற்கு குறிப்பிட்ட பராமரிப்பு மற்றும் மேலாண்மை நடைமுறைகள் தேவை.",
+      page2Title: "📊 பயிர் அளவீடுகள்",
+      leafColor: "இலை நிறம்",
+      leafCount: "இலை எண்ணிக்கை",
+      tillers: "தளிர்கள்",
+      height: "உயரம்",
+      cm: "cm",
+      page3Title: "🌱 உரம் மற்றும் நீர்",
+      fertilizerMgmt: "🌱 உர மேலாண்மை",
+      waterMgmt: "💧 நீர் மேலாண்மை",
+      page4Title: "🌿 களை கட்டுப்பாடு",
+      weedControl: "🌿 களை கட்டுப்பாட்டு உத்தி",
+      farmerTip: "💡 விவசாயியின் ஆலோசனை",
+      tipText: "வழக்கமான கண்காணிப்பு மற்றும் சரியான நேரத்தில் தலையீடு இந்த கட்டத்தில் பயனுள்ள களை கட்டுப்பாட்டுக்கு முக்கியமாகும்.",
+      prevBtn: "← முந்தைய",
+      nextBtn: "அடுத்து →",
+      exportBtn: "📄 அறிக்கையாக ஏற்றுமதி செய்யுங்கள்",
+      listenBtn: "🔊 கேளுங்கள்",
+      stopBtn: "⏹️ நிறுத்து",
+      installMsg: "உங்கள் சாதனத்தில் தமிழ் குரலை நிறுவவும்"
+    }
   };
-  const dapValue = calculateDAP();
 
-  const handleDateChange = (event, selectedDate) => {
-    if (Platform.OS === "android") setShowDatePicker(false);
-    if (!selectedDate) return;
+  const t = translations[language];
 
-    const today = new Date();
-    if (selectedDate > today) {
-      Alert.alert("Invalid Date", "Future dates are not allowed");
+  // ======================
+  // SPEECH FUNCTION FOR SINHALA
+  // ======================
+  const speakSinhala = (text) => {
+    return new Promise((resolve, reject) => {
+      // සිංහල සඳහා විශේෂ ක්‍රමය
+      const sinhalaOptions = {
+        language: 'si',
+        pitch: 1.0,
+        rate: 0.85, // සිංහලට ටිකක් සෙමින්
+        onStart: () => {
+          setIsSpeaking(true);
+        },
+        onDone: () => {
+          setIsSpeaking(false);
+          resolve();
+        },
+        onStopped: () => {
+          setIsSpeaking(false);
+          resolve();
+        },
+        onError: (error) => {
+          console.error("Sinhala speech error:", error);
+          setIsSpeaking(false);
+          reject(error);
+        }
+      };
+      
+      Speech.speak(text, sinhalaOptions);
+    });
+  };
+
+  // ======================
+  // SPEECH FUNCTION FOR TAMIL
+  // ======================
+  const speakTamil = (text) => {
+    return new Promise((resolve, reject) => {
+      const tamilOptions = {
+        language: 'ta',
+        pitch: 1.0,
+        rate: 0.9,
+        onStart: () => {
+          setIsSpeaking(true);
+        },
+        onDone: () => {
+          setIsSpeaking(false);
+          resolve();
+        },
+        onStopped: () => {
+          setIsSpeaking(false);
+          resolve();
+        },
+        onError: (error) => {
+          console.error("Tamil speech error:", error);
+          setIsSpeaking(false);
+          reject(error);
+        }
+      };
+      
+      Speech.speak(text, tamilOptions);
+    });
+  };
+
+  // ======================
+  // SPEECH FUNCTION FOR ENGLISH
+  // ======================
+  const speakEnglish = (text) => {
+    return new Promise((resolve, reject) => {
+      const englishOptions = {
+        language: 'en-US',
+        pitch: 1.0,
+        rate: 0.9,
+        onStart: () => {
+          setIsSpeaking(true);
+        },
+        onDone: () => {
+          setIsSpeaking(false);
+          resolve();
+        },
+        onStopped: () => {
+          setIsSpeaking(false);
+          resolve();
+        },
+        onError: (error) => {
+          console.error("English speech error:", error);
+          setIsSpeaking(false);
+          reject(error);
+        }
+      };
+      
+      Speech.speak(text, englishOptions);
+    });
+  };
+
+  // ======================
+  // MAIN SPEECH FUNCTION
+  // ======================
+  const speakDescription = async () => {
+    const description = result?.recommendations?.description || "";
+    if (!description) {
+      Alert.alert("Info", "No description available to read.");
       return;
     }
-    setPlantingDate(selectedDate);
+
+    // Stop any ongoing speech
+    if (isSpeaking) {
+      Speech.stop();
+      setIsSpeaking(false);
+      return;
+    }
+
+    try {
+      if (language === 'si') {
+        // Try Sinhala first
+        await speakSinhala(description);
+      } else if (language === 'ta') {
+        // Try Tamil
+        await speakTamil(description);
+      } else {
+        // English
+        await speakEnglish(description);
+      }
+    } catch (error) {
+      // If native voice fails, offer fallback
+      Alert.alert(
+        "Voice Not Available",
+        `${t.installMsg}\n\nWould you like to listen in English instead?`,
+        [
+          { text: "Cancel", style: "cancel" },
+          { 
+            text: "Listen in English", 
+            onPress: () => speakEnglish(description)
+          }
+        ]
+      );
+    }
   };
 
-  const validateInputs = () => {
-    // DAP <15  validate 
-    if (dapValue < 15) {
-      return true;
-    }
-    
-    // DAP >=15  fields validate 
-    if (!leafCount || !tillersCount || !plantHeight) {
-      Alert.alert("Error", "Please fill all numeric fields");
-      return false;
-    }
-    
-    const leaf = parseInt(leafCount);
-    const tillers = parseInt(tillersCount);
-    const height = parseFloat(plantHeight);
-
-    if (isNaN(leaf) || leaf < 1 || leaf > 50) {
-      Alert.alert("Error", "Leaf count must be 1–50");
-      return false;
-    }
-    if (isNaN(tillers) || tillers < 1 || tillers > 20) {
-      Alert.alert("Error", "Tillers count must be 1–20");
-      return false;
-    }
-    if (isNaN(height) || height < 10 || height > 200) {
-      Alert.alert("Error", "Plant height must be 10-200 cm");
-      return false;
-    }
-    if (tillers > leaf) {
-  Alert.alert(
-    "Invalid Input",
-    `Tillers count (${tillers}) cannot be greater than Leaf count (${leaf}).\n\nThis is not agriculturally realistic.`
-  );
-  return false;
-}
-    
-    return true;
+  // ======================
+  // DAP CALCULATION
+  // ======================
+  const calculateDAP = (date) => {
+    const today = new Date();
+    const diff = today - date;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    return days >= 0 ? days : 0;
   };
 
+  const dapValue = calculateDAP(plantingDate);
+  const isButtonDisabled = dapValue < 15 || dapValue >= 150;
+
+  // ======================
+  // PDF GENERATION
+  // ======================
+  const generatePDF = async () => {
+    if (!result) return;
+    
+    try {
+      const pdfContent = `
+PADDY GROWTH STAGE REPORT
+=============================
+
+Variety: ${variety}
+Planting Date: ${plantingDate.toDateString()}
+DAP (Days After Planting): ${dapValue} days
+
+--- GROWTH STAGE ---
+Stage: ${result.growth_stage}
+Sinhala Name: ${result.recommendations?.stage_name_sinhala}
+Description: ${result.recommendations?.description}
+
+--- PLANT METRICS ---
+Leaf Color: ${result.leaf_color}
+Leaf Count: ${result.leaf_count}
+Tillers: ${result.tillers}
+Plant Height: ${result.plant_height_cm} cm
+
+--- FERTILIZER MANAGEMENT ---
+${result.recommendations?.fertilizer?.items?.map((item, i) => `${i + 1}. ${item}`).join('\n')}
+
+--- WATER MANAGEMENT ---
+${result.recommendations?.water_management?.items?.map((item, i) => `${i + 1}. ${item}`).join('\n')}
+
+--- WEED CONTROL STRATEGY ---
+${result.recommendations?.weed_control?.items?.map((item, i) => `${i + 1}. ${item}`).join('\n')}
+
+Generated on: ${new Date().toDateString()}
+      `;
+
+      await Share.share({
+        message: pdfContent,
+        title: `Paddy Growth Stage Report - ${variety}`,
+      });
+    } catch (error) {
+      Alert.alert("Error", "Failed to generate report: " + error.message);
+    }
+  };
+
+  // ======================
+  // DATE PICKER
+  // ======================
+  const onDateChange = (event, selectedDate) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      if (selectedDate > new Date()) {
+        Alert.alert("Error", "Future date not allowed");
+        return;
+      }
+      setPlantingDate(selectedDate);
+    }
+  };
+
+  // ======================
+  // API CALL
+  // ======================
   const identifyStage = async () => {
-    if (!validateInputs()) return;
-    
+    if (dapValue < 15) {
+      Alert.alert("Info", "Please wait until DAP reaches 15 days to identify the growth stage.");
+      return;
+    }
+    if (dapValue >= 150) {
+      Alert.alert("Info", "The crop has completed its growth cycle (150+ days). Cannot identify growth stage.");
+      return;
+    }
+
     setLoading(true);
     setResult(null);
     
+    if (isSpeaking) {
+      Speech.stop();
+      setIsSpeaking(false);
+    }
+
     try {
-      // DAP payload
-      let payload;
-      
-      if (dapValue < 15) {
-        // DAP <15 default values send
-        payload = {
-          variety: variety,
-          dap: dapValue,
-          leaf_count: 1,  // Default value
-          tillers: 1,      // Default value
-          height: 10,      // Default value
-          leaf_color: leafColor
-        };
-      } else {
-        // DAP >=15  user input values send 
-        payload = {
-          variety: variety,
-          dap: dapValue,
-          leaf_count: parseInt(leafCount),
-          tillers: parseInt(tillersCount),
-          height: parseFloat(plantHeight),
-          leaf_color: leafColor
-        };
-      }
-      
-      console.log("Sending payload:", JSON.stringify(payload, null, 2));
+      const payload = {
+        variety: variety,
+        dap: dapValue
+      };
+
+      const response = await fetch(
+        "http://192.168.8.156:5000/predict-stage",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        }
+      );
+
+      const data = await response.json();
+
 
       const response = await fetch("http://10.11.204.131:5000/predict-stage", {
         method: "POST",
@@ -137,959 +415,289 @@ const StagesScreen = () => {
       const responseText = await response.text();
       console.log("Raw response:", responseText);
       
+
       if (!response.ok) {
-        throw new Error(`Server error (${response.status}): ${responseText}`);
+        throw new Error(data.error || "Server error");
       }
-      
-      const data = JSON.parse(responseText);
-      console.log("Parsed response:", data);
-      
+
+      console.log("API RESULT:", data);
       setResult(data);
-      setModalVisible(true);
-      
+
     } catch (error) {
-      console.log("Error details:", error);
-      
-      let errorMessage = "Cannot connect to server";
-      
-      if (error.message.includes("Network request failed")) {
-        errorMessage = "Network error. Check if server is running.";
-      } else if (error.message.includes("JSON parse")) {
-        errorMessage = "Invalid response from server";
-      } else {
-        errorMessage = error.message;
-      }
-      
-      Alert.alert("Error", errorMessage);
-      
+      Alert.alert("Error", error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const resetForm = () => {
-    setPlantingDate(new Date());
-    setLeafCount("");
-    setTillersCount("");
-    setPlantHeight("");
-    setLeafColor("Green");
-    setVariety("BG300");
-    setResult(null);
-    setModalVisible(false);
-  };
-
-  // Generate PDF Report
-  const generateReport = async () => {
-    if (!result) return;
-    
-    setGeneratingReport(true);
-    
-    try {
-      // Create HTML content for PDF
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <title>Paddy Growth Stage Report</title>
-          <style>
-            body {
-              font-family: 'Arial', sans-serif;
-              padding: 30px;
-              color: #333;
-            }
-            .header {
-              text-align: center;
-              margin-bottom: 30px;
-              border-bottom: 2px solid #2d5016;
-              padding-bottom: 20px;
-            }
-            .header h1 {
-              color: #2d5016;
-              font-size: 28px;
-              margin-bottom: 5px;
-            }
-            .header h2 {
-              color: #666;
-              font-size: 16px;
-              font-weight: normal;
-            }
-            .stage-icon {
-              font-size: 60px;
-              text-align: center;
-              margin: 20px 0;
-            }
-            .stage-name {
-              font-size: 24px;
-              color: #2d5016;
-              font-weight: bold;
-              text-align: center;
-              margin: 10px 0;
-            }
-            .stage-name-sinhala {
-              font-size: 20px;
-              color: #2d5016;
-              text-align: center;
-              margin: 5px 0 20px 0;
-            }
-            .dap-info {
-              text-align: center;
-              background: #f0f8e8;
-              padding: 15px;
-              border-radius: 10px;
-              margin: 20px 0;
-              font-size: 18px;
-              color: #2d5016;
-            }
-            .section {
-              margin: 25px 0;
-              padding: 20px;
-              background: #f9f9f9;
-              border-radius: 10px;
-              border-left: 5px solid #2d5016;
-            }
-            .section-title {
-              font-size: 20px;
-              color: #2d5016;
-              font-weight: bold;
-              margin-bottom: 15px;
-              border-bottom: 1px solid #ddd;
-              padding-bottom: 8px;
-            }
-            .section-title-sinhala {
-              font-size: 16px;
-              color: #666;
-              margin-top: 5px;
-            }
-            .input-summary {
-              background: #e8f4fd;
-              padding: 20px;
-              border-radius: 10px;
-              margin: 20px 0;
-            }
-            .input-summary h3 {
-              color: #0066cc;
-              margin-bottom: 15px;
-            }
-            .input-item {
-              margin: 8px 0;
-              font-size: 15px;
-            }
-            .recommendation-item {
-              margin: 10px 0;
-              padding-left: 20px;
-              line-height: 1.6;
-            }
-            .footer {
-              margin-top: 40px;
-              text-align: center;
-              color: #888;
-              font-size: 12px;
-              border-top: 1px solid #ddd;
-              padding-top: 20px;
-            }
-            .badge {
-              display: inline-block;
-              padding: 5px 15px;
-              background: #2d5016;
-              color: white;
-              border-radius: 20px;
-              font-size: 14px;
-            }
-            table {
-              width: 100%;
-              border-collapse: collapse;
-              margin: 15px 0;
-            }
-            td {
-              padding: 10px;
-              border: 1px solid #ddd;
-            }
-            td.label {
-              font-weight: bold;
-              width: 40%;
-              background: #f5f5f5;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>🌾 Paddy Growth Stage Report</h1>
-            <h2>Generated on: ${new Date().toLocaleString('en-US', { 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit'
-            })}</h2>
-          </div>
-
-          <div class="stage-icon">${result.recommendations?.icon || '🌾'}</div>
-          <div class="stage-name">${result.growth_stage}</div>
-          <div class="stage-name-sinhala">${result.recommendations?.stage_name_sinhala || result.growth_stage}</div>
-
-          <div class="dap-info">
-            <strong>${result.recommendations?.dap_range || `DAP: ${dapValue} days`}</strong>
-          </div>
-
-          ${result.recommendations?.description ? `
-            <div class="section">
-              <div class="section-title">📖 Stage Description</div>
-              <div class="section-title-sinhala">අවදිය පිළිබඳ විස්තරය</div>
-              <p style="font-size: 16px; line-height: 1.8; font-style: italic; color: #5d4037;">
-                ${result.recommendations.description}
-              </p>
-            </div>
-          ` : ''}
-
-          <div class="input-summary">
-            <h3>📋 Input Summary / ඇතුළත් කළ තොරතුරු</h3>
-            <table>
-              <tr>
-                <td class="label">Planting Date / සිටුවූ දිනය</td>
-                <td>${plantingDate.toLocaleDateString('en-US')}</td>
-              </tr>
-              <tr>
-                <td class="label">Current DAP / වත්මන් DAP</td>
-                <td>${dapValue} days</td>
-              </tr>
-              <tr>
-                <td class="label">Paddy Variety / වී ප්‍රභේදය</td>
-                <td>${variety}</td>
-              </tr>
-              <tr>
-                <td class="label">Leaf Color / පත්‍රයේ පාට</td>
-                <td>${leafColor}</td>
-              </tr>
-              ${dapValue < 15 ? `
-                <tr>
-                  <td class="label">Leaf Count / පත්‍ර ගණන</td>
-                  <td>Auto (1) - DAP < 15</td>
-                </tr>
-                <tr>
-                  <td class="label">Tillers Count / ටිලර් ගණන</td>
-                  <td>Auto (1) - DAP < 15</td>
-                </tr>
-                <tr>
-                  <td class="label">Plant Height / උස</td>
-                  <td>Auto (10 cm) - DAP < 15</td>
-                </tr>
-              ` : `
-                <tr>
-                  <td class="label">Leaf Count / පත්‍ර ගණන</td>
-                  <td>${leafCount}</td>
-                </tr>
-                <tr>
-                  <td class="label">Tillers Count / ටිලර් ගණන</td>
-                  <td>${tillersCount}</td>
-                </tr>
-                <tr>
-                  <td class="label">Plant Height / උස</td>
-                  <td>${plantHeight} cm</td>
-                </tr>
-              `}
-            </table>
-          </div>
-
-          ${result.recommendations ? `
-            <div class="section">
-              <div class="section-title">🌱 Fertilizer Recommendations</div>
-              <div class="section-title-sinhala">පොහොර යෙදීම</div>
-              ${result.recommendations.fertilizer.items.map(item => 
-                `<div class="recommendation-item">• ${item}</div>`
-              ).join('')}
-            </div>
-
-            <div class="section">
-              <div class="section-title">💧 Water Management</div>
-              <div class="section-title-sinhala">ජල කළමනාකරණය</div>
-              ${result.recommendations.water_management.items.map(item => 
-                `<div class="recommendation-item">• ${item}</div>`
-              ).join('')}
-            </div>
-
-            <div class="section">
-              <div class="section-title">🌿 Weed Control</div>
-              <div class="section-title-sinhala">වල් පාලනය</div>
-              ${result.recommendations.weed_control.items.map(item => 
-                `<div class="recommendation-item">• ${item}</div>`
-              ).join('')}
-            </div>
-          ` : ''}
-
-          <div class="footer">
-            <p>© Paddy Growth Stage Identifier - Agricultural Advisory System</p>
-            <p>This report is generated based on the input data provided. For accurate results, please consult with agricultural experts.</p>
-          </div>
-        </body>
-        </html>
-      `;
-
-      // Generate PDF
-      const { uri } = await Print.printToFileAsync({
-        html: htmlContent,
-        base64: false
-      });
-
-      // Share the PDF
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: 'application/pdf',
-          dialogTitle: 'Share Growth Stage Report',
-          UTI: 'com.adobe.pdf'
-        });
-      } else {
-        Alert.alert('Success', `Report saved to: ${uri}`);
-      }
-
-    } catch (error) {
-      console.error('Error generating report:', error);
-      Alert.alert('Error', 'Failed to generate report. Please try again.');
-    } finally {
-      setGeneratingReport(false);
+  const getWarningMessage = () => {
+    if (dapValue < 15) {
+      return `⚠️ Please wait until ${15 - dapValue} more days to identify the growth stage`;
     }
-  };
-
-  // Share Report as Text
-  const shareTextReport = async () => {
-    if (!result) return;
-
-    try {
-      const reportText = `
-🌾 PADDY GROWTH STAGE REPORT
-═══════════════════════════
-
-📅 Generated: ${new Date().toLocaleString()}
-
-STAGE INFORMATION:
-${result.recommendations?.icon || '🌾'} Stage: ${result.growth_stage}
-📖 ${result.recommendations?.stage_name_sinhala || result.growth_stage}
-📊 DAP Range: ${result.recommendations?.dap_range || `DAP: ${dapValue} days`}
-
-${result.recommendations?.description ? `📝 DESCRIPTION:
-${result.recommendations.description}
-` : ''}
-
-📋 INPUT SUMMARY:
-• Planting Date: ${plantingDate.toLocaleDateString()}
-• Current DAP: ${dapValue} days
-• Variety: ${variety}
-• Leaf Color: ${leafColor}
-${dapValue < 15 ? 
-  '• Leaf Count: Auto (1) - DAP < 15\n• Tillers: Auto (1) - DAP < 15\n• Height: Auto (10 cm) - DAP < 15' : 
-  `• Leaf Count: ${leafCount}\n• Tillers: ${tillersCount}\n• Height: ${plantHeight} cm`
-}
-
-RECOMMENDATIONS:
-
-🌱 FERTILIZER:
-${result.recommendations?.fertilizer.items.map(item => `  • ${item}`).join('\n')}
-
-💧 WATER MANAGEMENT:
-${result.recommendations?.water_management.items.map(item => `  • ${item}`).join('\n')}
-
-🌿 WEED CONTROL:
-${result.recommendations?.weed_control.items.map(item => `  • ${item}`).join('\n')}
-
-═══════════════════════════
-Generated by Paddy Growth Stage Identifier
-      `;
-
-      await Share.share({
-        message: reportText,
-        title: 'Paddy Growth Stage Report'
-      });
-    } catch (error) {
-      console.error('Error sharing text:', error);
-      Alert.alert('Error', 'Failed to share report');
+    if (dapValue >= 150) {
+      return `⚠️ Crop cycle completed (150+ days). Cannot identify growth stage`;
     }
+    return "";
   };
 
-  // DAP <15  fields disable 
-  const isFieldsDisabled = dapValue < 15;
-
+  // ======================
+  // UI
+  // ======================
   return (
     <ScrollView style={styles.container}>
-      <Text style={styles.title}>Paddy Plant Growth Stage Identifier</Text>
-
-      {/* Planting Date */}
-      <View style={styles.section}>
-        <Text style={styles.label}>Planting Date  සිටුවූ දිනය</Text>
-        <TouchableOpacity 
-          style={styles.dateButton} 
-          onPress={() => setShowDatePicker(true)}
-        >
-          <Text>{plantingDate.toDateString()}</Text>
-        </TouchableOpacity>
+      <View style={styles.headerContainer}>
+        <Text style={styles.title}>{t.title}</Text>
+        
+        <View style={styles.languageSelectorTop}>
+          <TouchableOpacity
+            style={[styles.langButtonSmall, language === "en" && styles.langButtonSmallActive]}
+            onPress={() => {
+              setLanguage("en");
+              if (isSpeaking) {
+                Speech.stop();
+                setIsSpeaking(false);
+              }
+            }}
+          >
+            <Text style={[styles.langButtonTextSmall, language === "en" && styles.langButtonTextSmallActive]}>English</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.langButtonSmall, language === "si" && styles.langButtonSmallActive]}
+            onPress={() => {
+              setLanguage("si");
+              if (isSpeaking) {
+                Speech.stop();
+                setIsSpeaking(false);
+              }
+            }}
+          >
+            <Text style={[styles.langButtonTextSmall, language === "si" && styles.langButtonTextSmallActive]}>සිංහල</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.langButtonSmall, language === "ta" && styles.langButtonSmallActive]}
+            onPress={() => {
+              setLanguage("ta");
+              if (isSpeaking) {
+                Speech.stop();
+                setIsSpeaking(false);
+              }
+            }}
+          >
+            <Text style={[styles.langButtonTextSmall, language === "ta" && styles.langButtonTextSmallActive]}>தமிழ்</Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      <Text style={styles.label}>{t.variety}</Text>
+      <View style={styles.box}>
+        <Picker selectedValue={variety} onValueChange={setVariety}>
+          <Picker.Item label="BG300" value="BG300" />
+          <Picker.Item label="BG352" value="BG352" />
+          <Picker.Item label="BG366" value="BG366" />
+        </Picker>
+      </View>
+
+      <Text style={styles.label}>{t.plantingDate}</Text>
+      <TouchableOpacity style={styles.dateBox} onPress={() => setShowDatePicker(true)}>
+        <Text>{plantingDate.toDateString()}</Text>
+      </TouchableOpacity>
 
       {showDatePicker && (
         <DateTimePicker
           value={plantingDate}
           mode="date"
+          display="default"
           maximumDate={new Date()}
-          onChange={handleDateChange}
+          onChange={onDateChange}
         />
       )}
 
-      <View style={[styles.dapBox, isFieldsDisabled && styles.dapBoxWarning]}>
-        <Text style={styles.dapText}>DAP : {dapValue} Days</Text>
-        {isFieldsDisabled && (
-          <Text style={styles.warningText}>
-            ⚠️ DAP 15 ට අඩුයි. Identify Stage button එක disable වෙලා.
+      <View style={[styles.dapBox, (dapValue < 15 || dapValue >= 150) && styles.dapBoxWarning]}>
+        <Text style={[styles.dapText, (dapValue < 15 || dapValue >= 150) && styles.dapTextWarning]}>
+          🌾 {t.dapLabel} {dapValue} {t.days}
+          {(dapValue < 15 || dapValue >= 150) && " ⚠️"}
+        </Text>
+        {(dapValue < 15 || dapValue >= 150) && (
+          <Text style={styles.dapSubText}>
+            {dapValue < 15 ? "(Minimum 15 days required)" : "(Growth cycle completed)"}
           </Text>
         )}
       </View>
 
-      {/* Variety */}
-      <View style={styles.section}>
-        <Text style={[styles.label, isFieldsDisabled && styles.disabledLabel]}>
-          Paddy Variety  වී ප්‍රභේදය
-        </Text>
-        <View style={[styles.picker, isFieldsDisabled && styles.disabledPicker]}>
-          <Picker 
-            selectedValue={variety} 
-            onValueChange={setVariety}
-            enabled={!isFieldsDisabled}
-          >
-            <Picker.Item label="BG300" value="BG300"/>
-            <Picker.Item label="BG352" value="BG352"/>
-            <Picker.Item label="BG366" value="BG366"/>
-          </Picker>
-        </View>
-      </View>
-
-      {/* Leaf Count */}
-      <View style={styles.section}>
-        <Text style={[styles.label, isFieldsDisabled && styles.disabledLabel]}>
-          Leaf Count  පත්‍ර/පදුරු ගණන {isFieldsDisabled && '(Auto: 1)'}
-        </Text>
-        <View style={[styles.inputContainer, isFieldsDisabled && styles.disabledContainer]}>
-          <TextInput
-            style={[styles.input, isFieldsDisabled && styles.disabledInput]}
-            keyboardType="numeric"
-            placeholder="Enter leaf count (1-15)"
-            value={leafCount}
-            onChangeText={setLeafCount}
-            editable={!isFieldsDisabled}
-            placeholderTextColor={isFieldsDisabled ? "#999" : "#ccc"}
-          />
-        </View>
-      </View>
-
-      {/* Tillers */}
-      <View style={styles.section}>
-        <Text style={[styles.label, isFieldsDisabled && styles.disabledLabel]}>
-          Tillers Count  ටිලර් ගණන {isFieldsDisabled && '(Auto: 1)'}
-        </Text>
-        <View style={[styles.inputContainer, isFieldsDisabled && styles.disabledContainer]}>
-          <TextInput
-            style={[styles.input, isFieldsDisabled && styles.disabledInput]}
-            keyboardType="numeric"
-            placeholder="Enter tillers count (1-20)"
-            value={tillersCount}
-            onChangeText={setTillersCount}
-            editable={!isFieldsDisabled}
-            placeholderTextColor={isFieldsDisabled ? "#999" : "#ccc"}
-          />
-        </View>
-      </View>
-
-      {/* Height */}
-      <View style={styles.section}>
-        <Text style={[styles.label, isFieldsDisabled && styles.disabledLabel]}>
-          Plant Height (cm)  උස{isFieldsDisabled && '(Auto: 10)'}
-        </Text>
-        <View style={[styles.inputContainer, isFieldsDisabled && styles.disabledContainer]}>
-          <TextInput
-            style={[styles.input, isFieldsDisabled && styles.disabledInput]}
-            keyboardType="numeric"
-            placeholder="Enter plant height (10-200 cm)"
-            value={plantHeight}
-            onChangeText={setPlantHeight}
-            editable={!isFieldsDisabled}
-            placeholderTextColor={isFieldsDisabled ? "#999" : "#ccc"}
-          />
-        </View>
-      </View>
-
-      {/* Leaf Color */}
-      <View style={styles.section}>
-        <Text style={[styles.label, isFieldsDisabled && styles.disabledLabel]}>
-          Leaf Color  පත්‍රයේ පාට
-        </Text>
-        <View style={[styles.picker, isFieldsDisabled && styles.disabledPicker]}>
-          <Picker 
-            selectedValue={leafColor} 
-            onValueChange={setLeafColor}
-            enabled={!isFieldsDisabled}
-          >
-            <Picker.Item label="Dark Green තද කොළ" value="Dark Green"/>
-            <Picker.Item label="Green කොළ" value="Green"/>
-            <Picker.Item label="Light Green ලා කොළ" value="Light Green"/>
-            <Picker.Item label="Yellow කහ" value="Yellow"/>
-          </Picker>
-        </View> 
-      </View>
-
-      {/* Buttons - Identify Stage button DAP disable/enable */}
-      <TouchableOpacity 
-        style={[
-          styles.button, 
-          (loading || isFieldsDisabled) && styles.buttonDisabled
-        ]} 
-        onPress={identifyStage}
-        disabled={loading || isFieldsDisabled}
-      >
-        {loading ? 
-          <ActivityIndicator color="#fff"/> : 
-          <Text style={styles.buttonText}>
-            {isFieldsDisabled ? 'Disabled (DAP < 15)' : 'Identify Stage'}
-          </Text>
-        }
+      <TouchableOpacity style={[styles.button, isButtonDisabled && styles.buttonDisabled]} onPress={identifyStage} disabled={isButtonDisabled}>
+        {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>{t.identifyBtn}</Text>}
       </TouchableOpacity>
 
-      <TouchableOpacity 
-        style={styles.resetButton} 
-        onPress={resetForm}
-      >
-        <Text style={styles.resetText}>Reset</Text>
-      </TouchableOpacity>
+      {isButtonDisabled && <Text style={styles.warningText}>{getWarningMessage()}</Text>}
 
-      {/* Result Modal with Recommendations and Description */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Growth Stage Result</Text>
-            </View>
-            
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              {result && (
-                <>
-                  <View style={styles.resultIconContainer}>
-                    <Text style={styles.resultIcon}>
-                      {result.recommendations?.icon || '🌾'}
-                    </Text>
-                  </View>
-                  
-                  <Text style={styles.modalStageText}>
-                    {result.recommendations?.stage_name_sinhala || result.growth_stage}
-                  </Text>
-                  
-                  <Text style={styles.dapRangeText}>
-                    {result.recommendations?.dap_range || `DAP: ${dapValue} days`}
-                  </Text>
-
-                  {/* Stage Description */}
-                  {result.recommendations?.description && (
-                    <View style={styles.descriptionBox}>
-                      <View style={styles.descriptionHeader}>
-                        <Text style={styles.descriptionIcon}>📖</Text>
-                        <Text style={styles.descriptionTitle}>අවදිය පිළිබඳ විස්තරය</Text>
-                      </View>
-                      <Text style={styles.descriptionText}>
-                        {result.recommendations.description}
-                      </Text>
-                    </View>
-                  )}
-
-                  {/* Input Summary */}
-                  <View style={styles.summaryBox}>
-                    <Text style={styles.summaryTitle}>📋 ඇතුළත් කළ තොරතුරු</Text>
-                    <Text style={styles.summaryText}>🌾 ප්‍රභේදය: {variety}</Text>
-                    <Text style={styles.summaryText}>📅 වත්මන් DAP: {dapValue} දින</Text>
-                    <Text style={styles.summaryText}>🎨 පත්‍ර පාට: {leafColor}</Text>
-                    {dapValue < 15 ? (
-                      <>
-                        <Text style={styles.summaryText}>🍃 පත්‍ර ගණන: ස්වයංක්‍රීය (1)</Text>
-                        <Text style={styles.summaryText}>🌱 ටිලර් ගණන: ස්වයංක්‍රීය (1)</Text>
-                        <Text style={styles.summaryText}>📏 උස: ස්වයංක්‍රීය (10 cm)</Text>
-                      </>
-                    ) : (
-                      <>
-                        <Text style={styles.summaryText}>🍃 පත්‍ර ගණන: {leafCount}</Text>
-                        <Text style={styles.summaryText}>🌱 ටිලර් ගණන: {tillersCount}</Text>
-                        <Text style={styles.summaryText}>📏 උස: {plantHeight} cm</Text>
-                      </>
-                    )}
-                  </View>
-
-                  {/* Recommendations */}
-                  {result.recommendations && (
-                    <View style={styles.recommendationsContainer}>
-                      
-                      {/* Fertilizer Section */}
-                      <View style={styles.recommendationSection}>
-                        <View style={styles.sectionHeader}>
-                          <Text style={styles.sectionIcon}>🌱</Text>
-                          <Text style={styles.sectionTitle}>{result.recommendations.fertilizer.title}</Text>
-                        </View>
-                        {result.recommendations.fertilizer.items.map((item, index) => (
-                          <Text key={index} style={styles.recommendationItem}>• {item}</Text>
-                        ))}
-                      </View>
-
-                      {/* Water Management Section */}
-                      <View style={styles.recommendationSection}>
-                        <View style={styles.sectionHeader}>
-                          <Text style={styles.sectionIcon}>💧</Text>
-                          <Text style={styles.sectionTitle}>{result.recommendations.water_management.title}</Text>
-                        </View>
-                        {result.recommendations.water_management.items.map((item, index) => (
-                          <Text key={index} style={styles.recommendationItem}>• {item}</Text>
-                        ))}
-                      </View>
-
-                      {/* Weed Control Section */}
-                      <View style={styles.recommendationSection}>
-                        <View style={styles.sectionHeader}>
-                          <Text style={styles.sectionIcon}>🌿</Text>
-                          <Text style={styles.sectionTitle}>{result.recommendations.weed_control.title}</Text>
-                        </View>
-                        {result.recommendations.weed_control.items.map((item, index) => (
-                          <Text key={index} style={styles.recommendationItem}>• {item}</Text>
-                        ))}
-                      </View>
-                    </View>
-                  )}
-                </>
-              )}
-            </ScrollView>
-            
-            <View style={styles.modalFooter}>
-              {/* Report Generation Buttons */}
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.reportButton]} 
-                onPress={generateReport}
-                disabled={generatingReport}
-              >
-                {generatingReport ? 
-                  <ActivityIndicator color="#fff" size="small" /> : 
-                  <Text style={styles.modalButtonText}>📄 PDF Report</Text>
-                }
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.shareButton]} 
-                onPress={shareTextReport}
-              >
-                <Text style={styles.modalButtonText}>📱 Share Text</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.modalButton, styles.modalButtonSecondary]} 
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={[styles.modalButtonText, styles.modalButtonTextSecondary]}>Close</Text>
-              </TouchableOpacity>
-            </View>
+      {result && (
+        <View style={styles.resultContainer}>
+          <View style={styles.pageIndicator}>
+            <Text style={styles.pageNumber}>{t.page} {currentPage + 1} / 4</Text>
           </View>
+
+          {currentPage === 0 && (
+            <View style={styles.resultBox}>
+              <Text style={styles.pageTitle}>{t.page1Title}</Text>
+              <View style={styles.stageCard}>
+                <Text style={styles.stage}>{result.recommendations?.icon || "🌾"} {result.growth_stage}</Text>
+                <Text style={styles.sinhala}>{result.recommendations?.stage_name_sinhala || ""}</Text>
+              </View>
+
+              <View style={styles.descriptionContainer}>
+                <Text style={styles.description}>{result.recommendations?.description || ""}</Text>
+                
+                {/* Voice Button */}
+                <TouchableOpacity 
+                  style={[styles.speakerButton, isSpeaking && styles.speakerButtonActive]}
+                  onPress={speakDescription}
+                >
+                  <Text style={styles.speakerButtonText}>{isSpeaking ? t.stopBtn : t.listenBtn}</Text>
+                </TouchableOpacity>
+                
+                {/* Voice Installation Guide for Sinhala/Tamil */}
+                {(language === 'si' || language === 'ta') && !isSpeaking && (
+                  <Text style={styles.voiceHintText}>💡 {t.installMsg}</Text>
+                )}
+              </View>
+
+              <Text style={styles.helperText}>{t.page1Helper}</Text>
+            </View>
+          )}
+
+          {currentPage === 1 && (
+            <View style={styles.resultBox}>
+              <Text style={styles.pageTitle}>{t.page2Title}</Text>
+              <View style={styles.metricsGrid}>
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricIcon}>🌿</Text>
+                  <Text style={styles.metricLabel}>{t.leafColor}</Text>
+                  <Text style={styles.metricValue}>{result.leaf_color}</Text>
+                </View>
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricIcon}>🍃</Text>
+                  <Text style={styles.metricLabel}>{t.leafCount}</Text>
+                  <Text style={styles.metricValue}>{result.leaf_count}</Text>
+                </View>
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricIcon}>🌱</Text>
+                  <Text style={styles.metricLabel}>{t.tillers}</Text>
+                  <Text style={styles.metricValue}>{result.tillers}</Text>
+                </View>
+                <View style={styles.metricCard}>
+                  <Text style={styles.metricIcon}>📏</Text>
+                  <Text style={styles.metricLabel}>{t.height}</Text>
+                  <Text style={styles.metricValue}>{result.plant_height_cm} {t.cm}</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {currentPage === 2 && (
+            <View style={styles.resultBox}>
+              <Text style={styles.pageTitle}>{t.page3Title}</Text>
+              <View style={styles.recommendationSection}>
+                <Text style={styles.recommendationTitle}>{t.fertilizerMgmt}</Text>
+                {result.recommendations?.fertilizer?.items?.map((item, i) => (
+                  <Text key={i} style={styles.recommendationItem}>✓ {item}</Text>
+                ))}
+              </View>
+              <View style={styles.recommendationSection}>
+                <Text style={styles.recommendationTitle}>{t.waterMgmt}</Text>
+                {result.recommendations?.water_management?.items?.map((item, i) => (
+                  <Text key={i} style={styles.recommendationItem}>✓ {item}</Text>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {currentPage === 3 && (
+            <View style={styles.resultBox}>
+              <Text style={styles.pageTitle}>{t.page4Title}</Text>
+              <View style={styles.recommendationSection}>
+                <Text style={styles.recommendationTitle}>{t.weedControl}</Text>
+                {result.recommendations?.weed_control?.items?.map((item, i) => (
+                  <Text key={i} style={styles.recommendationItem}>✓ {item}</Text>
+                ))}
+              </View>
+              <View style={styles.tipBox}>
+                <Text style={styles.tipTitle}>{t.farmerTip}</Text>
+                <Text style={styles.tipText}>{t.tipText}</Text>
+              </View>
+            </View>
+          )}
+
+          <View style={styles.navigationContainer}>
+            <TouchableOpacity style={[styles.navButton, currentPage === 0 && styles.navButtonDisabled]} onPress={() => setCurrentPage(currentPage - 1)} disabled={currentPage === 0}>
+              <Text style={styles.navButtonText}>{t.prevBtn}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.navButton, currentPage === 3 && styles.navButtonDisabled]} onPress={() => setCurrentPage(currentPage + 1)} disabled={currentPage === 3}>
+              <Text style={styles.navButtonText}>{t.nextBtn}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={styles.pdfButton} onPress={generatePDF}>
+            <Text style={styles.pdfButtonText}>{t.exportBtn}</Text>
+          </TouchableOpacity>
         </View>
-      </Modal>
+      )}
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: "#f4f4f4"
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 20,
-    textAlign: "center",
-    color: "#2d5016"
-  },
-  section: {
-    marginBottom: 15
-  },
-  label: {
-    fontSize: 14,
-    marginBottom: 5,
-    fontWeight: "500",
-    color: "#333"
-  },
-  disabledLabel: {
-    color: "#888"
-  },
-  inputContainer: {
-    borderRadius: 6,
-    overflow: 'hidden'
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    padding: 12,
-    borderRadius: 6,
-    backgroundColor: "#fff",
-    fontSize: 16
-  },
-  disabledContainer: {
-    backgroundColor: '#f0f0f0',
-  },
-  disabledInput: {
-    backgroundColor: '#e0e0e0',
-    color: '#888',
-    borderColor: '#aaa',
-  },
-  picker: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6,
-    backgroundColor: "#fff"
-  },
-  disabledPicker: {
-    backgroundColor: '#e0e0e0',
-    opacity: 0.7
-  },
-  button: {
-    backgroundColor: "#2d5016",
-    padding: 15,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 10
-  },
-  buttonDisabled: {
-    backgroundColor: "#a0a0a0",
-    opacity: 0.6
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "bold"
-  },
-  resetButton: {
-    backgroundColor: "#ddd",
-    padding: 12,
-    borderRadius: 8,
-    alignItems: "center",
-    marginTop: 10
-  },
-  resetText: {
-    fontWeight: "bold",
-    color: "#333"
-  },
-  dateButton: {
-    padding: 12,
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 6
-  },
-  dapBox: {
-    backgroundColor: "#fff3e0",
-    padding: 15,
-    marginBottom: 20,
-    borderRadius: 8
-  },
-  dapBoxWarning: {
-    backgroundColor: "#ffecb3",
-    borderWidth: 1,
-    borderColor: "#ffb74d"
-  },
-  dapText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: "#ff9800",
-    textAlign: "center"
-  },
-  warningText: {
-    fontSize: 12,
-    color: "#f57c00",
-    textAlign: "center",
-    marginTop: 5,
-    fontWeight: "500"
-  },
-  
-  // Modal Styles
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  modalContent: {
-    width: '90%',
-    maxHeight: '80%',
-    backgroundColor: 'white',
-    borderRadius: 20,
-    overflow: 'hidden',
-    elevation: 5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4
-  },
-  modalHeader: {
-    backgroundColor: '#2d5016',
-    padding: 15,
-    alignItems: 'center'
-  },
-  modalTitle: {
-    color: 'white',
-    fontSize: 18,
-    fontWeight: 'bold'
-  },
-  modalBody: {
-    padding: 20,
-    maxHeight: 500
-  },
-  resultIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#e8f5e9',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 15,
-    alignSelf: 'center',
-    borderWidth: 2,
-    borderColor: '#2d5016'
-  },
-  resultIcon: {
-    fontSize: 45
-  },
-  modalStageText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#2d5016',
-    marginBottom: 5,
-    textAlign: 'center'
-  },
-  dapRangeText: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 20,
-    fontStyle: 'italic',
-    textAlign: 'center'
-  },
-  descriptionBox: {
-    width: '100%',
-    backgroundColor: '#fff9e6',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#ffd966',
-    borderLeftWidth: 5,
-    borderLeftColor: '#f9a825',
-  },
-  descriptionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  descriptionIcon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  descriptionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#b75e00',
-    flex: 1,
-  },
-  descriptionText: {
-    fontSize: 14,
-    color: '#5d4037',
-    lineHeight: 22,
-    fontStyle: 'italic',
-    textAlign: 'justify',
-    paddingHorizontal: 5,
-  },
-  summaryBox: {
-    width: '100%',
-    backgroundColor: '#e8f4fd',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#b8e0ff'
-  },
-  summaryTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#0066cc',
-    marginBottom: 10
-  },
-  summaryText: {
-    fontSize: 14,
-    color: '#444',
-    marginVertical: 3
-  },
-  recommendationsContainer: {
-    width: '100%',
-    marginTop: 5
-  },
-  recommendationSection: {
-    backgroundColor: '#f9f9f9',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#e0e0e0'
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10
-  },
-  sectionIcon: {
-    fontSize: 20,
-    marginRight: 8
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2d5016',
-    flex: 1
-  },
-  recommendationItem: {
-    fontSize: 14,
-    color: '#555',
-    marginVertical: 4,
-    lineHeight: 20,
-    paddingLeft: 10
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    flexWrap: 'wrap',
-  },
-  modalButton: {
-    flex: 1,
-    padding: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: '33.33%',
-  },
-  reportButton: {
-    backgroundColor: '#2d5016',
-  },
-  shareButton: {
-    backgroundColor: '#1976d2',
-  },
-  modalButtonSecondary: {
-    backgroundColor: '#fff'
-  },
-  modalButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-    fontSize: 14
-  },
-  modalButtonTextSecondary: {
-    color: '#2d5016'
-  }
+  container: { flex: 1, padding: 20, backgroundColor: "#f4f6f4" },
+  headerContainer: { marginBottom: 15 },
+  title: { fontSize: 22, fontWeight: "bold", textAlign: "center", marginBottom: 12, color: "#2d5016" },
+  languageSelectorTop: { flexDirection: "row", justifyContent: "center", gap: 8, paddingBottom: 12, borderBottomWidth: 2, borderBottomColor: "#2d5016" },
+  langButtonSmall: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 18, backgroundColor: "#f0f0f0", borderWidth: 2, borderColor: "#ccc" },
+  langButtonSmallActive: { backgroundColor: "#2d5016", borderColor: "#2d5016" },
+  langButtonTextSmall: { fontSize: 12, fontWeight: "700", color: "#666" },
+  langButtonTextSmallActive: { color: "#fff" },
+  label: { fontWeight: "600", marginTop: 10 },
+  box: { borderWidth: 1, borderColor: "#ccc", borderRadius: 8, backgroundColor: "#fff" },
+  dateBox: { borderWidth: 1, borderColor: "#ccc", padding: 12, borderRadius: 8, backgroundColor: "#fff" },
+  dapBox: { backgroundColor: "#fff3cd", padding: 12, marginTop: 10, borderRadius: 8, alignItems: "center" },
+  dapBoxWarning: { backgroundColor: "#ffebee", borderWidth: 1, borderColor: "#f44336" },
+  dapText: { fontWeight: "bold", color: "#856404" },
+  dapTextWarning: { color: "#c62828" },
+  dapSubText: { fontSize: 11, color: "#c62828", marginTop: 4 },
+  button: { backgroundColor: "#2d5016", padding: 15, borderRadius: 8, marginTop: 15, alignItems: "center" },
+  buttonDisabled: { backgroundColor: "#ccc", opacity: 0.7 },
+  buttonText: { color: "#fff", fontWeight: "bold" },
+  warningText: { color: "#f44336", fontSize: 12, textAlign: "center", marginTop: 8, fontWeight: "600" },
+  resultContainer: { marginTop: 20, backgroundColor: "#fff", borderRadius: 12, padding: 10, shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 5 },
+  pageIndicator: { alignItems: "center", marginBottom: 15, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: "#2d5016" },
+  pageNumber: { fontSize: 14, fontWeight: "600", color: "#2d5016", backgroundColor: "#e8f5e9", paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  resultBox: { minHeight: 350 },
+  pageTitle: { fontSize: 20, fontWeight: "bold", color: "#2d5016", marginBottom: 15, textAlign: "center" },
+  stageCard: { backgroundColor: "#e8f5e9", padding: 15, borderRadius: 10, marginBottom: 15, borderLeftWidth: 5, borderLeftColor: "#2d5016" },
+  stage: { fontSize: 18, fontWeight: "bold", color: "#2d5016" },
+  sinhala: { fontSize: 16, fontWeight: "600", color: "#444", marginTop: 5 },
+  descriptionContainer: { marginBottom: 10 },
+  description: { fontSize: 14, color: "#555", lineHeight: 22, marginBottom: 12 },
+  speakerButton: { backgroundColor: "#4CAF50", paddingHorizontal: 16, paddingVertical: 10, borderRadius: 25, alignItems: "center", alignSelf: "flex-start", marginVertical: 5, flexDirection: "row", shadowColor: "#000", shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 2 },
+  speakerButtonActive: { backgroundColor: "#f44336" },
+  speakerButtonText: { color: "#fff", fontWeight: "bold", fontSize: 14 },
+  voiceHintText: { fontSize: 11, color: "#ff9800", marginTop: 5, fontStyle: "italic" },
+  helperText: { fontSize: 13, color: "#666", fontStyle: "italic", backgroundColor: "#f5f5f5", padding: 10, borderRadius: 8, marginTop: 10 },
+  metricsGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
+  metricCard: { width: "48%", backgroundColor: "#f0f7f0", padding: 15, borderRadius: 10, marginBottom: 12, alignItems: "center", borderWidth: 1, borderColor: "#2d5016" },
+  metricIcon: { fontSize: 28, marginBottom: 8 },
+  metricLabel: { fontSize: 12, color: "#666", fontWeight: "600", marginBottom: 5 },
+  metricValue: { fontSize: 16, fontWeight: "bold", color: "#2d5016" },
+  recommendationSection: { marginBottom: 20, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: "#eee" },
+  recommendationTitle: { fontSize: 16, fontWeight: "bold", color: "#2d5016", marginBottom: 12, paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: "#2d5016" },
+  recommendationItem: { fontSize: 14, color: "#333", marginVertical: 8, marginLeft: 10, lineHeight: 20 },
+  tipBox: { backgroundColor: "#fffef0", padding: 12, borderRadius: 8, borderLeftWidth: 4, borderLeftColor: "#ff9800", marginTop: 15 },
+  tipTitle: { fontSize: 14, fontWeight: "bold", color: "#ff6f00", marginBottom: 5 },
+  tipText: { fontSize: 13, color: "#555", lineHeight: 20 },
+  navigationContainer: { flexDirection: "row", justifyContent: "space-between", marginTop: 20, paddingTop: 15, borderTopWidth: 2, borderTopColor: "#2d5016" },
+  navButton: { flex: 0.45, backgroundColor: "#2d5016", padding: 12, borderRadius: 8, alignItems: "center" },
+  navButtonDisabled: { backgroundColor: "#ccc" },
+  navButtonText: { color: "#fff", fontWeight: "bold", fontSize: 14 },
+  pdfButton: { backgroundColor: "#1565c0", padding: 14, borderRadius: 8, marginTop: 15, alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 3, elevation: 3 },
+  pdfButtonText: { color: "#fff", fontWeight: "bold", fontSize: 16 }
 });
 
 export default StagesScreen;

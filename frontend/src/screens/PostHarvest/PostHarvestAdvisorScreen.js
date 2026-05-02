@@ -1,25 +1,60 @@
 /**
- * PostHarvestAdvisorScreen.js
+ * PostHarvestAdvisorScreen.js  —  AgroMind v5.0
  * ─────────────────────────────────────────────────────────────────────────────
- * Post-Harvest Guardian — Research-Backed AI Advisory
+ * Modern Light Theme  |  New Backend Integration  |  Multilingual LLM Advice
+ * ─────────────────────────────────────────────────────────────────────────────
+ *
+ * BACKEND:  routes/postharvest_guardian.py  (v4.0 new backend)
+ * ENDPOINTS USED:
+ *   POST /api/guardian/predict   →  storage + price + risk + economics
+ *   POST /api/guardian/advice    →  AI advisory (qwen2.5:7b, multilingual)
+ *   GET  /api/guardian/weather   →  real-time climate sync
+ *   GET  /api/guardian/varieties →  supported varieties
+ *
+ * LANGUAGE CODES (sent to /advice):
+ *   'en'  → English
+ *   'si'  → Sinhala (සිංහල)
+ *   'ta'  → Tamil   (தமிழ்)
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Dimensions, Animated, ActivityIndicator,
-  SafeAreaView, StatusBar, Modal, Platform, Alert, Clipboard
+  SafeAreaView, StatusBar, Modal, Platform, Alert,
+  Clipboard,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { db, auth } from '../../firebase/firebaseConfig';
-import { doc, getDoc } from 'firebase/firestore';
 import useUniversalLocation from '../../utils/useUniversalLocation';
-import { WebView } from 'react-native-webview';
 
 const { width } = Dimensions.get('window');
+import { BASE_URL } from '../../utils/apiConfig';
+// ─── LIGHT THEME PALETTE ──────────────────────────────────────────────────────
+const C = {
+  bg: '#F5F7FA',
+  card: '#FFFFFF',
+  cardBorder: '#E8EDF2',
+  green: '#2E7D32',
+  greenLight: '#A5D6A7',
+  greenSurface: '#E8F5E9',
+  greenMid: '#4CAF50',
+  textPrimary: '#1A1A1A',
+  textSecondary: '#6B7280',
+  textMuted: '#9CA3AF',
+  yellow: '#F59E0B',
+  yellowBg: '#FFFBEB',
+  red: '#DC2626',
+  redBg: '#FEF2F2',
+  blue: '#1D4ED8',
+  blueBg: '#EFF6FF',
+  white: '#FFFFFF',
+  shadow: 'rgba(0,0,0,0.07)',
+  divider: '#F1F5F9',
+};
 
+// ─── CONSTANTS ────────────────────────────────────────────────────────────────
 const MAP_HTML = (lat, lon) => `
 <!DOCTYPE html>
 <html>
@@ -59,944 +94,2521 @@ const MAP_HTML = (lat, lon) => `
 </body>
 </html>
 `;
-
-// ─── CONFIG ──────────────────────────────────────────────────────────────────
-const BASE_URL = 'http://192.168.100.198:5000'; // ← Update this to your Flask IP
-
 const VARIETIES = [
-  'Bg 352', 'Bg 300', 'Bg 403', 'Bw 367', 'Suwandel', 'Rath Suwandel',
-  'Kalu Heenati', 'Pokkali', 'Kuruluthuda', 'Pachchaperumal',
-  'Ld 368', 'At 362', 'At 307', 'Bg 358',
+  'Bg 250', 'Bg 300', 'Bg 352', 'Bg 366', 'Bg 379-2',
+  'Bg 403', 'At 306', 'At 362', 'At 405',
 ];
 
-const METHODS = ['Gunny bag', 'Polythene bag', 'Hermetic', 'Cold storage'];
-const VARIETY_TYPES = ['Improved', 'Traditional'];
+const METHODS = [
+  { key: 'gunny', label: 'Gunny (Jute) Bag', icon: 'bag-personal-outline' },
+  { key: 'polythene', label: 'Polythene Bag', icon: 'package-variant' },
+  { key: 'hermetic', label: 'Hermetic Bag', icon: 'shield-check-outline' },
+  { key: 'woven', label: 'PP Woven Bag', icon: 'texture-box' },
+  { key: 'metalbin', label: 'Metal Silo / Bin', icon: 'barrel-outline' },
+];
 
-const SIGNAL_CONFIG = {
-  GREEN: { bg: ['#064e3b', '#022c22'], shadow: '#059669', icon: 'check-decagram', label: 'SAFE TO STORE', color: '#34d399' },
-  YELLOW: { bg: ['#422006', '#2d1a03'], shadow: '#d97706', icon: 'alert-decagram', label: 'PROCEED CAREFULLY', color: '#fbbf24' },
-  RED: { bg: ['#450a0a', '#2d0606'], shadow: '#dc2626', icon: 'close-octagon', label: 'CRITICAL RISK', color: '#f87171' },
+const SIGNAL_CFG = {
+  GREEN: { color: C.green, bg: C.greenSurface, border: C.greenLight, icon: 'check-decagram', label: 'SAFE TO STORE', tagBg: '#D1FAE5' },
+  YELLOW: { color: '#B45309', bg: C.yellowBg, border: '#FDE68A', icon: 'alert-decagram', label: 'PROCEED CAREFULLY', tagBg: '#FEF3C7' },
+  RED: { color: C.red, bg: C.redBg, border: '#FECACA', icon: 'close-octagon', label: 'CRITICAL RISK', tagBg: '#FEE2E2' },
 };
 
-// ─── HELPERS ─────────────────────────────────────────────────────────────────
+const LANG_OPTIONS = [
+  { code: 'en', label: 'English', native: 'English' },
+  { code: 'si', label: 'Sinhala', native: 'සිංහල' },
+  { code: 'ta', label: 'Tamil', native: 'தமிழ்' },
+];
 
-const TypewriterText = ({ text, onComplete }) => {
-  const [displayedText, setDisplayedText] = useState('');
-  const [index, setIndex] = useState(0);
+// ─── HELPER COMPONENTS ────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (index < text.length) {
-      const timeout = setTimeout(() => {
-        setDisplayedText(prev => prev + text[index]);
-        setIndex(prev => prev + 1);
-      }, 15);
-      return () => clearTimeout(timeout);
-    } else if (onComplete) {
-      onComplete();
-    }
-  }, [index, text]);
+const SectionCard = ({ children, style }) => (
+  <View style={[styles.sectionCard, style]}>{children}</View>
+);
 
-  return <Text style={styles.adviceText}>{displayedText}</Text>;
+const CardHeader = ({ icon, title, subtitle }) => (
+  <View style={styles.cardHeader}>
+    <View style={styles.cardHeaderIcon}>
+      <MaterialCommunityIcons name={icon} size={18} color={C.green} />
+    </View>
+    <View style={{ flex: 1 }}>
+      <Text style={styles.cardTitle}>{title}</Text>
+      {subtitle ? <Text style={styles.cardSubtitle}>{subtitle}</Text> : null}
+    </View>
+  </View>
+);
+
+const MetricPill = ({ icon, label, value, color = C.green, bg = C.greenSurface }) => (
+  <View style={[styles.metricPill, { backgroundColor: bg, borderColor: color + '40' }]}>
+    <MaterialCommunityIcons name={icon} size={16} color={color} />
+    <View style={{ marginLeft: 8 }}>
+      <Text style={[styles.metricValue, { color }]}>{value}</Text>
+      <Text style={styles.metricLabel}>{label}</Text>
+    </View>
+  </View>
+);
+
+const SignalBadge = ({ signal }) => {
+  const cfg = SIGNAL_CFG[signal] || SIGNAL_CFG.YELLOW;
+  return (
+    <View style={[styles.signalBadge, { backgroundColor: cfg.tagBg, borderColor: cfg.border }]}>
+      <MaterialCommunityIcons name={cfg.icon} size={14} color={cfg.color} />
+      <Text style={[styles.signalBadgeText, { color: cfg.color }]}>{cfg.label}</Text>
+    </View>
+  );
 };
 
+// ─── MAIN SCREEN ──────────────────────────────────────────────────────────────
 export default function PostHarvestAdvisorScreen({ navigation, route }) {
-  // Check if we are analyzing a specific batch
   const initialBatch = route.params?.batch;
+  const locationData = route.params?.location;   // storage location details from Warehouse
+  const locationId = route.params?.locationId;
+  // ML fine-tuned indoor values passed from WarehouseAnalysisScreen
+  const passedIndoorTemp = route.params?.indoorTemp;
+  const passedIndoorHumid = route.params?.indoorHumid;
+  const passedLat = route.params?.lat;
+  const passedLon = route.params?.lon;
 
-  // Navigation tabs
-  const [activeTab, setActiveTab] = useState('analyze'); // analyze | advisor | tips
+  // ── Tab State
+  const [activeTab, setActiveTab] = useState('analyze');
 
-  // Form state - pre-filled if batch exists
-  const [variety, setVariety] = useState(initialBatch?.variety || 'Bg 352');
-  const [varietyType, setVarietyType] = useState(initialBatch?.varietyType || 'Improved');
-  const [method, setMethod] = useState(initialBatch?.storageType || 'Gunny bag');
+  // ── Form State
+  const [variety, setVariety] = useState(initialBatch?.variety || initialBatch?.riceVariety || 'Bg 300');
+  const [method, setMethod] = useState(initialBatch?.storageType || initialBatch?.storageMethod || 'gunny');
   const [moisture, setMoisture] = useState(parseFloat(initialBatch?.moisture) || 13.5);
-  const [temp, setTemp] = useState(28);
+  // Use ML-fine-tuned indoor temp if available, else default
+  const [temp, setTemp] = useState(passedIndoorTemp ? parseFloat(passedIndoorTemp.toFixed(1)) : 28.0);
+  const [humidity, setHumidity] = useState(passedIndoorHumid ? parseFloat(passedIndoorHumid.toFixed(0)) : 65.0);
   const [quantity, setQuantity] = useState(initialBatch?.quantityKg?.toString() || '1000');
-  const [notes, setNotes] = useState('');
 
-  // Result state
+  // ── Prediction + Advice State
   const [prediction, setPrediction] = useState(null);
   const [advice, setAdvice] = useState(null);
+  const [adviceLang, setAdviceLang] = useState(null);
   const [loadingPred, setLoadingPred] = useState(false);
-  const [loadingAdv, setLoadingAdv] = useState(false);
+  const [loadingAdvice, setLoadingAdvice] = useState(false);
 
-  // Modals
-  const [modalType, setModalType] = useState(null);
-
-  // Animations
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
-
-  // Real-time Climate Sync State
-  const [monitoringMode, setMonitoringMode] = useState('free'); // 'free' or 'premium'
-  const [syncStatus, setSyncStatus] = useState('idle'); // idle, syncing, synced, error
-  const [accuracy, setAccuracy] = useState(null);
-  const [humidity, setHumidity] = useState(65);
-  const [showMapModal, setShowMapModal] = useState(false);
-  const [customCoords, setCustomCoords] = useState(null);
-  const [tempMapCoords, setTempMapCoords] = useState(null);
+  // ── Weather Sync
+  const [syncStatus, setSyncStatus] = useState(passedIndoorTemp ? 'synced' : 'idle');
+  const [calibMsg, setCalibMsg] = useState(
+    passedIndoorTemp
+      ? `Storage location temp: ${passedIndoorTemp.toFixed(1)}°C (ML fine-tuned from 24h weather data)`
+      : ''
+  );
   const location = useUniversalLocation('en');
 
-  // Specific storage warehouse coordinates from navigation
-  const storageCoords = route.params?.location ? {
-    latitude: route.params.location.latitude,
-    longitude: route.params.location.longitude
-  } : null;
+  // ── Modals
+  const [modalType, setModalType] = useState(null);
 
-  // Sync state if batch changes (e.g. navigating from different cards)
+  // ── Advisor expand
+  const [adviceExpanded, setAdviceExpanded] = useState(true);
+
+  // ── Animations
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(16)).current;
+
+  // ── Sync params from route if batch changes
   useEffect(() => {
     if (route.params?.batch) {
       const b = route.params.batch;
-      setVariety(b.variety || 'Bg 352');
-      setVarietyType(b.varietyType || 'Improved');
-      setMethod(b.storageType || 'Gunny bag');
+      setVariety(b.variety || b.riceVariety || 'Bg 300');
+      setMethod(b.storageType || b.storageMethod || 'gunny');
       setMoisture(parseFloat(b.moisture) || 13.5);
       setQuantity(b.quantityKg?.toString() || '1000');
     }
-  }, [route.params?.batch]);
+    if (route.params?.indoorTemp) {
+      setTemp(parseFloat(route.params.indoorTemp.toFixed(1)));
+      setSyncStatus('synced');
+      setCalibMsg(`Storage location temp: ${route.params.indoorTemp.toFixed(1)}°C (ML fine-tuned from 24h weather)`);
+    }
+    if (route.params?.indoorHumid) {
+      setHumidity(parseFloat(route.params.indoorHumid.toFixed(0)));
+    }
+  }, [route.params?.batch, route.params?.indoorTemp]);
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }),
-      Animated.timing(slideAnim, { toValue: 0, duration: 500, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: 0, duration: 400, useNativeDriver: true }),
     ]).start();
-
-    const fetchMode = async () => {
-      if (!auth.currentUser) return;
-      try {
-        const docRef = doc(db, 'users', auth.currentUser.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const userData = docSnap.data();
-          if (userData.monitoringMode) {
-            setMonitoringMode(userData.monitoringMode);
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching mode:", err);
-      }
-    };
-
-    fetchMode();
   }, [activeTab]);
 
-  // Sync climate if coordinates are ready (either storage coordinates or GPS)
+  // ── Auto weather sync — skipped if already synced from WarehouseAnalysis
   useEffect(() => {
-    const lat = customCoords?.latitude || storageCoords?.latitude || location.latitude;
-    const lon = customCoords?.longitude || storageCoords?.longitude || location.longitude;
-
-    if (monitoringMode === 'free' && lat && lon && syncStatus === 'idle') {
-      syncFreeClimate(lat, lon);
+    const lat = passedLat || location.latitude;
+    const lon = passedLon || location.longitude;
+    if (lat && lon && syncStatus === 'idle') {
+      syncWeather(lat, lon);
     }
-  }, [location.latitude, location.longitude, storageCoords, customCoords, monitoringMode]);
+  }, [location.latitude, location.longitude]);
 
-  const syncFreeClimate = async (lat, lon) => {
+  const syncWeather = async (lat, lon) => {
     setSyncStatus('syncing');
     try {
-      const targetLat = lat || location.latitude;
-      const targetLon = lon || location.longitude;
-
-      const res = await fetch(`${BASE_URL}/api/guardian/weather?lat=${targetLat}&lon=${targetLon}`);
+      const res = await fetch(`${BASE_URL}/api/guardian/weather?lat=${lat}&lon=${lon}`);
       const data = await res.json();
-      if (data.success) {
-        if (monitoringMode === 'free') {
-          // CLIMATE CALIBRATION ENGINE - OPEN_METEO_API LOGIC
-          const outdoorTemp = data.temp_c;
-          const insideCalibratedTemp = outdoorTemp + 3; // +3°C average penalty
-          setTemp(insideCalibratedTemp);
-          setHumidity(data.humidity_pct || 65);
-
-          setAccuracy(65);
-          const isCustom = !!customCoords;
-          setCalibrationMsg(`⚠️ Using ${isCustom ? 'Pinned' : (route.params?.location ? 'Warehouse' : 'District')} Weather. Accuracy: 65%. Warehouse interior estimated at +3°C above ambient.`);
-        } else {
-          // IOT_SENSOR LOGIC
-          setTemp(data.temp_c);
-          setHumidity(data.humidity_pct || 65);
-          setAccuracy(98);
-          setCalibrationMsg("✅ Using Real-Time Sensor Data. Accuracy: 98%. Reading directly from storage interior.");
-        }
-
+      if (data.weather_24h?.length > 0) {
+        const w24 = data.weather_24h;
+        const avgT = w24.reduce((s, h) => s + h.temp, 0) / w24.length;
+        const avgH = w24.reduce((s, h) => s + h.humidity, 0) / w24.length;
+        const peakT = Math.max(...w24.map(h => h.temp));
+        const gain = peakT > 34 ? 4.0 : peakT > 30 ? 3.5 : 2.5;
+        const indoorT = parseFloat((avgT + gain).toFixed(1));
+        const indoorH = parseFloat(Math.min(95, avgH + 5).toFixed(0));
+        setTemp(indoorT);
+        setHumidity(indoorH);
         setSyncStatus('synced');
+        setCalibMsg(
+          `24h avg outdoor: ${avgT.toFixed(1)}°C → Indoor: ${indoorT}°C (+${gain}°C). ` +
+          `Humidity: ${indoorH}%. Source: Open-Meteo`
+        );
+      } else if (data.temp_c) {
+        const indoorTemp = parseFloat(((data.temp_c || 28) + 3).toFixed(1));
+        setTemp(indoorTemp);
+        setHumidity(data.humidity_pct || 65);
+        setSyncStatus('synced');
+        setCalibMsg(`Outdoor: ${data.temp_c?.toFixed(1)}°C → Indoor est: ${indoorTemp}°C.`);
       } else {
         setSyncStatus('error');
       }
-    } catch (err) {
+    } catch {
       setSyncStatus('error');
     }
   };
 
-  const confirmLocation = () => {
-    if (tempMapCoords) {
-      setCustomCoords(tempMapCoords);
-      setSyncStatus('idle'); // Trigger re-sync with new coords
-      setShowMapModal(false);
-    }
-  };
+  // ─────────────────────────────────────────────────────────────────────────
+  // API CALLS
+  // ─────────────────────────────────────────────────────────────────────────
 
   const runAnalysis = async () => {
     if (!quantity || isNaN(parseFloat(quantity))) {
-      Alert.alert('Input Missing', 'Please enter a valid quantity in kg.');
+      Alert.alert('Missing Input', 'Please enter a valid quantity in kg.');
       return;
     }
     setLoadingPred(true);
+    setPrediction(null);
     setAdvice(null);
+    setAdviceLang(null);
     try {
+      // Resolve lat/lon: prefer passed from WarehouseAnalysis, then useUniversalLocation
+      const lat = passedLat || location.latitude;
+      const lon = passedLon || location.longitude;
+
+      // Normalize storage location type for backend
+      const slocRaw = (locationData?.storageType || 'home').toLowerCase();
+      const slocMap = { home: 'home', warehouse: 'warehouse', shed: 'shed', coop: 'coop', 'co-op': 'coop', private: 'warehouse', government: 'warehouse' };
+      const sloc = Object.keys(slocMap).find(k => slocRaw.includes(k)) ? slocMap[Object.keys(slocMap).find(k => slocRaw.includes(k))] : 'home';
+
+      const body = {
+        variety,
+        bag_type: method,
+        storage_method: method,
+        moisture_pct: moisture,
+        temp_c: temp,
+        humidity_pct: humidity,
+        quantity_kg: parseFloat(quantity),
+        duration_months: 3,
+        has_pest_history: false,
+        storage_location: sloc,
+        storage_type: sloc,
+        // Pass lat/lon so backend fetches real 24h weather + runs ML fine-tuning
+        ...(lat && lon ? { lat, lon } : {}),
+        // Storage building properties from location data
+        ...(locationData?.roofMaterial ? { roof_material: locationData.roofMaterial } : {}),
+        ...(locationData?.roofColor ? { roof_color: locationData.roofColor } : {}),
+        ...(locationData?.ventilation ? { ventilation: locationData.ventilation } : {}),
+        ...(locationData?.ceilingHeight ? { ceiling_height: locationData.ceilingHeight } : {}),
+        ...(locationData?.insulation ? { insulation: locationData.insulation } : {}),
+      };
+
       const res = await fetch(`${BASE_URL}/api/guardian/predict`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          variety,
-          variety_type: varietyType,
-          storage_method: method,
-          moisture_pct: moisture,
-          temp_c: temp,
-          humidity_pct: humidity,
-          quantity_kg: parseFloat(quantity),
-        }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
       if (data.success) {
         setPrediction(data);
+        // Update temp/humidity display if backend returned ML-refined values
+        if (data.indoor_environment?.indoor_temp_c) {
+          setTemp(data.indoor_environment.indoor_temp_c);
+          setSyncStatus('synced');
+          const src = data.indoor_environment.weather_source || 'ML Model';
+          setCalibMsg(
+            `Indoor temp refined: ${data.indoor_environment.indoor_temp_c}°C · ` +
+            `Outdoor avg: ${data.indoor_environment.outdoor_avg_temp}°C · ` +
+            `Source: ${src}`
+          );
+        }
+        if (data.indoor_environment?.indoor_humidity_pct) {
+          setHumidity(data.indoor_environment.indoor_humidity_pct);
+        }
       } else {
-        Alert.alert('Error', data.error || 'Prediction failed');
+        Alert.alert('Prediction Error', data.error || 'Prediction failed.');
       }
-    } catch (err) {
-      Alert.alert('Connection Error', 'Ensure backend is running at ' + BASE_URL);
+    } catch {
+      Alert.alert('Connection Error', `Cannot reach backend at ${BASE_URL}`);
     } finally {
       setLoadingPred(false);
     }
   };
 
-  const getAIAdvice = async () => {
+  const fetchAdvice = async (langCode) => {
     if (!prediction) return;
-    setLoadingAdv(true);
+    setLoadingAdvice(true);
+    setAdvice(null);
+    setAdviceLang(langCode);
     setActiveTab('advisor');
+
     try {
-      const rr = prediction.risk_reward;
+      const p = prediction;
       const res = await fetch(`${BASE_URL}/api/guardian/advice`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           variety,
+          bag_type: method,
+          storage_method: method,
           moisture_pct: moisture,
           temp_c: temp,
           humidity_pct: humidity,
-          storage_method: method,
           quantity_kg: parseFloat(quantity),
-          storage_days: prediction.storage.storage_days,
-          days_to_peak: prediction.price.days_to_peak,
-          current_price: prediction.price.current_lkr,
-          peak_price: prediction.price.peak_lkr,
-          signal: rr.signal,
-          buffer_days: rr.buffer_days,
-          potential_profit: rr.potential_profit_lkr,
-          intervention_viable: rr.intervention_viable,
-          days_after_drying: rr.days_after_drying,
-          notes: notes,
+          storage_days: p.storage?.storage_days || 90,
+          days_to_peak: p.price?.days_to_peak || 84,
+          current_price: p.price?.current_lkr || 249,
+          peak_price: p.price?.peak_lkr || 262,
+          signal: p.signal || 'YELLOW',
+          net_profit: p.costs?.net_profit || 0,
+          next_festival: p.next_festival || null,
+          lang: langCode,
+          mode: 'general',
         }),
       });
       const data = await res.json();
-
-      // Safety: Use the 'advice' object if it exists (even on error/fallback)
-      if (data.advice && typeof data.advice === 'object') {
-        const adv = data.advice;
-        // Fix for Sinhala/English hybrid persuasiveness
-        setAdvice({
-          ...adv,
-          summary: adv.summary || (prediction.risk_reward.signal === 'RED' ? "🚩 අවදානම: දැන්ම විකුණන්න! (Sell Now for Safety)" : "🟢 ගබඩා කර ලාභ ලබන්න! (Store for Profit)"),
-        });
-      } else if (data.success) {
+      if (data.success && data.advice) {
         setAdvice(data.advice);
       } else {
-        Alert.alert('AI Error', data.error || 'Invalid advice format');
+        Alert.alert('AI Error', data.error || 'Could not generate advice. Is Ollama running?');
         setAdvice(null);
-        setActiveTab('analyze');
       }
-    } catch (err) {
-      Alert.alert('AI Error', 'Could not fetch expert advisory.');
-      setAdvice(null);
-      setActiveTab('analyze');
+    } catch {
+      Alert.alert('AI Error', 'Could not reach the AI advisor. Ensure Ollama is running with qwen2.5:7b.');
     } finally {
-      setLoadingAdv(false);
+      setLoadingAdvice(false);
     }
   };
 
-  // ─── Sub-components ────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER HELPERS
+  // ─────────────────────────────────────────────────────────────────────────
 
-  const MetricCard = ({ icon, label, value, sub, accent }) => (
-    <View style={styles.metricCard}>
-      <MaterialCommunityIcons name={icon} size={22} color={accent} />
-      <Text style={styles.metricValue}>{value}</Text>
-      <Text style={styles.metricLabel}>{label}</Text>
-      {sub && <Text style={styles.metricSub}>{sub}</Text>}
-    </View>
-  );
-
-  const SliderRow = ({ label, value, min, max, unit, danger, onChange }) => (
-    <View style={styles.inputGroup}>
-      <View style={styles.inputRow}>
+  const StepCounter = ({ value, min, max, unit, danger, onChange, label }) => (
+    <View style={styles.stepCounter}>
+      <View style={styles.stepCounterRow}>
         <Text style={styles.inputLabel}>{label}</Text>
-        <Text style={[styles.sliderVal, { color: value > danger ? '#f87171' : '#34d399' }]}>
-          {value}{unit}
-        </Text>
+        <View style={[styles.valueBadge, { backgroundColor: value > danger ? C.redBg : C.greenSurface }]}>
+          <Text style={[styles.valueBadgeText, { color: value > danger ? C.red : C.green }]}>
+            {value.toFixed(1)}{unit}
+          </Text>
+        </View>
       </View>
-      <View style={styles.customSlider}>
-        <View style={styles.sliderTrack} />
-        <View style={[styles.sliderFill, { width: `${((value - min) / (max - min)) * 100}%`, backgroundColor: value > danger ? '#dc2626' : '#16a34a' }]} />
-        <View style={[styles.sliderHandle, { left: `${((value - min) / (max - min)) * 100}%` }]} />
-      </View>
-      <View style={styles.sliderControls}>
-        <TouchableOpacity style={styles.stepBtn} onPress={() => onChange(Math.max(min, value - 0.5))}>
-          <MaterialCommunityIcons name="minus" size={16} color="#94a3b8" />
+      <View style={styles.stepRow}>
+        <TouchableOpacity
+          style={[styles.stepBtn, { borderColor: C.cardBorder }]}
+          onPress={() => onChange(Math.max(min, parseFloat((value - 0.5).toFixed(1))))}
+        >
+          <MaterialCommunityIcons name="minus" size={18} color={C.textSecondary} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.stepBtn} onPress={() => onChange(Math.min(max, value + 0.5))}>
-          <MaterialCommunityIcons name="plus" size={16} color="#94a3b8" />
+        <View style={styles.stepTrack}>
+          <View style={[styles.stepFill, {
+            width: `${((value - min) / (max - min)) * 100}%`,
+            backgroundColor: value > danger ? C.red : C.green
+          }]} />
+        </View>
+        <TouchableOpacity
+          style={[styles.stepBtn, { borderColor: C.cardBorder }]}
+          onPress={() => onChange(Math.min(max, parseFloat((value + 0.5).toFixed(1))))}
+        >
+          <MaterialCommunityIcons name="plus" size={18} color={C.green} />
         </TouchableOpacity>
       </View>
     </View>
   );
 
-  // ─── TABS RENDER ───────────────────────────────────────────────────────────
-
+  // ─────────────────────────────────────────────────────────────────────────
+  // TAB: ANALYZE
+  // ─────────────────────────────────────────────────────────────────────────
   const renderAnalyze = () => (
-    <Animated.View style={{ flex: 1, opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        {initialBatch && (
-          <View style={styles.contextCard}>
-            <MaterialCommunityIcons name="layers-outline" size={24} color="#34d399" />
-            <View style={{ flex: 1, marginLeft: 12 }}>
-              <Text style={styles.contextLabel}>Analyzing Specific Batch</Text>
-              <Text style={styles.contextValue}>{initialBatch.variety} • {initialBatch.location}</Text>
-            </View>
-            <View style={styles.contextBadge}>
-              <Text style={styles.contextBadgeText}>PRE-FILLED</Text>
-            </View>
-          </View>
-        )}
+    <Animated.ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 40 }}
+      style={{ opacity: fadeAnim }}
+    >
+      {/* Pre-filled batch notice */}
+      {initialBatch && (
+        <View style={styles.batchNotice}>
+          <MaterialCommunityIcons name="layers-outline" size={18} color={C.green} />
+          <Text style={styles.batchNoticeText}>
+            Analyzing: <Text style={{ fontWeight: '700', color: C.green }}>{initialBatch.variety || initialBatch.riceVariety || 'Batch'}</Text>
+            {initialBatch.harvestDate ? ` · ${initialBatch.harvestDate}` : ''}
+          </Text>
+          <View style={styles.preFilledTag}><Text style={styles.preFilledTagText}>PRE-FILLED</Text></View>
+        </View>
+      )}
 
-        <View style={styles.formCard}>
-          <View style={styles.sectionHeader}>
-            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <MaterialCommunityIcons name="tune-variant" size={20} color="#34d399" />
-              <Text style={styles.sectionTitle}>Details & Calibration</Text>
+      {/* Storage Location Info Card */}
+      {locationData && (
+        <View style={styles.locationCard}>
+          <View style={styles.locationCardHeader}>
+            <MaterialCommunityIcons name="warehouse" size={16} color={C.blue} />
+            <Text style={styles.locationCardTitle}>Storage Location</Text>
+            {passedIndoorTemp && (
+              <View style={styles.mlBadge}>
+                <MaterialCommunityIcons name="brain" size={10} color="#7c3aed" />
+                <Text style={styles.mlBadgeText}>ML Fine-Tuned</Text>
+              </View>
+            )}
+          </View>
+          <View style={styles.locationGrid}>
+            <View style={styles.locationItem}>
+              <Text style={styles.locationItemLabel}>Store Name</Text>
+              <Text style={styles.locationItemValue}>{locationData.locationName || locationData.name || '—'}</Text>
             </View>
-            <View style={[styles.syncBadge, syncStatus === 'synced' && styles.syncActive]}>
-              <MaterialCommunityIcons
-                name={monitoringMode === 'premium' ? "chip" : "cloud-sync"}
-                size={12}
-                color={syncStatus === 'synced' ? "#fff" : "#94a3b8"}
-              />
-              <Text style={[styles.syncBadgeText, syncStatus === 'synced' && { color: '#fff' }]}>
-                {monitoringMode === 'premium' ? "IOT LINK" : "WEATHER SYNC"}
+            <View style={styles.locationItem}>
+              <Text style={styles.locationItemLabel}>Type</Text>
+              <Text style={styles.locationItemValue}>{locationData.storageType || '—'}</Text>
+            </View>
+            <View style={styles.locationItem}>
+              <Text style={styles.locationItemLabel}>Indoor Temp</Text>
+              <Text style={[styles.locationItemValue, { color: temp > 30 ? C.red : C.green }]}>
+                {temp.toFixed(1)}°C
+              </Text>
+            </View>
+            <View style={styles.locationItem}>
+              <Text style={styles.locationItemLabel}>Humidity</Text>
+              <Text style={[styles.locationItemValue, { color: humidity > 80 ? C.red : C.blue }]}>
+                {humidity.toFixed(0)}%
               </Text>
             </View>
           </View>
+        </View>
+      )}
 
-          {syncStatus === 'synced' && calibrationMsg && (
-            <View style={[styles.calibrationBanner, monitoringMode === 'free' ? styles.calibWarn : styles.calibSecure]}>
-              <MaterialCommunityIcons
-                name={monitoringMode === 'free' ? "alert-circle" : "check-decagram"}
-                size={16}
-                color={monitoringMode === 'free' ? "#f59e0b" : "#4ade80"}
-              />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.calibMsg}>{calibrationMsg}</Text>
-                {monitoringMode === 'free' && (
-                  <Text style={styles.calibHint}>Tip: For 98% accuracy, install an IoT Sensor or use a manual thermometer (Rs. 500).</Text>
-                )}
-              </View>
+      {/* Input Card */}
+      <SectionCard>
+        <CardHeader icon="tune-variant" title="Harvest Details" subtitle="Enter your paddy storage parameters" />
+
+        {/* Variety Picker */}
+        <TouchableOpacity style={styles.pickerRow} onPress={() => setModalType('variety')}>
+          <MaterialCommunityIcons name="sprout-outline" size={18} color={C.green} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.pickerLabel}>Rice Variety</Text>
+            <Text style={styles.pickerValue}>{variety}</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-down" size={20} color={C.textSecondary} />
+        </TouchableOpacity>
+
+        {/* Storage Method Picker */}
+        <TouchableOpacity style={styles.pickerRow} onPress={() => setModalType('method')}>
+          <MaterialCommunityIcons name={METHODS.find(m => m.key === method)?.icon || 'bag-personal-outline'} size={18} color={C.green} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.pickerLabel}>Storage Container</Text>
+            <Text style={styles.pickerValue}>{METHODS.find(m => m.key === method)?.label || method}</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-down" size={20} color={C.textSecondary} />
+        </TouchableOpacity>
+
+        {/* Moisture Slider */}
+        <StepCounter
+          label="Grain Moisture Content"
+          value={moisture}
+          min={7} max={22}
+          unit="%" danger={14}
+          onChange={setMoisture}
+        />
+
+        {/* Climate Card */}
+        <View style={styles.climateCard}>
+          <View style={styles.climateHeader}>
+            <MaterialCommunityIcons name="cloud-sync-outline" size={16} color={C.green} />
+            <Text style={styles.climateTitle}>CLIMATE SYNC</Text>
+            <View style={[styles.syncDot, { backgroundColor: syncStatus === 'synced' ? C.green : syncStatus === 'syncing' ? C.yellow : C.textMuted }]} />
+            <Text style={[styles.syncLabel, { color: syncStatus === 'synced' ? C.green : C.textMuted }]}>
+              {syncStatus === 'synced' ? 'LIVE' : syncStatus === 'syncing' ? 'SYNCING' : 'OFFLINE'}
+            </Text>
+          </View>
+          <View style={styles.climateGrid}>
+            <View style={styles.climateBox}>
+              <MaterialCommunityIcons name="thermometer" size={20} color={temp > 30 ? C.red : C.green} />
+              <Text style={[styles.climateValue, { color: temp > 30 ? C.red : C.textPrimary }]}>{temp.toFixed(1)}°C</Text>
+              <Text style={styles.climateBoxLabel}>Warehouse Temp</Text>
             </View>
+            <View style={styles.climateBox}>
+              <MaterialCommunityIcons name="water-percent" size={20} color={humidity > 80 ? C.red : C.blue} />
+              <Text style={[styles.climateValue, { color: humidity > 80 ? C.red : C.textPrimary }]}>{humidity.toFixed(0)}%</Text>
+              <Text style={styles.climateBoxLabel}>Humidity</Text>
+            </View>
+          </View>
+          {calibMsg ? (
+            <Text style={styles.calibMsg}>{calibMsg}</Text>
+          ) : null}
+        </View>
+
+        {/* Quantity */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Quantity (kg)</Text>
+          <TextInput
+            style={styles.textInput}
+            keyboardType="numeric"
+            value={quantity}
+            onChangeText={setQuantity}
+            placeholder="e.g. 1000"
+            placeholderTextColor={C.textMuted}
+          />
+        </View>
+
+        {/* Analyze Button */}
+        <TouchableOpacity
+          style={[styles.primaryBtn, loadingPred && styles.primaryBtnDisabled]}
+          onPress={runAnalysis}
+          disabled={loadingPred}
+        >
+          {loadingPred ? (
+            <ActivityIndicator color={C.white} />
+          ) : (
+            <>
+              <MaterialCommunityIcons name="chart-line" size={20} color={C.white} />
+              <Text style={styles.primaryBtnText}>Run Forecast Analysis</Text>
+            </>
           )}
+        </TouchableOpacity>
+      </SectionCard>
 
-          <TouchableOpacity style={styles.pickerTrigger} onPress={() => setModalType('variety')}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.pickerLabel}>Rice Variety</Text>
-              <Text style={styles.pickerValue}>{variety}</Text>
-            </View>
-            <MaterialCommunityIcons name="chevron-down" size={20} color="#64748b" />
-          </TouchableOpacity>
-
-          <View style={styles.row}>
-            <TouchableOpacity style={[styles.pickerTrigger, { flex: 1, marginRight: 8 }]} onPress={() => setModalType('type')}>
-              <View>
-                <Text style={styles.pickerLabel}>Type</Text>
-                <Text style={styles.pickerValue}>{varietyType}</Text>
-              </View>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.pickerTrigger, { flex: 1 }]} onPress={() => setModalType('method')}>
-              <View>
-                <Text style={styles.pickerLabel}>Method</Text>
-                <Text style={styles.pickerValue}>{method}</Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          <SliderRow label="Grain Moisture Level" value={moisture} min={5} max={22} unit="%" danger={14} onChange={setMoisture} />
-
-          <View style={styles.climateMonitor}>
-            <View style={styles.monitorHeader}>
-              <MaterialCommunityIcons name="molecule" size={16} color="#34d399" />
-              <Text style={styles.monitorTitle}>LATEST CLIMATE SYNC</Text>
-            </View>
-            <View style={styles.monitorGrid}>
-              <View style={styles.monitorBox}>
-                <Text style={styles.monitorLabel}>WAREHOUSE TEMP</Text>
-                <Text style={styles.monitorValue}>{temp.toFixed(1)}°C</Text>
-              </View>
-              <View style={styles.monitorBox}>
-                <Text style={styles.monitorLabel}>HUMIDITY</Text>
-                <Text style={styles.monitorValue}>{humidity.toFixed(0)}%</Text>
-              </View>
-              <View style={[styles.monitorBox, { backgroundColor: syncStatus === 'synced' ? '#064e3b30' : '#450a0a30' }]}>
-                <Text style={styles.monitorLabel}>STATUS</Text>
-                <Text style={[styles.monitorValue, { fontSize: 10, color: syncStatus === 'synced' ? '#34d399' : '#f87171' }]}>
-                  {syncStatus === 'synced' ? 'REAL-TIME' : 'SYNCING...'}
-                </Text>
-              </View>
-              <TouchableOpacity style={styles.refineBtn} onPress={() => setShowMapModal(true)}>
-                <MaterialCommunityIcons name="map-marker-edit" size={16} color="#34d399" />
-                <Text style={styles.refineText}>REFINE</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Quantity (kg)</Text>
-            <TextInput
-              style={styles.textInput}
-              keyboardType="numeric"
-              value={quantity}
-              onChangeText={setQuantity}
-              placeholder="0.0"
-              placeholderTextColor="#475569"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Farmer Context & Observations (Optional)</Text>
-            <TextInput
-              style={[styles.textInput, { height: 80, textAlignVertical: 'top' }]}
-              multiline
-              numberOfLines={3}
-              value={notes}
-              onChangeText={setNotes}
-              placeholder="e.g. Storage floor seems a bit damp, or I noticed some weevils (ghun) near the entrance..."
-              placeholderTextColor="#475569"
-            />
-          </View>
-
-          <TouchableOpacity style={styles.analyzeBtn} onPress={runAnalysis} disabled={loadingPred}>
-            <LinearGradient colors={['#059669', '#16a34a']} style={styles.btnGrad}>
-              {loadingPred ? <ActivityIndicator color="#fff" /> : <><MaterialCommunityIcons name="brain" size={20} color="#fff" /><Text style={styles.btnText}>Run ML Forecast</Text></>}
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-
-        {prediction && (
-          <View style={styles.resultsWrapper}>
-            {/* Risk-Reward Signal */}
-            <View style={[styles.signalBanner, { backgroundColor: SIGNAL_CONFIG[prediction.risk_reward.signal].bg[0], borderColor: SIGNAL_CONFIG[prediction.risk_reward.signal].color }]}>
-              <MaterialCommunityIcons name={SIGNAL_CONFIG[prediction.risk_reward.signal].icon} size={32} color={SIGNAL_CONFIG[prediction.risk_reward.signal].color} />
-              <View style={{ flex: 1, marginLeft: 12 }}>
-                <Text style={[styles.signalLabel, { color: SIGNAL_CONFIG[prediction.risk_reward.signal].color }]}>{SIGNAL_CONFIG[prediction.risk_reward.signal].label}</Text>
-                <Text style={styles.signalSub}>{prediction.risk_reward.action}</Text>
-              </View>
-            </View>
-
-            {/* Premium Price Forecast Interface */}
-            <View style={styles.priceForecastCard}>
-              <View style={styles.forecastHeader}>
-                <MaterialCommunityIcons name="trending-up" size={24} color="#facc15" />
-                <Text style={styles.forecastTitle}>Price Forecast & Market Timing</Text>
-              </View>
-
-              <View style={styles.priceComparisonContainer}>
-                <View style={styles.priceBox}>
-                  <Text style={styles.priceMeta}>CURRENT</Text>
-                  <Text style={styles.priceLarge}>Rs. {prediction.price.current_lkr}</Text>
-                  <Text style={styles.priceUnit}>per kg</Text>
-                </View>
-
-                <View style={styles.priceArrowBox}>
-                  <MaterialCommunityIcons name="arrow-right-thick" size={24} color="#34d399" />
-                  <Text style={styles.gainPercent}>+{prediction.price.gain_pct}%</Text>
-                </View>
-
-                <View style={[styles.priceBox, styles.peakPriceBox]}>
-                  <Text style={[styles.priceMeta, { color: '#facc15' }]}>PREDICTED PEAK</Text>
-                  <Text style={[styles.priceLarge, { color: '#facc15' }]}>Rs. {prediction.price.peak_lkr}</Text>
-                  <Text style={styles.priceUnit}>in {prediction.price.days_to_peak} days</Text>
-                </View>
-              </View>
-
-              <LinearGradient colors={['#1e3a8a30', '#1e3a8a10']} style={styles.profitHighlight}>
-                <View style={styles.profitLabelRow}>
-                  <Text style={styles.profitMeta}>POTENTIAL EXTRA PROFIT</Text>
-                  <Text style={styles.profitMain}>Rs. {prediction.risk_reward.potential_profit_lkr.toLocaleString()}</Text>
-                </View>
-                <Text style={styles.profitDesc}>Total gain if stored correctly until target day.</Text>
-              </LinearGradient>
-            </View>
-
-            {/* Storage Vital Stats */}
-            <View style={styles.metricsGrid}>
-              <MetricCard icon="timer-sand" label="Storage Life" value={`${prediction.storage.storage_days}d`} sub={`${prediction.storage.storage_months}mo`} accent="#34d399" />
-              <MetricCard icon="water-percent" label="Moisture Status" value={prediction.storage.moisture_risk} sub={prediction.storage.moisture_risk === 'SAFE' ? 'Stable' : 'Risk'} accent={prediction.storage.moisture_risk === 'SAFE' ? '#34d399' : '#f87171'} />
-            </View>
-
-            <TouchableOpacity style={styles.advisorCta} onPress={getAIAdvice}>
-              <LinearGradient colors={['#4c1d95', '#7c3aed']} style={styles.btnGrad}>
-                <MaterialCommunityIcons name="robot" size={20} color="#fff" />
-                <Text style={styles.btnText}>View Expert AI Advisory</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        )}
-      </ScrollView>
-    </Animated.View>
+      {/* Prediction Results */}
+      {prediction && renderPredictionResults()}
+    </Animated.ScrollView>
   );
 
-  const renderAdvisor = () => (
-    <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-      {!prediction ? (
-        <View style={styles.emptyState}>
-          <MaterialCommunityIcons name="brain-freeze" size={64} color="#334155" />
-          <Text style={styles.emptyTitle}>No Analysis Data</Text>
-          <Text style={styles.emptySub}>Run a forecast in the Analyze tab first to get expert advice.</Text>
-          <TouchableOpacity style={styles.returnBtn} onPress={() => setActiveTab('analyze')}>
-            <Text style={styles.returnBtnText}>Go to Analysis</Text>
-          </TouchableOpacity>
-        </View>
-      ) : loadingAdv ? (
-        <View style={styles.loadingWrapper}>
-          <ActivityIndicator size="large" color="#7c3aed" />
-          <Text style={styles.loadingText}>Consulting AI expert models...</Text>
-        </View>
-      ) : advice ? (
-        <ScrollView showsVerticalScrollIndicator={false}>
-          {/* Signal Header */}
-          <View style={styles.adviceHeader}>
-            <View style={[styles.statusBadge, { backgroundColor: prediction.risk_reward.signal === 'GREEN' ? '#064e3b' : prediction.risk_reward.signal === 'YELLOW' ? '#422006' : '#450a0a' }]}>
-              <Text style={{ color: SIGNAL_CONFIG[prediction.risk_reward.signal].color, fontWeight: '800', fontSize: 12 }}>
-                {advice.signal ?? prediction.risk_reward.signal} SIGNAL
-              </Text>
-            </View>
-            <TypewriterText text={advice.summary || 'Developing strategy...'} />
-          </View>
-
-          {/* Conflict Card */}
-          <View style={styles.adviceCard}>
-            <Text style={styles.cardInfoLabel}>The Timeline Conflict</Text>
-            <Text style={styles.adviceText}>{advice.conflict}</Text>
-          </View>
-
-          {/* Comparison Row */}
-          <View style={styles.row}>
-            <View style={[styles.compareCard, { flex: 1, marginRight: 8 }]}>
-              <Text style={styles.compareLabel}>OPTION: SELL NOW</Text>
-              <Text style={styles.compareValue}>Rs.{advice.option_sell?.value_lkr || '0'}</Text>
-              <Text style={styles.compareDesc}>{advice.option_sell?.rationale}</Text>
-            </View>
-            <View style={[styles.compareCard, { flex: 1, backgroundColor: '#064e3b' }]}>
-              <Text style={[styles.compareLabel, { color: '#34d399' }]}>OPTION: WAIT</Text>
-              <Text style={[styles.compareValue, { color: '#34d399' }]}>{advice.option_wait?.value_lkr || '0'}</Text>
-              <Text style={styles.compareDesc}>By extending storage life for higher market rates.</Text>
-            </View>
-          </View>
-
-          {/* Action Plan */}
-          <View style={styles.adviceCard}>
-            <Text style={styles.cardInfoLabel}>Recommended Action Plan</Text>
-            {(advice.option_wait?.steps || []).map((step, i) => (
-              <View key={i} style={styles.stepRow}>
-                <View style={styles.stepNum}><Text style={styles.stepNumText}>{i + 1}</Text></View>
-                <Text style={styles.stepText}>{step}</Text>
-              </View>
-            ))}
-          </View>
-
-          {/* Quick Tips */}
-          <View style={styles.tipsRow}>
-            {(advice.quick_tips || []).map((tip, i) => (
-              <View key={i} style={styles.tipPill}>
-                <MaterialCommunityIcons name="lightning-bolt" size={12} color="#fbce15" />
-                <Text style={styles.tipPillText}>{tip}</Text>
-              </View>
-            ))}
-          </View>
-
-          <TouchableOpacity style={styles.copyBtn} onPress={() => {
-            Clipboard.setString(JSON.stringify(advice, null, 2));
-            Alert.alert('Copied', 'Advice details copied to clipboard');
-          }}>
-            <MaterialCommunityIcons name="content-copy" size={20} color="#94a3b8" />
-            <Text style={styles.copyBtnText}>Copy Advisory Details</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      ) : null}
-    </Animated.View>
-  );
-
-  const renderTips = () => {
-    const isMoistureHigh = moisture > 14;
-    const isTempHigh = temp > 30;
+  const renderPredictionResults = () => {
+    const sig = prediction.signal || 'YELLOW';
+    const cfg = SIGNAL_CFG[sig];
+    const stor = prediction.storage || {};
+    const price = prediction.price || {};
+    const risk = prediction.risk || {};
+    const costs = prediction.costs || {};
+    const fest = prediction.next_festival;
 
     return (
-      <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <Text style={styles.tabTitle}>Post-Harvest Best Practices</Text>
-
-          <View style={[styles.tipCardLarge, isMoistureHigh && styles.tipCardHighlight]}>
-            <MaterialCommunityIcons name="water-percent" size={32} color={isMoistureHigh ? '#fff' : '#34d399'} />
-            <Text style={[styles.tipCardTitle, isMoistureHigh && { color: '#fff' }]}>The 13% Safe Rule</Text>
-            <Text style={[styles.tipCardDesc, isMoistureHigh && { color: '#ecfdf5' }]}>
-              {isMoistureHigh ? "⚠️ YOUR MOISTURE IS HIGH! Dry your paddy to 13.5% immediately to prevent fungal growth." : "Fungal growth and metabolic heat generation are minimal below 13.5% moisture. This is the single most important factor."}
-            </Text>
+      <View style={styles.resultsWrapper}>
+        {/* Signal Banner */}
+        <View style={[styles.signalBanner, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
+          <MaterialCommunityIcons name={cfg.icon} size={28} color={cfg.color} />
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={[styles.signalTitle, { color: cfg.color }]}>{cfg.label}</Text>
+            <Text style={styles.signalAction}>{prediction.summary?.recommendation || prediction.risk_reward?.action || ''}</Text>
           </View>
+        </View>
 
-          <View style={styles.row}>
-            <View style={[styles.tipCardSmall, { flex: 1, marginRight: 8 }]}>
-              <MaterialCommunityIcons name="warehouse" size={24} color="#facc15" />
-              <Text style={styles.tipCardTitle}>Ventilation</Text>
-              <Text style={styles.tipCardDesc}>Ensure cross-ventilation to prevent moisture pockets.</Text>
+        {/* Key Metrics Row */}
+        <View style={styles.metricsRow}>
+          <MetricPill
+            icon="calendar-clock"
+            label="Safe Storage"
+            value={`${stor.storage_days || '—'} days`}
+            color={C.green} bg={C.greenSurface}
+          />
+          <MetricPill
+            icon="shield-half-full"
+            label="Risk Score"
+            value={`${risk.score || '—'}/100`}
+            color={risk.score >= 70 ? C.green : risk.score >= 50 ? '#B45309' : C.red}
+            bg={risk.score >= 70 ? C.greenSurface : risk.score >= 50 ? C.yellowBg : C.redBg}
+          />
+        </View>
+
+        {/* Price Forecast Card */}
+        <SectionCard>
+          <CardHeader icon="trending-up" title="Price Forecast" subtitle="Based on DOA/HARTI 2024/25 data" />
+          <View style={styles.priceRow}>
+            <View style={styles.priceBox}>
+              <Text style={styles.priceMeta}>CURRENT</Text>
+              <Text style={styles.priceValue}>Rs. {price.current_lkr}</Text>
+              <Text style={styles.priceUnit}>per kg</Text>
             </View>
-            <View style={[styles.tipCardSmall, { flex: 1 }]}>
-              <MaterialCommunityIcons name="bug" size={24} color="#f87171" />
-              <Text style={styles.tipCardTitle}>Pest Barrier</Text>
-              <Text style={styles.tipCardDesc}>Use Hermetic (airtight) bags to suffocate weevils.</Text>
+            <View style={styles.priceArrow}>
+              <MaterialCommunityIcons name="arrow-right-thick" size={22} color={C.green} />
+              <Text style={styles.gainPct}>+{price.gain_pct}%</Text>
+            </View>
+            <View style={[styles.priceBox, styles.peakBox]}>
+              <Text style={[styles.priceMeta, { color: C.green }]}>PEAK FORECAST</Text>
+              <Text style={[styles.priceValue, { color: C.green }]}>Rs. {price.peak_lkr}</Text>
+              <Text style={styles.priceUnit}>in {price.days_to_peak} days</Text>
             </View>
           </View>
-
-          <View style={[styles.tipCardLarge, isTempHigh && styles.tipCardHighlightTemp]}>
-            <MaterialCommunityIcons name="thermometer-alert" size={32} color={isTempHigh ? '#fff' : '#60a5fa'} />
-            <Text style={[styles.tipCardTitle, isTempHigh && { color: '#fff' }]}>Temperature Stacking</Text>
-            <Text style={[styles.tipCardDesc, isTempHigh && { color: '#fff1f2' }]}>
-              {isTempHigh ? "⚠️ WAREHOUSE TOO HOT! High temps (30°C+) double the rate of insect reproduction. Move bags to a cooler area." : "Never stack bags against galvanized walls. Leave a 1.5ft gap between stacks and walls for thermal insulation."}
-            </Text>
+          {/* Net Profit Bar */}
+          <View style={styles.profitBar}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.profitLabel}>Potential Net Profit</Text>
+              <Text style={styles.profitValue}>
+                Rs. {typeof costs.net_profit === 'number' ? costs.net_profit.toLocaleString() : '—'}
+              </Text>
+            </View>
+            <View style={[styles.profitSignal, { backgroundColor: costs.profitability === 'YES' ? C.greenSurface : C.yellowBg }]}>
+              <Text style={[styles.profitSignalText, { color: costs.profitability === 'YES' ? C.green : '#B45309' }]}>
+                {costs.profitability || 'MARGINAL'}
+              </Text>
+            </View>
           </View>
+        </SectionCard>
 
-          <View style={[styles.tipCardSmall, { marginTop: 8 }]}>
-            <MaterialCommunityIcons name="flask-outline" size={24} color="#c084fc" />
-            <Text style={styles.tipCardTitle}>Quality Grading</Text>
-            <Text style={styles.tipCardDesc}>Separate broken grains (broken rice) from whole head rice. Brokens absorb moisture faster.</Text>
+        {/* Storage Details */}
+        <SectionCard>
+          <CardHeader
+            icon="package-variant-closed"
+            title="Storage Analysis"
+            subtitle={stor.prediction_method ? `Prediction: ${stor.prediction_method}` : null}
+          />
+          <View style={styles.storageGrid}>
+            <View style={styles.storageItem}>
+              <Text style={styles.storageItemLabel}>Container</Text>
+              <Text style={styles.storageItemValue}>{METHODS.find(m => m.key === method)?.label || method}</Text>
+            </View>
+            <View style={styles.storageItem}>
+              <Text style={styles.storageItemLabel}>Grade</Text>
+              <Text style={[styles.storageItemValue, { color: C.green }]}>{stor.grade || '—'}</Text>
+            </View>
+            <View style={styles.storageItem}>
+              <Text style={styles.storageItemLabel}>Moisture Risk</Text>
+              <Text style={[styles.storageItemValue, { color: stor.moisture_risk === 'SAFE' ? C.green : C.red }]}>
+                {stor.moisture_risk || '—'}
+              </Text>
+            </View>
+            <View style={styles.storageItem}>
+              <Text style={styles.storageItemLabel}>Weevil Risk</Text>
+              <Text style={[styles.storageItemValue, {
+                color: stor.weevil_risk === 'LOW' ? C.green : stor.weevil_risk === 'MEDIUM' ? '#B45309' : C.red
+              }]}>
+                {stor.weevil_risk || '—'}
+              </Text>
+            </View>
+            {stor.ml_days && (
+              <View style={styles.storageItem}>
+                <Text style={styles.storageItemLabel}>ML Prediction</Text>
+                <Text style={[styles.storageItemValue, { color: '#7c3aed' }]}>{stor.ml_days} days</Text>
+              </View>
+            )}
+            {stor.physics_days && (
+              <View style={styles.storageItem}>
+                <Text style={styles.storageItemLabel}>Physics Model</Text>
+                <Text style={styles.storageItemValue}>{stor.physics_days} days</Text>
+              </View>
+            )}
           </View>
-        </ScrollView>
-      </Animated.View>
+          {/* Indoor environment info from ML prediction */}
+          {prediction.indoor_environment && (
+            <View style={styles.indoorEnvBox}>
+              <View style={styles.indoorEnvRow}>
+                <MaterialCommunityIcons name="thermometer" size={14} color="#ef4444" />
+                <Text style={styles.indoorEnvLabel}>Indoor Temp:</Text>
+                <Text style={[styles.indoorEnvVal, { color: prediction.indoor_environment.indoor_temp_c > 30 ? '#ef4444' : '#16a34a' }]}>
+                  {prediction.indoor_environment.indoor_temp_c}°C
+                </Text>
+                <Text style={styles.indoorEnvSrc}>(outdoor: {prediction.indoor_environment.outdoor_avg_temp}°C)</Text>
+              </View>
+              <View style={styles.indoorEnvRow}>
+                <MaterialCommunityIcons name="water-percent" size={14} color="#3b82f6" />
+                <Text style={styles.indoorEnvLabel}>Indoor Humid.:</Text>
+                <Text style={styles.indoorEnvVal}>{prediction.indoor_environment.indoor_humidity_pct}%</Text>
+                <Text style={styles.indoorEnvSrc}>Source: {prediction.indoor_environment.weather_source || '—'}</Text>
+              </View>
+              {prediction.indoor_environment.storage_alerts?.length > 0 && (
+                prediction.indoor_environment.storage_alerts.map((al, i) => (
+                  <View key={i} style={[styles.inlineAlert, { backgroundColor: al.level === 'critical' ? '#fef2f2' : '#fffbeb' }]}>
+                    <MaterialCommunityIcons name="alert" size={12} color={al.level === 'critical' ? '#ef4444' : '#f59e0b'} />
+                    <Text style={[styles.inlineAlertText, { color: al.level === 'critical' ? '#991b1b' : '#92400e' }]}>
+                      {al.message}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
+          )}
+          {stor.explanation ? (
+            <View style={styles.explanationBox}>
+              <MaterialCommunityIcons name="information-outline" size={14} color={C.textSecondary} />
+              <Text style={styles.explanationText}>{stor.explanation}</Text>
+            </View>
+          ) : null}
+        </SectionCard>
+
+        {/* Festival Insight */}
+        {fest && (
+          <View style={styles.festivalCard}>
+            <Text style={styles.festEmoji}>{fest.emoji || '🎊'}</Text>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.festName}>{fest.name}</Text>
+              <Text style={styles.festDetail}>
+                In {fest.days_away} days  ·  +{fest.boost_pct}% price boost expected
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {/* CTA → Advisor */}
+        <TouchableOpacity style={styles.advisorCta} onPress={() => setActiveTab('advisor')}>
+          <MaterialCommunityIcons name="robot-happy-outline" size={20} color={C.white} />
+          <Text style={styles.advisorCtaText}>Get AI Advisory Explanation</Text>
+          <MaterialCommunityIcons name="arrow-right" size={18} color={C.white} />
+        </TouchableOpacity>
+      </View>
     );
   };
 
-  return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar barStyle="light-content" />
-
-      {/* Header */}
-      <LinearGradient colors={['#064e3b', '#022c22']} style={styles.header}>
-        <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
-        <View style={styles.topBar}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backBtn}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <MaterialCommunityIcons name="arrow-left" size={26} color="#fff" />
+  // ─────────────────────────────────────────────────────────────────────────
+  // TAB: ADVISOR
+  // ─────────────────────────────────────────────────────────────────────────
+  const renderAdvisor = () => {
+    if (!prediction) {
+      return (
+        <Animated.View style={[styles.emptyState, { opacity: fadeAnim }]}>
+          <MaterialCommunityIcons name="chart-line-stacked" size={56} color={C.greenLight} />
+          <Text style={styles.emptyTitle}>No Forecast Yet</Text>
+          <Text style={styles.emptySub}>Run the forecast in the Analyze tab first to generate AI advice.</Text>
+          <TouchableOpacity style={styles.secondaryBtn} onPress={() => setActiveTab('analyze')}>
+            <Text style={styles.secondaryBtnText}>Go to Analysis</Text>
           </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>Post-Harvest Guardian</Text>
-            <Text style={styles.headerSub}>AI-Driven Research Advisory</Text>
+        </Animated.View>
+      );
+    }
+
+    const sig = prediction.signal || 'YELLOW';
+    const cfg = SIGNAL_CFG[sig];
+
+    return (
+      <Animated.ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+        style={{ opacity: fadeAnim }}
+      >
+        {/* Prediction Summary Strip */}
+        <View style={[styles.advisorSummaryStrip, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
+          <SignalBadge signal={sig} />
+          <View style={styles.advisorSummaryMeta}>
+            <Text style={styles.advisorSummaryVariety}>{variety} · {quantity} kg</Text>
+            <Text style={styles.advisorSummarySub}>
+              Storage: {prediction.storage?.storage_days} days  ·  Peak: +{prediction.price?.gain_pct}%
+            </Text>
           </View>
         </View>
 
-        {/* Custom Tab Bar */}
-        <View style={styles.tabBar}>
-          {['analyze', 'advisor', 'tips'].map(tab => (
-            <TouchableOpacity key={tab} onPress={() => setActiveTab(tab)} style={styles.tabItem}>
-              <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
-                {tab.toUpperCase()}
-              </Text>
-              {activeTab === tab && <View style={styles.activeIndicator} />}
-            </TouchableOpacity>
-          ))}
-        </View>
-      </LinearGradient>
+        {/* ── LANGUAGE SELECTION ───────────────────────────────────────────── */}
+        <SectionCard>
+          <CardHeader
+            icon="translate"
+            title="AI Advisor Explanation"
+            subtitle="Choose your language for a detailed explanation"
+          />
 
+          <Text style={styles.langInstructionText}>
+            Tap a language to generate advice from <Text style={{ fontWeight: '700', color: C.green }}>qwen2.5:7b</Text>:
+          </Text>
+
+          <View style={styles.langButtonRow}>
+            {LANG_OPTIONS.map((lang) => {
+              const isActive = adviceLang === lang.code;
+              const isLoading = loadingAdvice && adviceLang === lang.code;
+              return (
+                <TouchableOpacity
+                  key={lang.code}
+                  style={[
+                    styles.langBtn,
+                    isActive && styles.langBtnActive,
+                    isLoading && styles.langBtnLoading,
+                  ]}
+                  onPress={() => fetchAdvice(lang.code)}
+                  disabled={loadingAdvice}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator size="small" color={C.white} />
+                  ) : (
+                    <>
+                      <Text style={[styles.langBtnLabel, isActive && styles.langBtnLabelActive]}>
+                        {lang.native}
+                      </Text>
+                      {isActive && !loadingAdvice && (
+                        <MaterialCommunityIcons name="check" size={12} color={C.white} style={{ marginLeft: 4 }} />
+                      )}
+                    </>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {!advice && !loadingAdvice && (
+            <View style={styles.langHint}>
+              <MaterialCommunityIcons name="gesture-tap" size={16} color={C.textMuted} />
+              <Text style={styles.langHintText}>Select a language above to generate advice</Text>
+            </View>
+          )}
+        </SectionCard>
+
+        {/* ── LOADING STATE ────────────────────────────────────────────────── */}
+        {loadingAdvice && (
+          <SectionCard>
+            <View style={styles.loadingAdviceContainer}>
+              <View style={styles.loadingPulse}>
+                <ActivityIndicator size="large" color={C.green} />
+              </View>
+              <Text style={styles.loadingAdviceTitle}>Consulting AI Advisor...</Text>
+              <Text style={styles.loadingAdviceSub}>
+                qwen2.5:7b is generating your {LANG_OPTIONS.find(l => l.code === adviceLang)?.label || ''} advice
+              </Text>
+              <View style={styles.loadingDots}>
+                {[0, 1, 2].map(i => (
+                  <View key={i} style={[styles.loadingDot, { opacity: 0.3 + i * 0.25 }]} />
+                ))}
+              </View>
+            </View>
+          </SectionCard>
+        )}
+
+        {/* ── ADVICE DISPLAY ───────────────────────────────────────────────── */}
+        {advice && !loadingAdvice && (
+          <>
+            {/* Headline */}
+            {advice.headline && (
+              <SectionCard>
+                <View style={styles.headlineRow}>
+                  <View style={[styles.headlineIcon, { backgroundColor: cfg.bg }]}>
+                    <MaterialCommunityIcons name={cfg.icon} size={22} color={cfg.color} />
+                  </View>
+                  <Text style={styles.headlineText}>{advice.headline}</Text>
+                </View>
+                <View style={[styles.signalActionBadge, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
+                  <Text style={[styles.signalActionText, { color: cfg.color }]}>
+                    {advice.signal || sig}
+                  </Text>
+                </View>
+              </SectionCard>
+            )}
+
+            {/* Sell vs Store Options */}
+            <View style={styles.optionsRow}>
+              {advice.sell_option && (
+                <View style={[styles.optionCard, styles.sellOptionCard]}>
+                  <Text style={styles.optionLabel}>SELL NOW</Text>
+                  <Text style={styles.optionValue}>
+                    {typeof advice.sell_option.value_lkr === 'number'
+                      ? `Rs. ${advice.sell_option.value_lkr.toLocaleString()}`
+                      : advice.sell_option.value_lkr || '—'}
+                  </Text>
+                  <Text style={styles.optionDesc}>{advice.sell_option.rationale}</Text>
+                </View>
+              )}
+              {advice.store_option && (
+                <View style={[styles.optionCard, styles.storeOptionCard]}>
+                  <Text style={[styles.optionLabel, { color: C.green }]}>STORE & WAIT</Text>
+                  <Text style={[styles.optionValue, { color: C.green }]}>
+                    {typeof advice.store_option.projected_value_lkr === 'number'
+                      ? `Rs. ${advice.store_option.projected_value_lkr.toLocaleString()}`
+                      : advice.store_option.projected_value_lkr || 'Higher gain'}
+                  </Text>
+                  {advice.store_option.conditions && (
+                    <Text style={styles.optionDesc}>{advice.store_option.conditions}</Text>
+                  )}
+                </View>
+              )}
+            </View>
+
+            {/* ── SELL INDICATOR: Find Dealers Card ─────────────────────── */}
+            {(sig === 'RED' || (advice.signal && advice.signal.toUpperCase().includes('SELL'))) && (
+              <View style={styles.dealerFinderCard}>
+                {/* Header row */}
+                <LinearGradient
+                  colors={['#dc2626', '#c41a1a']}
+                  style={styles.dealerFinderHeader}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                >
+                  <View style={styles.dealerFinderHeaderLeft}>
+                    <View style={styles.sellNowBadge}>
+                      <MaterialCommunityIcons name="tag-arrow-right" size={14} color="#dc2626" />
+                      <Text style={styles.sellNowBadgeText}>SELL INDICATOR</Text>
+                    </View>
+                    <Text style={styles.dealerFinderTitle}>🏪 Find Buyers for Your Paddy</Text>
+                    <Text style={styles.dealerFinderSubtitle}>
+                      AI recommends selling now. Connect with dealers buying {variety} in your area.
+                    </Text>
+                  </View>
+                  <View style={styles.dealerFinderIconBox}>
+                    <MaterialCommunityIcons name="storefront" size={32} color="rgba(255,255,255,0.9)" />
+                  </View>
+                </LinearGradient>
+
+                {/* Info pills */}
+                <View style={styles.dealerFinderPills}>
+                  <View style={styles.dealerInfoPill}>
+                    <MaterialCommunityIcons name="rice" size={13} color="#dc2626" />
+                    <Text style={styles.dealerInfoPillText}>{variety}</Text>
+                  </View>
+                  <View style={styles.dealerInfoPill}>
+                    <MaterialCommunityIcons name="weight-kilogram" size={13} color="#6b7280" />
+                    <Text style={styles.dealerInfoPillText}>{quantity} kg</Text>
+                  </View>
+                  <View style={[styles.dealerInfoPill, { backgroundColor: '#fef2f2', borderColor: '#fecaca' }]}>
+                    <MaterialCommunityIcons name="trending-down" size={13} color="#dc2626" />
+                    <Text style={[styles.dealerInfoPillText, { color: '#dc2626' }]}>Sell Now</Text>
+                  </View>
+                </View>
+
+                {/* What to expect tips */}
+                <View style={styles.dealerTips}>
+                  <View style={styles.dealerTipRow}>
+                    <MaterialCommunityIcons name="check-circle" size={14} color="#16a34a" />
+                    <Text style={styles.dealerTipText}>View live dealer prices & grades accepted</Text>
+                  </View>
+                  <View style={styles.dealerTipRow}>
+                    <MaterialCommunityIcons name="check-circle" size={14} color="#16a34a" />
+                    <Text style={styles.dealerTipText}>See nearest dealers with transport options</Text>
+                  </View>
+                  <View style={styles.dealerTipRow}>
+                    <MaterialCommunityIcons name="check-circle" size={14} color="#16a34a" />
+                    <Text style={styles.dealerTipText}>Get dealer contact & complete deal in-app</Text>
+                  </View>
+                </View>
+
+                {/* CTA Button */}
+                <TouchableOpacity
+                  style={styles.dealerFinderBtn}
+                  onPress={() =>
+                    navigation.navigate('MarketTracking', {
+                      fromAdvisor: true,
+                      advisorVariety: variety,
+                      advisorSignal: sig,
+                      quantity: parseFloat(quantity),
+                    })
+                  }
+                >
+                  <LinearGradient
+                    colors={['#16a34a', '#15803d']}
+                    style={styles.dealerFinderBtnGrad}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <MaterialCommunityIcons name="storefront-outline" size={20} color="#fff" />
+                    <Text style={styles.dealerFinderBtnText}>Browse Dealers for {variety}</Text>
+                    <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" />
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* ── YELLOW/HOLD: Gentle dealer awareness nudge ─────────────── */}
+            {sig === 'YELLOW' && (
+              <View style={styles.dealerNudgeCard}>
+                <View style={styles.dealerNudgeIcon}>
+                  <MaterialCommunityIcons name="eye-outline" size={20} color="#d97706" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.dealerNudgeTitle}>Watch the Market</Text>
+                  <Text style={styles.dealerNudgeSub}>
+                    Storage is marginal. Browse dealer prices now so you're ready to sell {variety} at the right moment.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.dealerNudgeBtn}
+                    onPress={() =>
+                      navigation.navigate('MarketTracking', {
+                        fromAdvisor: true,
+                        advisorVariety: variety,
+                        advisorSignal: sig,
+                      })
+                    }
+                  >
+                    <MaterialCommunityIcons name="trending-up" size={14} color="#d97706" />
+                    <Text style={styles.dealerNudgeBtnText}>View Market Prices</Text>
+                    <MaterialCommunityIcons name="chevron-right" size={14} color="#d97706" />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Action Steps */}
+            {advice.store_option?.steps?.length > 0 && (
+              <SectionCard>
+                <CardHeader icon="list-check" title="Recommended Action Plan" />
+                {advice.store_option.steps.map((step, i) => (
+                  <View key={i} style={styles.stepItem}>
+                    <View style={styles.stepNum}>
+                      <Text style={styles.stepNumText}>{i + 1}</Text>
+                    </View>
+                    <Text style={styles.stepText}>{step}</Text>
+                  </View>
+                ))}
+              </SectionCard>
+            )}
+
+            {/* Festival Advice */}
+            {advice.festival_advice && (
+              <SectionCard>
+                <CardHeader icon="calendar-star" title="Festival Timing Advice" />
+                <Text style={styles.adviceBodyText}>{advice.festival_advice}</Text>
+              </SectionCard>
+            )}
+
+            {/* Danger Warning */}
+            {advice.danger_warning && (
+              <View style={styles.dangerCard}>
+                <MaterialCommunityIcons name="alert-octagon" size={20} color={C.red} />
+                <Text style={styles.dangerText}>{advice.danger_warning}</Text>
+              </View>
+            )}
+
+            {/* Quick Wins */}
+            {advice.quick_wins?.length > 0 && (
+              <SectionCard>
+                <CardHeader icon="lightning-bolt-outline" title="Quick Wins" subtitle="Act on these today" />
+                <View style={styles.quickWinsGrid}>
+                  {advice.quick_wins.map((tip, i) => (
+                    <View key={i} style={styles.quickWinPill}>
+                      <MaterialCommunityIcons name="check-circle-outline" size={14} color={C.green} />
+                      <Text style={styles.quickWinText}>{tip}</Text>
+                    </View>
+                  ))}
+                </View>
+              </SectionCard>
+            )}
+
+            {/* Copy / Language Switch */}
+            <View style={styles.advisorFooter}>
+              <TouchableOpacity
+                style={styles.footerBtn}
+                onPress={() => {
+                  Clipboard.setString(JSON.stringify(advice, null, 2));
+                  Alert.alert('Copied', 'Advice copied to clipboard');
+                }}
+              >
+                <MaterialCommunityIcons name="content-copy" size={16} color={C.textSecondary} />
+                <Text style={styles.footerBtnText}>Copy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.footerBtn}
+                onPress={() => { setAdvice(null); setAdviceLang(null); }}
+              >
+                <MaterialCommunityIcons name="refresh" size={16} color={C.textSecondary} />
+                <Text style={styles.footerBtnText}>Switch Language</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+      </Animated.ScrollView>
+    );
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TAB: TIPS
+  // ─────────────────────────────────────────────────────────────────────────
+  const renderTips = () => (
+    <Animated.ScrollView
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={{ paddingBottom: 40 }}
+      style={{ opacity: fadeAnim }}
+    >
+      <Text style={styles.tipsTitle}>Storage Best Practices</Text>
+
+      {/* Moisture Rule */}
+      <View style={[styles.tipCard, moisture > 14 && styles.tipCardAlert]}>
+        <MaterialCommunityIcons name="water-percent" size={28} color={moisture > 14 ? C.white : C.green} />
+        <Text style={[styles.tipCardTitle, moisture > 14 && { color: C.white }]}>The 13% Safe Rule</Text>
+        <Text style={[styles.tipCardDesc, moisture > 14 && { color: '#E8F5E9' }]}>
+          {moisture > 14
+            ? `⚠️ Your moisture (${moisture}%) is too high! Dry immediately to prevent fungal growth and aflatoxin.`
+            : 'Keeping moisture at or below 13% is the single most important factor in rice storage. At this level, fungal growth is virtually zero.'}
+        </Text>
+      </View>
+
+      <View style={styles.tipsRow}>
+        <View style={[styles.tipCardSmall, { flex: 1, marginRight: 8 }]}>
+          <MaterialCommunityIcons name="shield-lock-outline" size={22} color="#7C3AED" />
+          <Text style={styles.tipCardTitle}>Hermetic Bags</Text>
+          <Text style={styles.tipCardDesc}>Airtight hermetic bags suffocate weevils and prevent mold. Best for storage over 3 months.</Text>
+        </View>
+        <View style={[styles.tipCardSmall, { flex: 1 }]}>
+          <MaterialCommunityIcons name="bug-outline" size={22} color={C.red} />
+          <Text style={styles.tipCardTitle}>Kohomba (Neem)</Text>
+          <Text style={styles.tipCardDesc}>Layer dried neem leaves between bags. Natural weevil repellent, free if you have a tree.</Text>
+        </View>
+      </View>
+
+      <View style={[styles.tipCard, temp > 30 && styles.tipCardAlertTemp]}>
+        <MaterialCommunityIcons name="thermometer-lines" size={28} color={temp > 30 ? C.white : C.blue} />
+        <Text style={[styles.tipCardTitle, temp > 30 && { color: C.white }]}>Temperature Control</Text>
+        <Text style={[styles.tipCardDesc, temp > 30 && { color: '#EFF6FF' }]}>
+          {temp > 30
+            ? `⚠️ Your warehouse (${temp}°C) is too hot. Weevil breeding doubles above 30°C. Open vents at 5–8 AM.`
+            : 'Install PVC pipe breathers through walls at 45° angle. Allows hot air to escape passively at zero cost.'}
+        </Text>
+      </View>
+
+      <View style={styles.tipCard}>
+        <MaterialCommunityIcons name="layers-outline" size={28} color="#B45309" />
+        <Text style={styles.tipCardTitle}>Floor Strategy</Text>
+        <Text style={styles.tipCardDesc}>Never place bags on cement — it conducts moisture. Use a 10 cm layer of dry coconut husk (pol katu) or wooden pallets as a thermal break.</Text>
+      </View>
+
+      <View style={styles.tipsRow}>
+        <View style={[styles.tipCardSmall, { flex: 1, marginRight: 8 }]}>
+          <MaterialCommunityIcons name="cup-outline" size={22} color={C.textSecondary} />
+          <Text style={styles.tipCardTitle}>Salt Bottle Test</Text>
+          <Text style={styles.tipCardDesc}>Mix paddy + dry salt in a bottle. Sticks = MC &gt; 14%. Flows free = safe.</Text>
+        </View>
+        <View style={[styles.tipCardSmall, { flex: 1 }]}>
+          <MaterialCommunityIcons name="mouse" size={22} color={C.textSecondary} />
+          <Text style={styles.tipCardTitle}>Rat Guards</Text>
+          <Text style={styles.tipCardDesc}>Wrap smooth tin sheets around pallet legs. Rats cannot grip the slippery surface.</Text>
+        </View>
+      </View>
+    </Animated.ScrollView>
+  );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // MODALS
+  // ─────────────────────────────────────────────────────────────────────────
+  const renderPickerModal = () => {
+    if (!modalType) return null;
+    const isVariety = modalType === 'variety';
+    const options = isVariety
+      ? VARIETIES.map(v => ({ key: v, label: v }))
+      : METHODS;
+    const current = isVariety ? variety : method;
+
+    return (
+      <Modal visible transparent animationType="slide" onRequestClose={() => setModalType(null)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setModalType(null)}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHandle} />
+            <Text style={styles.modalTitle}>
+              Select {isVariety ? 'Rice Variety' : 'Storage Container'}
+            </Text>
+            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              {options.map((opt) => {
+                const isSelected = opt.key === current;
+                return (
+                  <TouchableOpacity
+                    key={opt.key}
+                    style={[styles.modalItem, isSelected && styles.modalItemActive]}
+                    onPress={() => {
+                      isVariety ? setVariety(opt.key) : setMethod(opt.key);
+                      setModalType(null);
+                    }}
+                  >
+                    {!isVariety && (
+                      <MaterialCommunityIcons
+                        name={opt.icon}
+                        size={20}
+                        color={isSelected ? C.green : C.textSecondary}
+                        style={{ marginRight: 12 }}
+                      />
+                    )}
+                    <Text style={[styles.modalItemText, isSelected && styles.modalItemTextActive]}>
+                      {opt.label}
+                    </Text>
+                    {isSelected && (
+                      <MaterialCommunityIcons name="check-circle" size={20} color={C.green} />
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    );
+  };
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // ROOT RENDER
+  // ─────────────────────────────────────────────────────────────────────────
+  const TAB_LIST = [
+    { key: 'analyze', icon: 'chart-line', label: 'Analyze' },
+    { key: 'advisor', icon: 'robot-happy', label: 'Advisor' },
+    { key: 'tips', icon: 'lightbulb-on', label: 'Tips' },
+  ];
+
+  return (
+    <SafeAreaView style={styles.root}>
+      <StatusBar barStyle="dark-content" backgroundColor={C.white} />
+
+      {/* ── HEADER ──────────────────────────────────────────────────────── */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <MaterialCommunityIcons name="arrow-left" size={22} color={C.textPrimary} />
+        </TouchableOpacity>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.headerTitle}>Post-Harvest Advisor</Text>
+          <Text style={styles.headerSub}>AI-Powered Storage & Market Intelligence</Text>
+        </View>
+        <View style={styles.headerBadge}>
+          <MaterialCommunityIcons name="leaf" size={14} color={C.green} />
+          <Text style={styles.headerBadgeText}>AgroMind</Text>
+        </View>
+      </View>
+
+      {/* ── TAB BAR ─────────────────────────────────────────────────────── */}
+      <View style={styles.tabBar}>
+        {TAB_LIST.map((tab) => {
+          const isActive = activeTab === tab.key;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              style={[styles.tabItem, isActive && styles.tabItemActive]}
+              onPress={() => {
+                fadeAnim.setValue(0);
+                slideAnim.setValue(16);
+                setActiveTab(tab.key);
+              }}
+            >
+              <MaterialCommunityIcons
+                name={tab.icon}
+                size={18}
+                color={isActive ? C.green : C.textMuted}
+              />
+              <Text style={[styles.tabLabel, isActive && styles.tabLabelActive]}>
+                {tab.label}
+              </Text>
+              {/* Prediction result dot indicator on Advisor tab */}
+              {tab.key === 'advisor' && prediction && !advice && (
+                <View style={styles.tabDot} />
+              )}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* ── CONTENT ─────────────────────────────────────────────────────── */}
       <View style={styles.content}>
         {activeTab === 'analyze' && renderAnalyze()}
         {activeTab === 'advisor' && renderAdvisor()}
         {activeTab === 'tips' && renderTips()}
       </View>
 
-      {/* Picker Modals */}
-      <Modal visible={modalType !== null} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Choose {modalType}</Text>
-              <TouchableOpacity onPress={() => setModalType(null)}>
-                <MaterialCommunityIcons name="close" size={24} color="#64748b" />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={{ maxHeight: 400 }}>
-              {(modalType === 'variety' ? VARIETIES : modalType === 'type' ? VARIETY_TYPES : METHODS).map(opt => (
-                <TouchableOpacity
-                  key={opt}
-                  style={styles.modalItem}
-                  onPress={() => {
-                    if (modalType === 'variety') setVariety(opt);
-                    else if (modalType === 'type') setVarietyType(opt);
-                    else setMethod(opt);
-                    setModalType(null);
-                  }}
-                >
-                  <Text style={styles.modalItemText}>{opt}</Text>
-                  {(variety === opt || varietyType === opt || method === opt) && (
-                    <MaterialCommunityIcons name="check" size={20} color="#16a34a" />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Map Selection Modal */}
-      <Modal visible={showMapModal} animationType="slide">
-        <View style={{ flex: 1, backgroundColor: '#0f172a' }}>
-          <WebView
-            source={{
-              html: MAP_HTML(
-                customCoords?.latitude || storageCoords?.latitude || location.latitude,
-                customCoords?.longitude || storageCoords?.longitude || location.longitude
-              )
-            }}
-            onMessage={(e) => {
-              const coords = JSON.parse(e.nativeEvent.data);
-              setTempMapCoords(coords);
-            }}
-            style={styles.mapFull}
-            scrollEnabled={false}
-          />
-
-          <View style={styles.mapPinHeader}>
-            <Text style={styles.mapPinTitle}>Refine Storage Location</Text>
-            <Text style={styles.mapPinSub}>Tap the map to pinpoint your exact warehouse</Text>
-          </View>
-
-          <View style={styles.mapPinFooter}>
-            <TouchableOpacity
-              style={styles.mapConfirmBtn}
-              onPress={confirmLocation}
-              disabled={!tempMapCoords}
-            >
-              <Text style={styles.mapConfirmText}>CONFIRM PIN LOCATION</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.mapCancelBtn} onPress={() => setShowMapModal(false)}>
-              <Text style={styles.mapCancelText}>CANCEL</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      {/* ── MODALS ──────────────────────────────────────────────────────── */}
+      {renderPickerModal()}
     </SafeAreaView>
   );
 }
 
+// ─── STYLES ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0f172a' },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 20) + 10 : 20,
-    paddingBottom: 10
+  root: {
+    flex: 1,
+    backgroundColor: C.bg,
   },
-  topBar: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, minHeight: 60 },
-  backBtn: { padding: 8, marginRight: 12, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12 },
-  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
-  headerSub: { color: '#34d399', fontSize: 12 },
 
-  tabBar: { flexDirection: 'row' },
-  tabItem: { flex: 1, alignItems: 'center', paddingVertical: 14 },
-  tabLabel: { color: '#64748b', fontSize: 12, fontWeight: '700' },
-  tabLabelActive: { color: '#fff' },
-  activeIndicator: { position: 'absolute', bottom: 0, width: '40%', height: 3, backgroundColor: '#34d399', borderRadius: 2 },
-
-  content: { flex: 1, padding: 20 },
-
-  // Context card
-  contextCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e293b', padding: 16, borderRadius: 20, marginBottom: 16, borderWidth: 1, borderColor: '#34d39940' },
-  contextLabel: { color: '#64748b', fontSize: 10, fontWeight: '800', textTransform: 'uppercase' },
-  contextValue: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  contextBadge: { backgroundColor: '#34d39920', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  contextBadgeText: { color: '#34d399', fontSize: 9, fontWeight: '900' },
-
-  // Form card
-  formCard: {
-    backgroundColor: '#1e293b',
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#334155'
+  // ── Dealer Finder Card (SELL signal)
+  dealerFinderCard: {
+    backgroundColor: C.white,
+    borderRadius: 20,
+    marginBottom: 14,
+    borderWidth: 1.5,
+    borderColor: '#fecaca',
+    overflow: 'hidden',
+    shadowColor: '#dc2626',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 5,
   },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 8 },
-  sectionTitle: { color: '#e2e8f0', fontSize: 14, fontWeight: '700' },
-  syncBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#0f172a', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, gap: 6, borderWidth: 1, borderColor: '#334155' },
-  syncActive: { backgroundColor: '#16a34a', borderColor: '#34d399' },
-  syncBadgeText: { fontSize: 9, fontWeight: '900', color: '#64748b', letterSpacing: 0.5 },
-
-  calibrationBanner: { flexDirection: 'row', padding: 12, borderRadius: 12, gap: 10, marginBottom: 16, borderWidth: 1 },
-  calibWarn: { backgroundColor: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 0.3)' },
-  calibSecure: { backgroundColor: 'rgba(74, 222, 128, 0.1)', borderColor: 'rgba(74, 222, 128, 0.3)' },
-  calibMsg: { fontSize: 11, fontWeight: '700', color: '#e2e8f0', lineHeight: 16 },
-  calibHint: { fontSize: 10, color: '#94a3b8', marginTop: 4, fontStyle: 'italic' },
-
-  pickerTrigger: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0f172a',
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#334155'
-  },
-  pickerLabel: { color: '#64748b', fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
-  pickerValue: { color: '#f1f5f9', fontSize: 15, fontWeight: '600', marginTop: 2 },
-
-  row: { flexDirection: 'row', gap: 0 },
-
-  inputGroup: { marginBottom: 16 },
-  inputRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  inputLabel: { color: '#94a3b8', fontSize: 12, fontWeight: '700' },
-  sliderVal: { fontSize: 13, fontWeight: '800' },
-
-  customSlider: { height: 6, backgroundColor: '#0f172a', borderRadius: 3, marginVertical: 8, position: 'relative' },
-  sliderTrack: { flex: 1 },
-  sliderFill: { position: 'absolute', height: '100%', borderRadius: 3 },
-  sliderHandle: { position: 'absolute', width: 14, height: 14, borderRadius: 7, backgroundColor: '#fff', top: -4, marginLeft: -7 },
-  sliderControls: { flexDirection: 'row', justifyContent: 'flex-start', gap: 12 },
-  stepBtn: { backgroundColor: '#334155', paddingHorizontal: 16, paddingVertical: 6, borderRadius: 8 },
-
-  textInput: { backgroundColor: '#0f172a', borderRadius: 16, padding: 16, color: '#fff', fontSize: 16, borderWidth: 1, borderColor: '#334155' },
-
-  climateMonitor: { backgroundColor: '#0f172a', borderRadius: 20, padding: 16, marginBottom: 20, borderWidth: 1, borderColor: '#334155' },
-  monitorHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  monitorTitle: { color: '#64748b', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
-  monitorGrid: { flexDirection: 'row', gap: 8 },
-  monitorBox: { flex: 1, backgroundColor: '#1e293b', borderRadius: 12, padding: 10, alignItems: 'center', borderWidth: 1, borderColor: '#334155' },
-  monitorLabel: { color: '#64748b', fontSize: 8, fontWeight: '800', marginBottom: 4 },
-  monitorValue: { color: '#fff', fontSize: 14, fontWeight: '900' },
-
-  refineBtn: { flex: 0.6, backgroundColor: '#064e3b30', borderRadius: 12, padding: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#34d39944', gap: 4 },
-  refineText: { color: '#34d399', fontSize: 8, fontWeight: '900' },
-
-  mapFull: { flex: 1 },
-  mapPinHeader: { position: 'absolute', top: 60, left: 20, right: 20, backgroundColor: 'rgba(15, 23, 42, 0.9)', padding: 16, borderRadius: 20, borderWidth: 1, borderColor: '#334155', alignItems: 'center' },
-  mapPinTitle: { color: '#fff', fontSize: 16, fontWeight: '900' },
-  mapPinSub: { color: '#34d399', fontSize: 11, fontWeight: '700', marginTop: 4 },
-  mapPinFooter: { position: 'absolute', bottom: 40, left: 20, right: 20, gap: 12 },
-  mapConfirmBtn: { backgroundColor: '#34d399', padding: 18, borderRadius: 16, alignItems: 'center' },
-  mapConfirmText: { color: '#064e3b', fontWeight: '900', fontSize: 16 },
-  mapCancelBtn: { backgroundColor: 'rgba(15, 23, 42, 0.8)', padding: 12, borderRadius: 16, alignItems: 'center' },
-  mapCancelText: { color: '#94a3b8', fontWeight: '700' },
-
-  analyzeBtn: { marginTop: 10, borderRadius: 16, overflow: 'hidden' },
-  btnGrad: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 16, gap: 10 },
-  btnText: { color: '#fff', fontSize: 15, fontWeight: '800' },
-
-  // Results
-  resultsWrapper: { marginTop: 12 },
-  signalBanner: {
+  dealerFinderHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 18,
+    paddingBottom: 16,
+    gap: 12,
+  },
+  dealerFinderHeaderLeft: {
+    flex: 1,
+  },
+  sellNowBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
     borderRadius: 20,
-    borderWidth: 1.5,
-    marginBottom: 12
-  },
-  signalLabel: { fontSize: 15, fontWeight: '900' },
-  signalSub: { color: '#94a3b8', fontSize: 12, marginTop: 2 },
-
-  metricsGrid: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-
-  // Price Forecast Card
-  priceForecastCard: { backgroundColor: '#1e293b', borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#334155' },
-  forecastHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 10 },
-  forecastTitle: { color: '#f1f5f9', fontSize: 16, fontWeight: '800' },
-  priceComparisonContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  priceBox: { flex: 1, alignItems: 'center', backgroundColor: '#0f172a', padding: 12, borderRadius: 16, borderWidth: 1, borderColor: '#334155' },
-  peakPriceBox: { borderColor: '#facc1540', backgroundColor: '#facc1505' },
-  priceMeta: { color: '#64748b', fontSize: 9, fontWeight: '800', marginBottom: 4 },
-  priceLarge: { color: '#fff', fontSize: 18, fontWeight: '900' },
-  priceUnit: { color: '#475569', fontSize: 10, marginTop: 2 },
-  priceArrowBox: { alignItems: 'center', paddingHorizontal: 4 },
-  gainPercent: { color: '#34d399', fontSize: 11, fontWeight: '800', marginTop: 4 },
-  profitHighlight: { padding: 16, borderRadius: 16, borderLeftWidth: 4, borderLeftColor: '#3b82f6' },
-  profitLabelRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 4 },
-  profitMeta: { color: '#94a3b8', fontSize: 10, fontWeight: '800' },
-  profitMain: { color: '#fff', fontSize: 20, fontWeight: '900' },
-  profitDesc: { color: '#64748b', fontSize: 11, lineHeight: 16 },
-  metricCard: { flex: 1, backgroundColor: '#1e293b', borderRadius: 20, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: '#334155' },
-  metricValue: { color: '#fff', fontSize: 18, fontWeight: '900', marginTop: 4 },
-  metricLabel: { color: '#64748b', fontSize: 10, fontWeight: '700', marginTop: 2 },
-  metricSub: { color: '#475569', fontSize: 9, marginTop: 1 },
-
-  advisorCta: { borderRadius: 16, overflow: 'hidden' },
-
-  // Advisor Tab
-  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 80 },
-  emptyTitle: { color: '#f1f5f9', fontSize: 20, fontWeight: '800', marginTop: 20 },
-  emptySub: { color: '#64748b', fontSize: 14, textAlign: 'center', marginTop: 8, paddingHorizontal: 40 },
-  returnBtn: { marginTop: 24, backgroundColor: '#34d399', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
-  returnBtnText: { color: '#064e3b', fontWeight: '800' },
-
-  loadingWrapper: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 80 },
-  loadingText: { color: '#94a3b8', fontSize: 14, marginTop: 16 },
-
-  adviceHeader: { marginBottom: 20 },
-  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     alignSelf: 'flex-start',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)'
+    marginBottom: 8,
+    gap: 4,
   },
-  adviceSummary: { color: '#fff', fontSize: 22, fontWeight: '900', lineHeight: 30, marginBottom: 12 },
-  adviceCard: { backgroundColor: '#1e293b', borderRadius: 24, padding: 22, marginBottom: 16, borderWidth: 1, borderColor: '#334155', elevation: 4 },
-  cardInfoLabel: { color: '#34d399', fontSize: 13, fontWeight: '900', marginBottom: 12, textTransform: 'uppercase', letterSpacing: 1 },
-  adviceText: { color: '#cbd5e1', fontSize: 15, lineHeight: 24 },
+  sellNowBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#dc2626',
+    letterSpacing: 1,
+  },
+  dealerFinderTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: -0.3,
+    marginBottom: 4,
+  },
+  dealerFinderSubtitle: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.85)',
+    lineHeight: 17,
+  },
+  dealerFinderIconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dealerFinderPills: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 4,
+  },
+  dealerInfoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    gap: 5,
+  },
+  dealerInfoPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  dealerTips: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 4,
+    gap: 8,
+  },
+  dealerTipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dealerTipText: {
+    fontSize: 12.5,
+    color: '#374151',
+    flex: 1,
+    lineHeight: 18,
+  },
+  dealerFinderBtn: {
+    margin: 16,
+    marginTop: 14,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  dealerFinderBtnGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  dealerFinderBtnText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#fff',
+    flex: 1,
+    textAlign: 'center',
+    letterSpacing: -0.2,
+  },
 
-  compareCard: { backgroundColor: '#111827', borderRadius: 20, padding: 16, borderWidth: 1, borderColor: '#334155' },
-  compareLabel: { color: '#64748b', fontSize: 10, fontWeight: '800', marginBottom: 6 },
-  compareValue: { color: '#fff', fontSize: 18, fontWeight: '900', marginBottom: 4 },
-  compareDesc: { color: '#475569', fontSize: 11, lineHeight: 16 },
+  // ── Dealer Nudge Card (YELLOW signal)
+  dealerNudgeCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: '#fffbeb',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    gap: 12,
+  },
+  dealerNudgeIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#fef3c7',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+  },
+  dealerNudgeTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#92400e',
+    marginBottom: 3,
+  },
+  dealerNudgeSub: {
+    fontSize: 12,
+    color: '#78350f',
+    lineHeight: 17,
+    marginBottom: 10,
+  },
+  dealerNudgeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fef3c7',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderColor: '#fde68a',
+    gap: 5,
+  },
+  dealerNudgeBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#d97706',
+  },
 
-  stepRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 12, gap: 12 },
-  stepNum: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#34d399', justifyContent: 'center', alignItems: 'center' },
-  stepNumText: { color: '#064e3b', fontSize: 12, fontWeight: '800' },
-  stepText: { flex: 1, color: '#f1f5f9', fontSize: 14 },
+  // ── Header
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 0) + 8 : 8,
+    paddingBottom: 12,
+    backgroundColor: C.white,
+    borderBottomWidth: 1,
+    borderBottomColor: C.cardBorder,
+    gap: 12,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: C.bg,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+  },
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: C.textPrimary,
+    letterSpacing: -0.3,
+  },
+  headerSub: {
+    fontSize: 11,
+    color: C.textSecondary,
+    marginTop: 1,
+  },
+  headerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.greenSurface,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    gap: 4,
+  },
+  headerBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: C.green,
+  },
 
-  tipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
-  tipPill: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#334155', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, gap: 6 },
-  tipPillText: { color: '#e2e8f0', fontSize: 11, fontWeight: '700' },
+  // ── Tab Bar
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: C.white,
+    paddingHorizontal: 16,
+    paddingBottom: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: C.cardBorder,
+  },
+  tabItem: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 6,
+    borderBottomWidth: 2.5,
+    borderBottomColor: 'transparent',
+    position: 'relative',
+  },
+  tabItemActive: {
+    borderBottomColor: C.green,
+  },
+  tabLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: C.textMuted,
+  },
+  tabLabelActive: {
+    color: C.green,
+    fontWeight: '800',
+  },
+  tabDot: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: C.green,
+  },
 
-  copyBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 16 },
-  copyBtnText: { color: '#94a3b8', fontSize: 13, fontWeight: '700' },
+  // ── Content area
+  content: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+  },
 
-  // Tips Tab
-  tabTitle: { color: '#fff', fontSize: 20, fontWeight: '800', marginBottom: 20 },
-  tipCardLarge: { backgroundColor: '#1e293b', borderRadius: 24, padding: 24, marginBottom: 12, borderWidth: 1, borderColor: '#334155' },
-  tipCardSmall: { backgroundColor: '#111827', borderRadius: 24, padding: 20, marginBottom: 12, borderWidth: 1, borderColor: '#334155' },
-  tipCardTitle: { color: '#fff', fontSize: 16, fontWeight: '800', marginTop: 12, marginBottom: 6 },
-  tipCardDesc: { color: '#64748b', fontSize: 13, lineHeight: 20 },
-  tipCardHighlight: { backgroundColor: '#059669', borderColor: '#34d399' },
-  tipCardHighlightTemp: { backgroundColor: '#dc2626', borderColor: '#f87171' },
+  // ── Section Card
+  sectionCard: {
+    backgroundColor: C.card,
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    shadowColor: C.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 10,
+  },
+  cardHeaderIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: C.greenSurface,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: C.textPrimary,
+    letterSpacing: -0.2,
+  },
+  cardSubtitle: {
+    fontSize: 11,
+    color: C.textSecondary,
+    marginTop: 1,
+  },
 
-  // Modals
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#1e293b', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
-  modalItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: '#334155' },
-  modalItemText: { color: '#f1f5f9', fontSize: 16, fontWeight: '600' },
+  // ── Batch Notice
+  batchNotice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.greenSurface,
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: C.greenLight,
+    gap: 8,
+  },
+  batchNoticeText: {
+    flex: 1,
+    fontSize: 13,
+    color: C.textPrimary,
+  },
+  preFilledTag: {
+    backgroundColor: C.green,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  preFilledTagText: {
+    color: C.white,
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+
+  // ── Picker Row
+  pickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.bg,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+  },
+  pickerLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: C.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  pickerValue: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: C.textPrimary,
+    marginTop: 2,
+  },
+
+  // ── Step Counter (Moisture Slider)
+  stepCounter: {
+    marginBottom: 14,
+  },
+  stepCounterRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  valueBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  valueBadgeText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  stepBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: C.bg,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepTrack: {
+    flex: 1,
+    height: 8,
+    backgroundColor: C.cardBorder,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  stepFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+
+  // ── Climate Card
+  climateCard: {
+    backgroundColor: C.bg,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+  },
+  climateHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  climateTitle: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: C.textSecondary,
+    letterSpacing: 1,
+  },
+  syncDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    marginLeft: 4,
+  },
+  syncLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  climateGrid: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  climateBox: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: C.card,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    gap: 4,
+  },
+  climateValue: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: C.textPrimary,
+  },
+  climateBoxLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: C.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  calibMsg: {
+    fontSize: 11,
+    color: C.textSecondary,
+    marginTop: 10,
+    lineHeight: 16,
+  },
+
+  // ── Text Input
+  inputGroup: {
+    marginBottom: 14,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: C.textSecondary,
+    marginBottom: 8,
+  },
+  textInput: {
+    backgroundColor: C.bg,
+    borderRadius: 14,
+    padding: 14,
+    fontSize: 16,
+    fontWeight: '600',
+    color: C.textPrimary,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+  },
+
+  // ── Buttons
+  primaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: C.green,
+    borderRadius: 16,
+    paddingVertical: 16,
+    gap: 8,
+    marginTop: 4,
+    shadowColor: C.green,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  primaryBtnDisabled: {
+    opacity: 0.7,
+  },
+  primaryBtnText: {
+    color: C.white,
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  secondaryBtn: {
+    backgroundColor: C.greenSurface,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderWidth: 1,
+    borderColor: C.greenLight,
+    marginTop: 16,
+  },
+  secondaryBtnText: {
+    color: C.green,
+    fontWeight: '700',
+    fontSize: 14,
+  },
+
+  // ── Results
+  resultsWrapper: {
+    marginTop: 4,
+  },
+
+  signalBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1.5,
+    marginBottom: 12,
+    gap: 4,
+  },
+  signalTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  signalAction: {
+    fontSize: 12,
+    color: C.textSecondary,
+    marginTop: 3,
+    lineHeight: 17,
+  },
+
+  signalBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 4,
+    alignSelf: 'flex-start',
+  },
+  signalBadgeText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+
+  // ── Metrics Row
+  metricsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  metricPill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+  },
+  metricValue: {
+    fontSize: 16,
+    fontWeight: '900',
+  },
+  metricLabel: {
+    fontSize: 10,
+    color: C.textSecondary,
+    fontWeight: '600',
+  },
+
+  // ── Price Forecast Card
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  priceBox: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: C.bg,
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+  },
+  peakBox: {
+    borderColor: C.greenLight,
+    backgroundColor: C.greenSurface,
+  },
+  priceMeta: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: C.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  priceValue: {
+    fontSize: 17,
+    fontWeight: '900',
+    color: C.textPrimary,
+  },
+  priceUnit: {
+    fontSize: 10,
+    color: C.textMuted,
+    marginTop: 2,
+  },
+  priceArrow: {
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  gainPct: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: C.green,
+    marginTop: 3,
+  },
+  profitBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.bg,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+  },
+  profitLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: C.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  profitValue: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: C.textPrimary,
+    marginTop: 2,
+  },
+  profitSignal: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    marginLeft: 12,
+  },
+  profitSignalText: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+
+  // ── Storage Grid
+  storageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 10,
+  },
+  storageItem: {
+    width: (width - 32 - 36 - 8) / 2,
+    backgroundColor: C.bg,
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+  },
+  storageItemLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: C.textMuted,
+    textTransform: 'uppercase',
+    marginBottom: 4,
+    letterSpacing: 0.3,
+  },
+  storageItemValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: C.textPrimary,
+  },
+  explanationBox: {
+    flexDirection: 'row',
+    backgroundColor: C.bg,
+    borderRadius: 10,
+    padding: 10,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    alignItems: 'flex-start',
+  },
+  explanationText: {
+    flex: 1,
+    fontSize: 12,
+    color: C.textSecondary,
+    lineHeight: 18,
+  },
+
+  // ── Festival Card
+  festivalCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.yellowBg,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  festEmoji: {
+    fontSize: 28,
+  },
+  festName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  festDetail: {
+    fontSize: 12,
+    color: '#B45309',
+    marginTop: 2,
+  },
+
+  // ── Advisor CTA
+  advisorCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: C.green,
+    borderRadius: 16,
+    paddingVertical: 16,
+    gap: 8,
+    marginBottom: 14,
+    shadowColor: C.green,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  advisorCtaText: {
+    flex: 1,
+    color: C.white,
+    fontSize: 15,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+
+  // ── Empty State
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: C.textPrimary,
+    marginTop: 16,
+  },
+  emptySub: {
+    fontSize: 14,
+    color: C.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
+  },
+
+  // ── Advisor Summary Strip
+  advisorSummaryStrip: {
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    marginBottom: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  advisorSummaryMeta: {
+    flex: 1,
+  },
+  advisorSummaryVariety: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: C.textPrimary,
+  },
+  advisorSummarySub: {
+    fontSize: 12,
+    color: C.textSecondary,
+    marginTop: 2,
+  },
+
+  // ── Language Buttons
+  langInstructionText: {
+    fontSize: 13,
+    color: C.textSecondary,
+    marginBottom: 14,
+    lineHeight: 18,
+  },
+  langButtonRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  langBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: C.bg,
+    borderWidth: 1.5,
+    borderColor: C.cardBorder,
+    gap: 4,
+  },
+  langBtnActive: {
+    backgroundColor: C.green,
+    borderColor: C.green,
+    shadowColor: C.green,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  langBtnLoading: {
+    backgroundColor: C.green,
+    borderColor: C.green,
+    opacity: 0.85,
+  },
+  langBtnLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: C.textSecondary,
+  },
+  langBtnLabelActive: {
+    color: C.white,
+  },
+  langHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 14,
+    gap: 6,
+  },
+  langHintText: {
+    fontSize: 12,
+    color: C.textMuted,
+  },
+
+  // ── Loading Advice
+  loadingAdviceContainer: {
+    alignItems: 'center',
+    paddingVertical: 24,
+  },
+  loadingPulse: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: C.greenSurface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  loadingAdviceTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: C.textPrimary,
+  },
+  loadingAdviceSub: {
+    fontSize: 12,
+    color: C.textSecondary,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  loadingDots: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 16,
+  },
+  loadingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: C.green,
+  },
+
+  // ── Advice Cards
+  headlineRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 12,
+  },
+  headlineIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  headlineText: {
+    flex: 1,
+    fontSize: 17,
+    fontWeight: '800',
+    color: C.textPrimary,
+    lineHeight: 24,
+  },
+  signalActionBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  signalActionText: {
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+
+  optionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  optionCard: {
+    flex: 1,
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+  },
+  sellOptionCard: {
+    backgroundColor: C.bg,
+    borderColor: C.cardBorder,
+  },
+  storeOptionCard: {
+    backgroundColor: C.greenSurface,
+    borderColor: C.greenLight,
+  },
+  optionLabel: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: C.textMuted,
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+  optionValue: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: C.textPrimary,
+    marginBottom: 6,
+  },
+  optionDesc: {
+    fontSize: 11,
+    color: C.textSecondary,
+    lineHeight: 16,
+  },
+
+  stepItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+    gap: 12,
+  },
+  stepNum: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: C.green,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  stepNumText: {
+    color: C.white,
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  stepText: {
+    flex: 1,
+    fontSize: 13,
+    color: C.textPrimary,
+    lineHeight: 20,
+  },
+
+  adviceBodyText: {
+    fontSize: 14,
+    color: C.textPrimary,
+    lineHeight: 22,
+  },
+
+  dangerCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: C.redBg,
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    gap: 10,
+    marginBottom: 12,
+  },
+  dangerText: {
+    flex: 1,
+    fontSize: 13,
+    color: C.red,
+    fontWeight: '600',
+    lineHeight: 19,
+  },
+
+  quickWinsGrid: {
+    gap: 8,
+  },
+  quickWinPill: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: C.bg,
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+  },
+  quickWinText: {
+    flex: 1,
+    fontSize: 13,
+    color: C.textPrimary,
+    lineHeight: 18,
+  },
+
+  advisorFooter: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 16,
+    paddingTop: 4,
+    marginBottom: 8,
+  },
+  footerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: C.card,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+  },
+  footerBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: C.textSecondary,
+  },
+
+  // ── Tips
+  tipsTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: C.textPrimary,
+    marginBottom: 16,
+    letterSpacing: -0.5,
+  },
+  tipCard: {
+    backgroundColor: C.card,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    gap: 8,
+  },
+  tipCardAlert: {
+    backgroundColor: C.green,
+    borderColor: C.greenMid,
+  },
+  tipCardAlertTemp: {
+    backgroundColor: '#EF4444',
+    borderColor: '#FCA5A5',
+  },
+  tipsRow: {
+    flexDirection: 'row',
+    marginBottom: 4,
+  },
+  tipCardSmall: {
+    backgroundColor: C.card,
+    borderRadius: 18,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    gap: 6,
+  },
+  tipCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: C.textPrimary,
+  },
+  tipCardDesc: {
+    fontSize: 13,
+    color: C.textSecondary,
+    lineHeight: 19,
+  },
+
+  // ── Modals
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  modalSheet: {
+    backgroundColor: C.white,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    padding: 24,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: C.cardBorder,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: C.textPrimary,
+    marginBottom: 16,
+  },
+  modalItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: C.divider,
+  },
+  modalItemActive: {
+    backgroundColor: C.greenSurface,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    marginHorizontal: -4,
+  },
+  modalItemText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: C.textPrimary,
+  },
+  modalItemTextActive: {
+    color: C.green,
+    fontWeight: '700',
+  },
+
+  // ── Storage Location Card
+  locationCard: {
+    backgroundColor: C.blueBg,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  locationCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  locationCardTitle: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: '800',
+    color: C.blue,
+    letterSpacing: 0.3,
+  },
+  locationGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  locationItem: {
+    width: (width - 32 - 36 - 8) / 2 - 4,
+    backgroundColor: C.white,
+    borderRadius: 10,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#DBEAFE',
+  },
+  locationItemLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: C.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    marginBottom: 3,
+  },
+  locationItemValue: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: C.textPrimary,
+  },
+
+  // ── ML Badge
+  mlBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F5F3FF',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    gap: 3,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+  },
+  mlBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#7C3AED',
+    letterSpacing: 0.3,
+  },
+
+  // ── Indoor Environment inline display
+  indoorEnvBox: {
+    backgroundColor: C.bg,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: C.cardBorder,
+    gap: 6,
+  },
+  indoorEnvRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  indoorEnvLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: C.textSecondary,
+  },
+  indoorEnvVal: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: C.textPrimary,
+  },
+  indoorEnvSrc: {
+    fontSize: 10,
+    color: C.textMuted,
+    flex: 1,
+  },
+
+  // ── Inline alert
+  inlineAlert: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+    padding: 8,
+    borderRadius: 8,
+    marginTop: 4,
+  },
+  inlineAlertText: {
+    flex: 1,
+    fontSize: 11,
+    lineHeight: 16,
+    fontWeight: '600',
+  },
 });

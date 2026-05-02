@@ -8,7 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const { width: SW } = Dimensions.get('window');
-const BASE_URL = 'http://192.168.100.198:5000'; // Flask Backend
+import { BASE_URL } from '../../utils/apiConfig';
 
 // Asset mapping (using local requires for React Native stability)
 const IMAGE_MAP = {
@@ -276,13 +276,12 @@ export default function StorageExpertGuideScreen({ navigation, route }) {
 
     return (
         <View style={styles.root}>
-            <StatusBar barStyle="light-content" />
-            <LinearGradient colors={['#030810', '#081425']} style={StyleSheet.absoluteFillObject} />
+            <StatusBar barStyle="dark-content" backgroundColor="#f9fafb" />
 
             <SafeAreaView style={{ flex: 1 }}>
                 <View style={styles.header}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                        <MaterialCommunityIcons name="chevron-left" size={32} color="#fff" />
+                        <MaterialCommunityIcons name="chevron-left" size={32} color="#16a34a" />
                     </TouchableOpacity>
                     <View>
                         <Text style={styles.hTitle}>Storage Mastery</Text>
@@ -327,22 +326,22 @@ export default function StorageExpertGuideScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-    root: { flex: 1, backgroundColor: '#030810' },
-    centered: { flex: 1, backgroundColor: '#030810', justifyContent: 'center', alignItems: 'center' },
-    loadingTxt: { color: '#4b6b8a', fontSize: 10, fontWeight: '900', letterSpacing: 2, marginTop: 15 },
+    root: { flex: 1, backgroundColor: '#f9fafb' },
+    centered: { flex: 1, backgroundColor: '#f9fafb', justifyContent: 'center', alignItems: 'center' },
+    loadingTxt: { color: '#6b7280', fontSize: 10, fontWeight: '900', letterSpacing: 2, marginTop: 15 },
 
-    header: { flexDirection: 'row', alignItems: 'center', padding: 20, paddingTop: Platform.OS === 'android' ? 40 : 10, gap: 15 },
-    backBtn: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
-    hTitle: { color: '#fff', fontSize: 22, fontWeight: '900' },
-    hSub: { color: '#10b981', fontSize: 12, fontWeight: '700' },
+    header: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingTop: Platform.OS === 'android' ? 16 : 10, gap: 14, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#e5e7eb', elevation: 2 },
+    backBtn: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#f0fdf4', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#bbf7d0' },
+    hTitle: { color: '#111827', fontSize: 20, fontWeight: '900' },
+    hSub: { color: '#16a34a', fontSize: 12, fontWeight: '700' },
 
-    tabs: { marginBottom: 20 },
-    tab: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', marginRight: 10, gap: 8, borderWidth: 1, borderColor: 'transparent' },
-    activeTab: { backgroundColor: '#10b981', borderColor: 'rgba(255,255,255,0.2)' },
-    tabText: { color: '#4b6b8a', fontSize: 13, fontWeight: '800' },
+    tabs: { marginBottom: 8 },
+    tab: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, backgroundColor: '#f3f4f6', marginRight: 10, gap: 8, borderWidth: 1, borderColor: '#e5e7eb' },
+    activeTab: { backgroundColor: '#16a34a', borderColor: '#16a34a' },
+    tabText: { color: '#6b7280', fontSize: 13, fontWeight: '800' },
     activeTabText: { color: '#fff' },
 
-    kCard: { marginHorizontal: 16, backgroundColor: '#0a1a2f', borderRadius: 32, overflow: 'hidden', borderWidth: 1, borderColor: '#1a2e46' },
+    kCard: { marginHorizontal: 16, backgroundColor: '#fff', borderRadius: 28, overflow: 'hidden', borderWidth: 1, borderColor: '#e5e7eb', elevation: 2 },
     kImageWrap: { height: 240, width: '100%', position: 'relative' },
     kImage: { width: '100%', height: '100%' },
     imageOverlay: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 20, height: '60%', justifyContent: 'flex-end' },
@@ -351,36 +350,36 @@ const styles = StyleSheet.create({
     xgbText: { color: '#fff', fontSize: 9, fontWeight: '900' },
     kGoal: { color: '#fff', fontSize: 16, fontWeight: '800', lineHeight: 22 },
 
-    kBody: { padding: 20 },
+    kBody: { padding: 20, backgroundColor: '#fff' },
     kItem: { marginBottom: 25 },
     itemHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 15, gap: 10 },
-    dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#10b981' },
-    itemName: { color: '#fff', fontSize: 16, fontWeight: '900' },
+    dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#16a34a' },
+    itemName: { color: '#111827', fontSize: 16, fontWeight: '900' },
 
     comparisonGrid: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 15 },
     compareCol: { flex: 1 },
-    colLabel: { color: '#4b6b8a', fontSize: 8, fontWeight: '900', letterSpacing: 1, marginBottom: 6 },
-    toolBox: { backgroundColor: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)', height: 54, justifyContent: 'center' },
-    toolTxt: { color: '#fff', fontSize: 11, fontWeight: '700', textAlign: 'center' },
+    colLabel: { color: '#9ca3af', fontSize: 8, fontWeight: '900', letterSpacing: 1, marginBottom: 6 },
+    toolBox: { backgroundColor: '#f9fafb', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb', height: 54, justifyContent: 'center' },
+    toolTxt: { color: '#374151', fontSize: 11, fontWeight: '700', textAlign: 'center' },
     arrowBox: { paddingTop: 20 },
 
-    logicBox: { flexDirection: 'row', backgroundColor: '#030810', padding: 15, borderRadius: 16, gap: 12, alignItems: 'flex-start' },
-    logicTxt: { flex: 1, color: '#8fa8c0', fontSize: 12, lineHeight: 18, fontWeight: '600' },
+    logicBox: { flexDirection: 'row', backgroundColor: '#f9fafb', padding: 15, borderRadius: 14, gap: 12, alignItems: 'flex-start', borderWidth: 1, borderColor: '#e5e7eb' },
+    logicTxt: { flex: 1, color: '#6b7280', fontSize: 12, lineHeight: 18, fontWeight: '600' },
 
-    kDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.05)', marginTop: 25 },
+    kDivider: { height: 1, backgroundColor: '#f3f4f6', marginTop: 25 },
 
-    disclaimer: { margin: 20, flexDirection: 'row', gap: 10, alignItems: 'center', opacity: 0.6 },
-    disclaimerText: { flex: 1, color: '#4b6b8a', fontSize: 11, fontWeight: '600', fontStyle: 'italic' },
+    disclaimer: { margin: 16, flexDirection: 'row', gap: 10, alignItems: 'center', opacity: 0.7 },
+    disclaimerText: { flex: 1, color: '#9ca3af', fontSize: 11, fontWeight: '600', fontStyle: 'italic' },
 
-    aiDeepDive: { marginTop: 10, borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#7c3aed44' },
+    aiDeepDive: { marginTop: 10, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#e9d5ff', backgroundColor: '#faf5ff' },
     aiDeepHeader: { flexDirection: 'row', alignItems: 'center', gap: 15, marginBottom: 20 },
-    aiIconSpot: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#7c3aed20', justifyContent: 'center', alignItems: 'center' },
-    aiDeepTitle: { color: '#a78bfa', fontSize: 13, fontWeight: '900', letterSpacing: 1.5 },
-    aiDeepSub: { color: '#4b6b8a', fontSize: 11, fontWeight: '700' },
+    aiIconSpot: { width: 44, height: 44, borderRadius: 12, backgroundColor: '#ede9fe', justifyContent: 'center', alignItems: 'center' },
+    aiDeepTitle: { color: '#7c3aed', fontSize: 13, fontWeight: '900', letterSpacing: 1.5 },
+    aiDeepSub: { color: '#9ca3af', fontSize: 11, fontWeight: '700' },
     aiAdviseWrap: { gap: 15 },
-    aiAdviseTxt: { color: '#fff', fontSize: 13, lineHeight: 22, fontWeight: '600' },
+    aiAdviseTxt: { color: '#374151', fontSize: 13, lineHeight: 22, fontWeight: '600' },
     hackList: { gap: 12 },
-    hackItem: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 14 },
-    hackText: { color: '#cbd5e1', fontSize: 12, fontWeight: '600', flex: 1, lineHeight: 18 },
-    noAiText: { color: '#4b6b8a', fontSize: 11, fontStyle: 'italic', textAlign: 'center' },
+    hackItem: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', backgroundColor: '#fff', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#e5e7eb' },
+    hackText: { color: '#374151', fontSize: 12, fontWeight: '600', flex: 1, lineHeight: 18 },
+    noAiText: { color: '#9ca3af', fontSize: 11, fontStyle: 'italic', textAlign: 'center' },
 });

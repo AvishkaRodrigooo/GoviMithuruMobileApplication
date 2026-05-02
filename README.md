@@ -2,7 +2,9 @@
 *AI-Powered Paddy Farming Support Platform*
 
 🔗 **Group ID:** 25J-26J-242  
-🔗 **GitHub Repository:** (https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication)
+🔗 **Website Link:** https://agromind-guide.vercel.app/ 
+                          🔗 **GitHub Repository:** (https://github.com/AvishkaRodrigooo/GoviMithuruMobileApplication)
+
 
 ---
 
