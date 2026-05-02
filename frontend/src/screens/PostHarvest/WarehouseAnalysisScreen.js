@@ -99,6 +99,10 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
     const [hourlyHumidData, setHourlyHumidData] = useState([]);
     const [weatherError, setWeatherError] = useState(null);
     const [fineTuneAccuracy, setFineTuneAccuracy] = useState(null);
+    const [monitoringMode, setMonitoringMode] = useState('free');
+    const [deviceId, setDeviceId] = useState(null);
+    const [liveSensorData, setLiveSensorData] = useState(null);
+    const [sensorHistory, setSensorHistory] = useState([]); // hourly IoT readings (up to 24)
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -112,7 +116,12 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                 if (!uid || !locationId) return;
 
                 const doc = await db.collection('storageLocations').doc(locationId).get();
-                if (doc.exists) setLocData(doc.data());
+                if (doc.exists) {
+                    const lData = doc.data();
+                    setLocData(lData);
+                    setMonitoringMode(lData.monitoringMode || 'free');
+                    setDeviceId(lData.deviceId || null);
+                }
 
                 const snap = await db.collection('harvests')
                     .where('userId', '==', uid)
@@ -136,6 +145,46 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
         })();
     }, [locationId]);
 
+    // Firestore: listen to live IoT sensor data + hourly history subcollection
+    useEffect(() => {
+        let unsubLive = null;
+        let unsubHistory = null;
+
+        if (monitoringMode === 'premium' && deviceId) {
+            // Live current reading
+            unsubLive = db.collection('sensors').doc(deviceId).onSnapshot(doc => {
+                if (doc.exists) {
+                    setLiveSensorData(doc.data());
+                } else {
+                    setLiveSensorData(null);
+                }
+            });
+
+            // Hourly history subcollection — last 24 documents ordered by ts desc
+            unsubHistory = db
+                .collection('sensors').doc(deviceId)
+                .collection('hourlyData')
+                .orderBy('ts', 'desc')
+                .limit(24)
+                .onSnapshot(snap => {
+                    const rows = [];
+                    snap.forEach(d => rows.push(d.data()));
+                    // Reverse so oldest is first (left side of chart)
+                    setSensorHistory(rows.reverse());
+                }, err => {
+                    console.warn('[IoT history]', err.message);
+                    setSensorHistory([]);
+                });
+        } else {
+            setSensorHistory([]);
+        }
+
+        return () => {
+            if (unsubLive) unsubLive();
+            if (unsubHistory) unsubHistory();
+        };
+    }, [monitoringMode, deviceId]);
+
     // Fetch weather + fine-tuned indoor conditions when locData is ready
     useEffect(() => {
         if (!locData) return;
@@ -155,6 +204,33 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
             Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
         }
     }, [loading]);
+
+    // Re-read monitoringMode + deviceId whenever screen comes back into focus
+    // (e.g. returning from SensorConnectionScreen after connect/disconnect)
+    const reloadLocationMode = async () => {
+        if (!locationId) return;
+        try {
+            const doc = await db.collection('storageLocations').doc(locationId).get();
+            if (doc.exists) {
+                const d = doc.data();
+                const newMode = d.monitoringMode || 'free';
+                const newDeviceId = d.deviceId || null;
+                setMonitoringMode(newMode);
+                setDeviceId(newDeviceId);
+                // If mode switched to free, clear live sensor data
+                if (newMode !== 'premium') {
+                    setLiveSensorData(null);
+                }
+            }
+        } catch (e) {
+            console.error('[WarehouseAnalysis] reloadLocationMode:', e);
+        }
+    };
+
+    useEffect(() => {
+        const unsubFocus = navigation.addListener('focus', reloadLocationMode);
+        return unsubFocus;
+    }, [navigation, locationId]);
 
     const fetchEnvironmentData = async (lat, lon) => {
         setWeatherLoading(true);
@@ -241,9 +317,10 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
     const color = statusColor(fillPercent);
     const label = statusLabel(fillPercent);
 
-    // Current display values
-    const dispIndoorTemp = indoorEnv?.indoor?.avg_temperature ?? outdoorWeather?.temp_c ?? 28.5;
-    const dispIndoorHumid = indoorEnv?.indoor?.avg_humidity ?? outdoorWeather?.humidity_pct ?? 62;
+    // Current display values (Override ML with Live Sensor if available)
+    const isUsingLiveSensor = monitoringMode === 'premium' && liveSensorData != null;
+    const dispIndoorTemp = isUsingLiveSensor ? liveSensorData.temperature : indoorEnv?.indoor?.avg_temperature ?? outdoorWeather?.temp_c ?? 28.5;
+    const dispIndoorHumid = isUsingLiveSensor ? liveSensorData.humidity : indoorEnv?.indoor?.avg_humidity ?? outdoorWeather?.humidity_pct ?? 62;
     const dispPeakTemp = indoorEnv?.indoor?.peak_temperature ?? dispIndoorTemp;
     const tempStatus = dispIndoorTemp > 32 ? 'DANGER' : dispIndoorTemp > 29 ? 'WARNING' : 'SAFE';
     const humidStatus = dispIndoorHumid > 80 ? 'DANGER' : dispIndoorHumid > 70 ? 'WARNING' : 'SAFE';
@@ -349,6 +426,112 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                     ))}
                 </View>
 
+                {/* ─── MONITORING MODE CARD ─── */}
+                {isUsingLiveSensor ? (
+                    /* IoT CONNECTED */
+                    <View style={[s.modeCard, { backgroundColor: '#f0fdf4', borderColor: '#86efac' }]}>
+                        <View style={s.modeCardTop}>
+                            <View style={[s.modeIconBox, { backgroundColor: '#dcfce7' }]}>
+                                <MaterialCommunityIcons name="chip" size={22} color="#16a34a" />
+                            </View>
+                            <View style={{ flex: 1, marginLeft: 12 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                    <Text style={[s.modeTitle, { color: '#15803d' }]}>IoT Method — LIVE</Text>
+                                    <View style={s.modeLiveDot} />
+                                </View>
+                                <Text style={s.modeSub}>Real-time sensor data from ESP32+DHT22</Text>
+                                <Text style={[s.modeDeviceId, { color: '#16a34a' }]}>Device: {deviceId}</Text>
+                            </View>
+                        </View>
+                        <View style={s.modeActions}>
+                            <TouchableOpacity
+                                style={[s.modeBtn, { backgroundColor: '#dcfce7', borderColor: '#86efac' }]}
+                                onPress={() => navigation.navigate('ConnectSensors', { locationId })}
+                            >
+                                <MaterialCommunityIcons name="cog-outline" size={15} color="#15803d" />
+                                <Text style={[s.modeBtnText, { color: '#15803d' }]}>Manage Sensor</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[s.modeBtn, { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }]}
+                                onPress={async () => {
+                                    try {
+                                        await db.collection('storageLocations').doc(locationId).set(
+                                            { monitoringMode: 'free', deviceId: null, iotConfig: null },
+                                            { merge: true }
+                                        );
+                                        setMonitoringMode('free');
+                                        setDeviceId(null);
+                                        setLiveSensorData(null);
+                                    } catch (e) { console.error(e); }
+                                }}
+                            >
+                                <MaterialCommunityIcons name="brain" size={15} color="#1d4ed8" />
+                                <Text style={[s.modeBtnText, { color: '#1d4ed8' }]}>Back to Free AI</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                ) : monitoringMode === 'premium' ? (
+                    /* IoT MODE but DISCONNECTED */
+                    <View style={[s.modeCard, { backgroundColor: '#fef2f2', borderColor: '#fecaca' }]}>
+                        <View style={s.modeCardTop}>
+                            <View style={[s.modeIconBox, { backgroundColor: '#fee2e2' }]}>
+                                <MaterialCommunityIcons name="wifi-off" size={22} color="#ef4444" />
+                            </View>
+                            <View style={{ flex: 1, marginLeft: 12 }}>
+                                <Text style={[s.modeTitle, { color: '#dc2626' }]}>IoT Method — NO SIGNAL</Text>
+                                <Text style={s.modeSub}>ESP32 sensor is not sending data right now</Text>
+                                {deviceId && <Text style={[s.modeDeviceId, { color: '#9ca3af' }]}>Device: {deviceId}</Text>}
+                            </View>
+                        </View>
+                        <View style={s.modeActions}>
+                            <TouchableOpacity
+                                style={[s.modeBtn, { backgroundColor: '#fef2f2', borderColor: '#fecaca', flex: 1 }]}
+                                onPress={() => navigation.navigate('ConnectSensors', { locationId })}
+                            >
+                                <MaterialCommunityIcons name="refresh" size={15} color="#ef4444" />
+                                <Text style={[s.modeBtnText, { color: '#ef4444' }]}>Reconnect Sensor</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[s.modeBtn, { backgroundColor: '#eff6ff', borderColor: '#bfdbfe', flex: 1 }]}
+                                onPress={async () => {
+                                    try {
+                                        await db.collection('storageLocations').doc(locationId).set(
+                                            { monitoringMode: 'free', deviceId: null, iotConfig: null },
+                                            { merge: true }
+                                        );
+                                        setMonitoringMode('free');
+                                        setDeviceId(null);
+                                        setLiveSensorData(null);
+                                    } catch (e) { console.error(e); }
+                                }}
+                            >
+                                <MaterialCommunityIcons name="brain" size={15} color="#1d4ed8" />
+                                <Text style={[s.modeBtnText, { color: '#1d4ed8' }]}>Switch to Free AI</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                ) : (
+                    /* FREE METHOD — offer IoT upgrade */
+                    <View style={[s.modeCard, { backgroundColor: '#eff6ff', borderColor: '#bfdbfe' }]}>
+                        <View style={s.modeCardTop}>
+                            <View style={[s.modeIconBox, { backgroundColor: '#dbeafe' }]}>
+                                <MaterialCommunityIcons name="brain" size={22} color="#3b82f6" />
+                            </View>
+                            <View style={{ flex: 1, marginLeft: 12 }}>
+                                <Text style={[s.modeTitle, { color: '#1d4ed8' }]}>Free Method — AI Prediction</Text>
+                                <Text style={s.modeSub}>Using ML + weather data to estimate indoor conditions</Text>
+                            </View>
+                        </View>
+                        <TouchableOpacity
+                            style={[s.modeBtn, { backgroundColor: '#dcfce7', borderColor: '#86efac', alignSelf: 'stretch' }]}
+                            onPress={() => navigation.navigate('ConnectSensors', { locationId })}
+                        >
+                            <MaterialCommunityIcons name="access-point" size={15} color="#15803d" />
+                            <Text style={[s.modeBtnText, { color: '#15803d' }]}>Connect IoT Sensor for Real-time Data</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
+
                 {/* ─── LIVE CONDITIONS (Real 24h + Fine-tuned ML) ─── */}
                 <View style={s.sectionRow}>
                     <Text style={s.sectionTitle}>LIVE INDOOR CONDITIONS</Text>
@@ -365,15 +548,22 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                     }
                 </View>
 
-                {/* Fine-tune badge */}
-                {fineTuneAccuracy && (
+                {/* Fine-tune badge or IoT live badge */}
+                {isUsingLiveSensor ? (
+                    <View style={[s.fineTuneBadge, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}>
+                        <MaterialCommunityIcons name="chip" size={14} color="#16a34a" />
+                        <Text style={[s.fineTuneText, { color: '#16a34a' }]}>
+                            Hardware IoT Live Sync Active
+                        </Text>
+                    </View>
+                ) : fineTuneAccuracy ? (
                     <View style={s.fineTuneBadge}>
                         <MaterialCommunityIcons name="brain" size={14} color="#7c3aed" />
                         <Text style={s.fineTuneText}>
                             ML Fine-Tuned: {fineTuneAccuracy}
                         </Text>
                     </View>
-                )}
+                ) : null}
 
                 <View style={s.envGrid}>
                     {/* Indoor Temperature */}
@@ -449,51 +639,220 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                     </View>
                 )}
 
-                {/* 24h Temperature Chart */}
-                {!weatherLoading && hourlyTempData.length > 0 && (
-                    <View style={s.chartCard}>
-                        <View style={s.chartCardHeader}>
-                            <MaterialCommunityIcons name="chart-bell-curve" size={18} color="#16a34a" />
-                            <Text style={s.chartCardTitle}>PAST 24H — INDOOR TEMPERATURE</Text>
-                            {outdoorWeather && (
-                                <View style={s.liveDot}>
-                                    <View style={s.liveDotInner} />
-                                    <Text style={s.liveDotText}>LIVE</Text>
+                {/* ─── CHART SECTION ─── */}
+                {isUsingLiveSensor ? (
+                    /* ── IoT MODE: Real sensor hourly history ── */
+                    (() => {
+                        // Sensor power detection
+                        // Check multiple possible timestamp field names the ESP32 might use
+                        const rawTs =
+                            liveSensorData?.timestamp ??
+                            liveSensorData?.ts ??
+                            liveSensorData?.time ??
+                            liveSensorData?.updatedAt ??
+                            liveSensorData?.lastSeen ??
+                            null;
+
+                        // Resolve to a JS Date — handles Firestore Timestamp, {seconds,nanoseconds}, ISO string, epoch ms/s
+                        let lastTs = null;
+                        if (rawTs) {
+                            if (rawTs?.toDate) {
+                                lastTs = rawTs.toDate(); // Firestore Timestamp object
+                            } else if (rawTs?.seconds != null) {
+                                lastTs = new Date(rawTs.seconds * 1000); // serialised {seconds, nanoseconds}
+                            } else {
+                                const parsed = new Date(rawTs);
+                                lastTs = isNaN(parsed.getTime()) ? null : parsed;
+                            }
+                        }
+
+                        // Key rule: if the sensor document has a temperature reading,
+                        // the sensor IS online — even if there is no timestamp field.
+                        // Only mark as offline when a timestamp EXISTS and is > 65 min stale (to allow for 1-hour intervals).
+                        const hasLiveReading = liveSensorData?.temperature != null;
+                        const sensorOnline = hasLiveReading && (
+                            lastTs
+                                ? (Date.now() - lastTs.getTime()) < 65 * 60 * 1000
+                                : true  // no timestamp field → assume online since we have data
+                        );
+
+                        // Calculate remaining time for the next 1-hour reading
+                        let remainingMins = null;
+                        if (lastTs && sensorOnline) {
+                            const diffMs = Date.now() - lastTs.getTime();
+                            const oneHourMs = 60 * 60 * 1000;
+                            if (diffMs >= 0 && diffMs < oneHourMs) {
+                                remainingMins = Math.ceil((oneHourMs - diffMs) / (60 * 1000));
+                            } else if (diffMs < 0) {
+                                remainingMins = 60;
+                            }
+                        }
+
+                        const hoursCollected = sensorHistory.length;
+                        const isHistoryComplete = hoursCollected >= 24;
+
+                        return (
+                            <>
+                                {/* Sensor Power Status */}
+                                {!sensorOnline && (
+                                    <View style={s.sensorOfflineBox}>
+                                        <MaterialCommunityIcons name="power-off" size={20} color="#ef4444" />
+                                        <View style={{ flex: 1, marginLeft: 10 }}>
+                                            <Text style={s.sensorOfflineTitle}>Sensor Power OFF</Text>
+                                            <Text style={s.sensorOfflineSub}>
+                                                {lastTs
+                                                    ? `Last seen: ${lastTs.toLocaleTimeString()}`
+                                                    : 'No signal received yet'}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                )}
+
+                                {/* IoT Hourly Temp Chart */}
+                                <View style={s.chartCard}>
+                                    <View style={s.chartCardHeader}>
+                                        <MaterialCommunityIcons name="thermometer" size={18} color="#ef4444" />
+                                        <Text style={s.chartCardTitle}>STORAGE TEMPERATURE — HOURLY AVG</Text>
+                                        {sensorOnline && (
+                                            <View style={s.liveDot}>
+                                                <View style={[s.liveDotInner, { backgroundColor: '#16a34a' }]} />
+                                                <Text style={s.liveDotText}>LIVE</Text>
+                                            </View>
+                                        )}
+                                    </View>
+
+                                    {/* Progress bar: X/24 hours */}
+                                    {!isHistoryComplete && (
+                                        <View style={s.historyProgressBox}>
+                                            <View style={s.historyProgressBar}>
+                                                <View style={[s.historyProgressFill, { width: `${(hoursCollected / 24) * 100}%` }]} />
+                                            </View>
+                                            <Text style={s.historyProgressText}>
+                                                {hoursCollected}/24 hours collected
+                                                {hoursCollected === 0 
+                                                    ? ` — Waiting for first reading${remainingMins !== null ? ` (Next in ~${remainingMins}m)` : ''}`
+                                                    : ` — Not yet complete${remainingMins !== null ? ` (Next in ~${remainingMins}m)` : ''}`}
+                                            </Text>
+                                        </View>
+                                    )}
+
+                                    {sensorHistory.length > 0 ? (
+                                        (() => {
+                                            const temps = sensorHistory.map(r => r.avgTemp ?? r.temperature ?? 0);
+                                            const maxT = Math.max(...temps) || 1;
+                                            const minT = Math.min(...temps);
+                                            return (
+                                                <View style={[s.chartBars, { height: 90 }]}>
+                                                    {sensorHistory.map((r, i) => {
+                                                        const val = r.avgTemp ?? r.temperature ?? 0;
+                                                        const pct = Math.max(10, ((val - minT) / (maxT - minT + 1)) * 100);
+                                                        const hot = val > 30;
+                                                        const label = r.hour !== undefined ? `${r.hour}h` : '';
+                                                        return (
+                                                            <View key={i} style={s.chartBarWrap}>
+                                                                <Text style={[s.chartBarVal, { color: hot ? '#ef4444' : '#374151' }]}>
+                                                                    {val.toFixed(0)}
+                                                                </Text>
+                                                                <View style={[s.chartBar, {
+                                                                    height: Math.max(pct * 0.7, 6),
+                                                                    backgroundColor: hot ? '#ef4444' : '#16a34a',
+                                                                }]} />
+                                                                {i % 4 === 0 && (
+                                                                    <Text style={s.chartBarHour}>{label}</Text>
+                                                                )}
+                                                            </View>
+                                                        );
+                                                    })}
+                                                </View>
+                                            );
+                                        })()
+                                    ) : (
+                                        <View style={{ paddingVertical: 20, alignItems: 'center' }}>
+                                            <MaterialCommunityIcons name="chart-timeline" size={32} color="#d1d5db" />
+                                            <Text style={{ color: '#9ca3af', fontSize: 12, marginTop: 8 }}>
+                                                Hourly data will appear once the sensor sends its first reading.
+                                            </Text>
+                                        </View>
+                                    )}
+                                    <Text style={s.chartUnit}>°C</Text>
                                 </View>
-                            )}
-                        </View>
-                        <TempChart
-                            data={hourlyTempData}
-                            label=""
-                            unit="°C"
-                            colorHigh="#ef4444"
-                            colorNormal="#16a34a"
-                        />
-                    </View>
-                )}
 
-                {/* 24h Humidity Chart */}
-                {!weatherLoading && hourlyHumidData.length > 0 && (
-                    <View style={s.chartCard}>
-                        <View style={s.chartCardHeader}>
-                            <MaterialCommunityIcons name="water-percent" size={18} color="#3b82f6" />
-                            <Text style={s.chartCardTitle}>PAST 24H — INDOOR HUMIDITY</Text>
-                        </View>
-                        <TempChart
-                            data={hourlyHumidData}
-                            label=""
-                            unit="%"
-                            colorHigh="#3b82f6"
-                            colorNormal="#93c5fd"
-                        />
-                    </View>
-                )}
-
-                {weatherError && !weatherLoading && (
-                    <View style={s.errorBox}>
-                        <MaterialCommunityIcons name="wifi-off" size={16} color="#9ca3af" />
-                        <Text style={s.errorText}>{weatherError} — showing defaults</Text>
-                    </View>
+                                {/* IoT Hourly Humidity Chart */}
+                                {sensorHistory.length > 0 && (
+                                    <View style={s.chartCard}>
+                                        <View style={s.chartCardHeader}>
+                                            <MaterialCommunityIcons name="water-percent" size={18} color="#3b82f6" />
+                                            <Text style={s.chartCardTitle}>STORAGE HUMIDITY — HOURLY AVG</Text>
+                                        </View>
+                                        {(() => {
+                                            const humids = sensorHistory.map(r => r.avgHumid ?? r.humidity ?? 0);
+                                            const maxH = Math.max(...humids) || 1;
+                                            const minH = Math.min(...humids);
+                                            return (
+                                                <View style={[s.chartBars, { height: 90 }]}>
+                                                    {sensorHistory.map((r, i) => {
+                                                        const val = r.avgHumid ?? r.humidity ?? 0;
+                                                        const pct = Math.max(10, ((val - minH) / (maxH - minH + 1)) * 100);
+                                                        const wet = val > 80;
+                                                        const label = r.hour !== undefined ? `${r.hour}h` : '';
+                                                        return (
+                                                            <View key={i} style={s.chartBarWrap}>
+                                                                <Text style={[s.chartBarVal, { color: wet ? '#3b82f6' : '#374151' }]}>
+                                                                    {val.toFixed(0)}
+                                                                </Text>
+                                                                <View style={[s.chartBar, {
+                                                                    height: Math.max(pct * 0.7, 6),
+                                                                    backgroundColor: wet ? '#3b82f6' : '#93c5fd',
+                                                                }]} />
+                                                                {i % 4 === 0 && (
+                                                                    <Text style={s.chartBarHour}>{label}</Text>
+                                                                )}
+                                                            </View>
+                                                        );
+                                                    })}
+                                                </View>
+                                            );
+                                        })()}
+                                        <Text style={s.chartUnit}>%</Text>
+                                    </View>
+                                )}
+                            </>
+                        );
+                    })()
+                ) : (
+                    /* ── FREE MODE: ML / weather prediction charts ── */
+                    <>
+                        {!weatherLoading && hourlyTempData.length > 0 && (
+                            <View style={s.chartCard}>
+                                <View style={s.chartCardHeader}>
+                                    <MaterialCommunityIcons name="chart-bell-curve" size={18} color="#16a34a" />
+                                    <Text style={s.chartCardTitle}>PAST 24H — INDOOR TEMPERATURE</Text>
+                                    {outdoorWeather && (
+                                        <View style={s.liveDot}>
+                                            <View style={s.liveDotInner} />
+                                            <Text style={s.liveDotText}>LIVE</Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <TempChart data={hourlyTempData} label="" unit="°C" colorHigh="#ef4444" colorNormal="#16a34a" />
+                            </View>
+                        )}
+                        {!weatherLoading && hourlyHumidData.length > 0 && (
+                            <View style={s.chartCard}>
+                                <View style={s.chartCardHeader}>
+                                    <MaterialCommunityIcons name="water-percent" size={18} color="#3b82f6" />
+                                    <Text style={s.chartCardTitle}>PAST 24H — INDOOR HUMIDITY</Text>
+                                </View>
+                                <TempChart data={hourlyHumidData} label="" unit="%" colorHigh="#3b82f6" colorNormal="#93c5fd" />
+                            </View>
+                        )}
+                        {weatherError && !weatherLoading && (
+                            <View style={s.errorBox}>
+                                <MaterialCommunityIcons name="wifi-off" size={16} color="#9ca3af" />
+                                <Text style={s.errorText}>{weatherError} — showing defaults</Text>
+                            </View>
+                        )}
+                    </>
                 )}
 
                 {/* Helpful Guides */}
@@ -603,12 +962,7 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                     )}
                 </View>
 
-                {/* Setup sensors link */}
-                <TouchableOpacity onPress={() => navigation.navigate('ConnectSensors')} style={s.sensorBtn}>
-                    <MaterialCommunityIcons name="access-point" size={18} color="#3b82f6" />
-                    <Text style={s.sensorBtnText}>Setup IoT Sensors for Realtime Monitoring</Text>
-                    <MaterialCommunityIcons name="chevron-right" size={16} color="#9ca3af" />
-                </TouchableOpacity>
+                {/* bottom spacer — mode card above handles IoT/free toggle */}
 
             </ScrollView>
         </SafeAreaView>
@@ -750,7 +1104,30 @@ const s = StyleSheet.create({
     emptyBox: { padding: 30, alignItems: 'center' },
     emptyText: { color: '#9ca3af', fontSize: 14, marginTop: 10 },
 
-    // Sensor button
+    // Sensor button (legacy, kept for safety)
     sensorBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#eff6ff', padding: 14, borderRadius: 14, borderWidth: 1, borderColor: '#bfdbfe', gap: 10, marginBottom: 8 },
     sensorBtnText: { flex: 1, color: '#1d4ed8', fontSize: 13, fontWeight: '600' },
+
+    // Monitoring Mode Card
+    modeCard: { borderRadius: 18, padding: 16, marginBottom: 16, borderWidth: 1.5, elevation: 1 },
+    modeCardTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+    modeIconBox: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
+    modeTitle: { fontSize: 14, fontWeight: '900', letterSpacing: 0.2 },
+    modeSub: { fontSize: 12, color: '#6b7280', marginTop: 2, lineHeight: 17 },
+    modeDeviceId: { fontSize: 11, fontWeight: '700', marginTop: 4, fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace' },
+    modeLiveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#16a34a' },
+    modeActions: { flexDirection: 'row', gap: 8 },
+    modeBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1 },
+    modeBtnText: { fontSize: 12, fontWeight: '800' },
+
+    // Sensor Power OFF box
+    sensorOfflineBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fef2f2', borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1.5, borderColor: '#fecaca' },
+    sensorOfflineTitle: { color: '#dc2626', fontSize: 13, fontWeight: '900' },
+    sensorOfflineSub: { color: '#9ca3af', fontSize: 11, marginTop: 2 },
+
+    // IoT history progress
+    historyProgressBox: { marginBottom: 10 },
+    historyProgressBar: { height: 5, backgroundColor: '#f3f4f6', borderRadius: 3, overflow: 'hidden', marginBottom: 5 },
+    historyProgressFill: { height: '100%', backgroundColor: '#16a34a', borderRadius: 3 },
+    historyProgressText: { color: '#9ca3af', fontSize: 11, fontWeight: '600' },
 });
