@@ -100,7 +100,7 @@ export default function BeginnerStorageGuideScreen({ navigation }) {
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const inputRef = useRef(null);
 
-    // Load initial welcome message
+    // Load initial welcome message ONLY on first load
     useEffect(() => {
         setMessages([
             {
@@ -117,7 +117,7 @@ export default function BeginnerStorageGuideScreen({ navigation }) {
             duration: 800,
             useNativeDriver: true,
         }).start();
-    }, [currentLanguage]);
+    }, []); // Removed currentLanguage to prevent resetting chat history mid-conversation
 
     const speakText = (text, language, messageId) => {
         if (isSpeaking && speakingMessageId === messageId) {

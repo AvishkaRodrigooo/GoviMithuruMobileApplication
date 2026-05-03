@@ -419,8 +419,9 @@ export default function RegisterHarvestScreen({ navigation, route }) {
 
   // ─── Manual AI chat ────────────────────────────────────────────────────────
   const handleManualChat = async (questionOverride = null) => {
-    const q = questionOverride || chatInput;
-    if (!q.trim()) return;
+    const overrideStr = typeof questionOverride === 'string' ? questionOverride : null;
+    const q = overrideStr || chatInput;
+    if (!q || typeof q !== 'string' || !q.trim()) return;
     
     const userMsg = { id: Date.now(), text: q, isBot: false };
     setChatMessages(prev => [...prev, userMsg]);
