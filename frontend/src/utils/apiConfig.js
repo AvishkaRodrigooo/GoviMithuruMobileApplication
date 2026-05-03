@@ -15,7 +15,6 @@ const BACKEND_PORT = '5000';
 
 const getBaseUrl = () => {
     // In development, hostUri typically contains the IP:Port of the dev server
-    // Check multiple potential locations for the hostUri (different Expo versions)
     const hostUri = Constants.expoConfig?.hostUri ||
         Constants.manifest?.debuggerHost ||
         Constants.manifest2?.extra?.expoGo?.debuggerHost;
@@ -30,14 +29,7 @@ const getBaseUrl = () => {
         }
     }
 
-    // Special case for Android Emulators if hostUri is still not found/valid
-    if (Platform.OS === 'android') {
-        // 10.0.2.2 is the default IP for the host machine in Android Emulators
-        console.log(`[API Config] 📱 Android detected. Using 10.0.2.2 (Emulator)`);
-        return `http://10.0.2.2:${BACKEND_PORT}`;
-    }
-
-    // Fallback to manual IP if auto-detection fails
+    // Fallback to manual IP (works for both physical devices and emulators on the same network)
     const fallbackUrl = `http://${MANUAL_BACKEND_IP}:${BACKEND_PORT}`;
     console.log(`[API Config] ⚠️ Auto-detection failed. Using manual fallback: ${fallbackUrl}`);
     return fallbackUrl;

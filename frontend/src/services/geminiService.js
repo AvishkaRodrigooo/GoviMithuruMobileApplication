@@ -1,5 +1,7 @@
+import { BASE_URL } from '../utils/apiConfig';
+
 // Gemini Service - Connects to Flask Backend
-const API_URL = 'http://192.168.1.105:5005'; // Your Flask server URL
+const API_URL = BASE_URL; // Dynamically detected API URL
 
 export const geminiService = {
   // Get response from Gemini via Flask backend

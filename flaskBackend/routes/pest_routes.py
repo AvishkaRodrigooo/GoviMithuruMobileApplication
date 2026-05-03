@@ -653,6 +653,27 @@ def get_7day_forecast():
             'error': str(e)
         }), 500
 
+@pest_bp.route('/forecast/history', methods=['GET'])
+def get_forecast_history():
+    """Get forecast history for a user"""
+    try:
+        user_id = request.args.get('user_id')
+        limit = int(request.args.get('limit', 10))
+        
+        # We don't have a database for this in the provided snippet,
+        # so return an empty list or mock data
+        return jsonify({
+            'success': True,
+            'data': []
+        })
+    except Exception as e:
+        print(f"History error: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 
 @pest_bp.route('/districts', methods=['GET'])
 def get_districts():

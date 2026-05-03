@@ -2,23 +2,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Get the correct IP for your development machine
-// For Android emulator, use 10.0.2.2
-// For iOS simulator, use localhost
-// For physical device, use your computer's local IP
-
-const getBaseUrl = () => {
-  // For physical device with computer's IP
-  return 'http://192.168.1.102:5005';
-  
-  // Uncomment for Android emulator:
-  // return 'http://10.0.2.2:5005';
-  
-  // Uncomment for iOS simulator:
-  // return 'http://localhost:5005';
-};
-
-const BASE_URL = getBaseUrl();
+import BASE_URL from '../utils/apiConfig';
 
 console.log(' API Base URL:', BASE_URL);
 
@@ -286,17 +270,17 @@ export const pestLibraryApi = {
       throw error;
     }
   },
-};
 
-// Add to pestLibraryApi object in api.js
-getPestInfoById: async (pestId, lang = 'en') => {
-  try {
-    const response = await api.get(`/api/pest/library/id/${pestId}?lang=${lang}`);
-    return response.data;
-  } catch (error) {
-    console.error('Pest info by ID error:', error);
-    throw error;
-  }
+  // Get pest info by ID
+  getPestInfoById: async (pestId, lang = 'en') => {
+    try {
+      const response = await api.get(`/api/pest/library/id/${pestId}?lang=${lang}`);
+      return response.data;
+    } catch (error) {
+      console.error('Pest info by ID error:', error);
+      throw error;
+    }
+  },
 };
 
 // ==================== WEATHER API ====================

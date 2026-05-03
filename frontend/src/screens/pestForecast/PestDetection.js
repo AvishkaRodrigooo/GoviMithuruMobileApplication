@@ -18,7 +18,7 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-
+import BASE_URL from "../../utils/apiConfig";
 // Language translations
 const translations = {
   english: {
@@ -259,7 +259,7 @@ export default function PestDetection() {
       });
 
       const response = await fetch(
-        "http://192.168.1.102:5005/api/pest-detection/detect",
+        `${BASE_URL}/api/pest-detection/detect`,
         {
           method: "POST",
           headers: {

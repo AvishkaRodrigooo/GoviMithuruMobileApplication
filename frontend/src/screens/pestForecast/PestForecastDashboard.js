@@ -22,7 +22,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import CustomRiskAlert from '../../components/CustomRiskAlert';
 import AlertManager from '../../services/alertManager';
 
-const API_BASE_URL = 'http://192.168.1.102:5005/api/pest';
+import BASE_URL from '../../utils/apiConfig';
+const API_BASE_URL = `${BASE_URL}/api/pest`;
 
 const Icon = ({ name, size, color, style }) => {
   const iconMap = {

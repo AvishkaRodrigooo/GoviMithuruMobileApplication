@@ -12,7 +12,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { pestForecastApi, pestDetectionApi } from '../../services/api';
 import PestRiskCard from '../../components/PestRiskCard';
 import NotificationToggle from '../../components/NotificationToggle';
-import LanguageSelector from '../../components/LanguageSelector';
+import LanguageSelector from '../../components/LanguageSelectorComponent';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import geminiService from '../../services/geminiService';
 
