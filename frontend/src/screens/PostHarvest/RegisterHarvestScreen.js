@@ -1001,13 +1001,7 @@ export default function RegisterHarvestScreen({ navigation, route }) {
         value={stockForm.prodCost}
         onChangeText={v => setStockForm(p => ({ ...p, prodCost: v }))}
       />
-      <TouchableOpacity
-        style={styles.planBtn}
-        onPress={() => navigation.navigate('InputPlanner')}
-      >
-        <MaterialCommunityIcons name="calculator-variant" size={16} color="#1d4ed8" />
-        <Text style={styles.planBtnText}>Calculate with Input Planner</Text>
-      </TouchableOpacity>
+
     </View>
   );
 
