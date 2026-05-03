@@ -246,13 +246,13 @@ export default function HomeScreen({ navigation }) {
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={[styles.hScrollPad, { paddingBottom: 15 }]}>
-             <Pressable style={[styles.largeServiceCard, { backgroundColor: '#fef2f2' }]} onPress={() => navTo('Pest', 'pest')}>
+             <Pressable style={[styles.largeServiceCard, { backgroundColor: '#fef2f2' }]} onPress={() => navTo('PestManagementScreen', 'pest')}>
                <ImageBackground source={{uri: 'https://images.unsplash.com/photo-1590682680695-43b964a3ae17?auto=format&fit=crop&w=300&q=80'}} style={styles.serviceImgBg} imageStyle={{ opacity: 0.25, borderRadius: 28 }} />
                <View style={[styles.serviceIconFrame, { backgroundColor: '#fee2e2' }]}>
                  <MaterialCommunityIcons name="bug" size={28} color="#dc2626" />
                </View>
-               <Text style={styles.serviceTitle}>Pest{"\n"}Scanner</Text>
-               <Text style={styles.serviceSubtitle}>Instant detection</Text>
+               <Text style={styles.serviceTitle}>Pest{"\n"}Management</Text>
+               <Text style={styles.serviceSubtitle}>Instant detection and forcasting</Text>
              </Pressable>
 
              <Pressable style={[styles.largeServiceCard, { backgroundColor: '#ecfdf5' }]} onPress={() => navTo('weedsDashboard', 'weeds')}>
@@ -521,4 +521,4 @@ const styles = StyleSheet.create({
   newsHeadline: { color: '#fff', fontSize: 20, fontWeight: '800', lineHeight: 28, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4 },
   newsSourceText: { color: '#6ee7b7', fontSize: 12, fontWeight: '700' },
   noNewsText: { textAlign: 'center', color: '#94a3b8', marginVertical: 30, fontSize: 15, fontWeight: '500' },
-});
+});

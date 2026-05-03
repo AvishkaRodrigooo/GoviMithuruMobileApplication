@@ -1,0 +1,7 @@
+{
+  "severity_accuracy": 0.5520833333333334,
+  "risk_accuracy": 0.4583333333333333,
+  "pest_accuracy": 1.0,
+  "incidence_rmse": 7.195744151743395,
+  "incidence_r2": -0.04639602565085621
+}
