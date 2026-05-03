@@ -21,6 +21,8 @@ import {
   RefreshControl,
   Modal,
   Share,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -155,11 +157,15 @@ const T = {
     ecoSub: 'Is storing worth it? Real LKR analysis',
     riceVariety: 'Rice Variety',
     duration: 'Duration',
-    currentPrice: 'Current Price (LKR/kg)',
-    expectedPeak: 'Expected Peak (LKR/kg)',
-    priceHint: '💡 Leave prices empty to use our market forecast data',
+    productionCost: 'Production Cost (Rs./kg)',
+    sellingPrice: 'Selling Price (Rs./kg)',
+    productionCostHint: '💡 Your total cost to grow 1 kg — seeds, fertilizer, labour, etc.',
+    sellingPriceHint: '💡 Market price you expect to sell at after storage.',
     calcEco: 'Calculate Economics',
     calculating: 'Calculating...',
+    dailyMaintCost: 'Daily Maintenance Cost (Rs./day)',
+    dailyMaintHint: 'Enter your actual daily upkeep — electricity, labor, cleaning, etc. Leave blank to skip.',
+    maintTotal: 'Maintenance Total',
     recTitle: 'Best Bag Recommendation',
     recSub: 'AI picks the ideal storage for your situation',
     moisture: 'Moisture (%)',
@@ -193,8 +199,10 @@ const T = {
     insurance: 'Insurance',
     totalCost: 'TOTAL STORAGE COST',
     costPerKg: 'Cost per kg',
-    sellToday: 'SELL TODAY',
-    sellPeak: 'SELL AT PEAK',
+    sellToday: 'PRODUCTION COST',
+    sellPeak: 'REVENUE',
+    totalProdCost: 'PRODUCTION COST',
+    totalRevenue: 'REVENUE',
     netProfit: 'NET PROFIT',
     breakEven: 'Break-even',
     aiEconAdvice: '📊 AI ECONOMIC ADVICE',
@@ -206,6 +214,31 @@ const T = {
     prepSteps: 'Preparation Steps:',
     whereToBuy: '🏪 WHERE TO BUY IN SRI LANKA',
     recalcPlanner: 'Re-calculate in Input Planner',
+    productionCostTab: 'Production Cost',
+    seedCalcTitle: 'Simple Seed Cost Calculator',
+    seedCalcSub: 'Farmer-friendly 9-step calculation',
+    farmDetails: 'Farm Details',
+    varietyLabel: 'Variety',
+    acresLabel: 'Acres',
+    yieldLabel: 'Yield (kg)',
+    priceLabel: 'Price (Rs/kg)',
+    costSectionsLabel: 'Simple Cost Sections (Rs.)',
+    lPrepLabel: '1. Land Prep & Tractor',
+    sNursLabel: '2. Seeds & Nursery',
+    fertLabel: '3. Fertilizer',
+    chemLabel: '4. Pesticides & Weedicides',
+    laborLabel: '5. Hired Labor',
+    harvLabel: '6. Harvesting Machinery',
+    postHLabel: '7. Drying, Bags & Processing',
+    transpLabel: '8. Transport & Market',
+    otherLabel: '9. Other Expenses (Water, Loans)',
+    calcProfitBtn: 'Calculate My Profit',
+    getFarmerAiBtn: 'Get AI Farmer Advice',
+    costPerAcre: 'Cost per Acre',
+    breakEvenPrice: 'Break-even Price',
+    totalRevLabel: 'Total Revenue',
+    marginLabel: 'Margin',
+    aiRecommendations: 'AI Recommendations',
   },
   si: {
     lang: 'සිංහල',
@@ -241,11 +274,15 @@ const T = {
     ecoTitle: 'ගබඩා ආර්ථිකය',
     ecoSub: 'ගබඩා කිරීම වටිනවාද?',
     riceVariety: 'වී වර්ගය', duration: 'කාලය',
-    currentPrice: 'දැනට මිල (LKR/kg)',
-    expectedPeak: 'අපේක්ෂිත ඉහළ මිල (LKR/kg)',
-    priceHint: '💡 මිල හිස්ව තැබුවොත් වෙළෙඳ අනාවැකි දත්ත ගනිමු',
+    productionCost: 'නිෂ්පාදන පිරිවැය (රු/kg)',
+    sellingPrice: 'විකුණුම් මිල (රු/kg)',
+    productionCostHint: '💡 kg 1 ක් වගා කිරීමේ මුළු වියදම',
+    sellingPriceHint: '💡 ගබඩාවෙන් පසු ඔබ බලාපොරොත්තු වන වෙළෙඳ මිල',
     calcEco: 'ආර්ථිකය ගණනය කරන්න',
     calculating: 'ගණනය කරමින්...',
+    dailyMaintCost: 'දෛනික නඩත්තු පිරිවැය (රු/දිනකට)',
+    dailyMaintHint: 'විදුලිය, ශ්‍රමය, පිරිසිදු කිරීම ඇතුළු ඔබේ දෛනික වියදම ඇතුළත් කරන්න.',
+    maintTotal: 'නඩත්තු මුළු',
     recTitle: 'හොඳම මළු නිර්දේශය',
     recSub: 'AI ඔබේ තත්වයට හොඳම ගබඩාව තෝරයි',
     moisture: 'තෙතමනය (%)', estTemp: 'තාප (°C)',
@@ -269,7 +306,8 @@ const T = {
     fumigation: 'කෘමිනාශක (×2)', labour: 'ශ්‍රමය',
     insurance: 'රක්ෂණය', totalCost: 'මුළු ගබඩා වියදම',
     costPerKg: 'කිලෝවකට වියදම',
-    sellToday: 'අද විකුණන්න', sellPeak: 'ඉහළ මිලට විකුණන්න',
+    sellToday: 'නිෂ්පාදන වියදම', sellPeak: 'ආදායම',
+    totalProdCost: 'නිෂ්පාදන වියදම', totalRevenue: 'ආදායම',
     netProfit: 'ශුද්ධ ලාභය', breakEven: 'ලාභ-අලාභ සම ලක්ෂ්‍යය',
     aiEconAdvice: '📊 AI ආර්ථික උපදෙස්',
     bestChoice: 'ඔබට හොඳම විකල්පය',
@@ -278,6 +316,31 @@ const T = {
     prepSteps: 'පෙර සූදානම් පියවර:',
     whereToBuy: '🏪 මිලදී ගත හැකි ස්ථාන',
     recalcPlanner: 'යෙදවුම් සැලසුම්කරු',
+    productionCostTab: 'නිෂ්පාදන වියදම',
+    seedCalcTitle: 'වී වගා වියදම් ගණනය',
+    seedCalcSub: 'ගොවීන්ට පහසු පියවර 9ක්',
+    farmDetails: 'වගා විස්තර',
+    varietyLabel: 'වී වර්ගය',
+    acresLabel: 'අක්කර ගණන',
+    yieldLabel: 'අස්වැන්න (kg)',
+    priceLabel: 'මිල (රු/kg)',
+    costSectionsLabel: 'වියදම් වර්ග (රු.)',
+    lPrepLabel: '1. බිම් සකස් කිරීම හා ට්‍රැක්ටර්',
+    sNursLabel: '2. බීජ හා තවාන්',
+    fertLabel: '3. පොහොර',
+    chemLabel: '4. කෘමිනාශක හා වල්නාශක',
+    laborLabel: '5. කුලී ශ්‍රමය',
+    harvLabel: '6. අස්වනු නෙළීම හා යන්ත්‍ර',
+    postHLabel: '7. වේලීම, මළු හා සකස් කිරීම',
+    transpLabel: '8. ප්‍රවාහනය හා වෙළෙඳපොළ',
+    otherLabel: '9. වෙනත් (ජලය, ණය)',
+    calcProfitBtn: 'මගේ ලාභය ගණනය කරන්න',
+    getFarmerAiBtn: 'AI ගොවි උපදෙස් ලබාගන්න',
+    costPerAcre: 'අක්කරයකට වියදම',
+    breakEvenPrice: 'ලාභ-අලාභ සම මිල',
+    totalRevLabel: 'මුළු ආදායම',
+    marginLabel: 'ලාභාංශය',
+    aiRecommendations: 'AI නිර්දේශ',
   },
   ta: {
     lang: 'தமிழ்',
@@ -301,9 +364,13 @@ const T = {
     computeRisk: 'அபாயத்தை கணக்கிடு', analysing: 'AI பகுப்பாய்வு...',
     ecoTitle: 'சேமிப்பு பொருளாதாரம்', ecoSub: 'சேமிப்பு மதிப்புள்ளதா?',
     riceVariety: 'நெல் வகை', duration: 'காலம்',
-    currentPrice: 'தற்போதைய விலை (LKR/kg)', expectedPeak: 'உச்ச விலை (LKR/kg)',
-    priceHint: '💡 விலையை வெறுமையாக விட்டால் சந்தை தரவு பயன்படுத்துவோம்',
+    productionCost: 'உற்பத்தி செலவு (ரூ/kg)', sellingPrice: 'விற்பனை விலை (ரூ/kg)',
+    productionCostHint: '💡 1 kg வளர்க்கும் மொத்த செலவு',
+    sellingPriceHint: '💡 சேமிப்புக்கு பிறகு எதிர்பார்க்கும் சந்தை விலை',
     calcEco: 'பொருளாதாரம் கணக்கிடு', calculating: 'கணக்கிடுகிறது...',
+    dailyMaintCost: 'தினசரி பராமரிப்பு செலவு (ரூ/நாள்)',
+    dailyMaintHint: 'மின்சாரம், கூலி, சுத்தம் உட்பட உங்கள் தினசரி செலவை உள்ளிடவும்.',
+    maintTotal: 'பராமரிப்பு மொத்தம்',
     recTitle: 'சிறந்த மூட்டை பரிந்துரை', recSub: 'AI சிறந்த சேமிப்பை தேர்வு செய்கிறது',
     moisture: 'ஈரப்பதம் (%)', estTemp: 'வெப்பநிலை (°C)',
     getAIRec: 'AI பரிந்துரை பெறு', aiThinking: 'AI சிந்திக்கிறது...',
@@ -323,7 +390,8 @@ const T = {
     storageBags: 'சேமிப்பு மூட்டைகள்', rent: 'கிடங்கு வாடகை',
     fumigation: 'புகையிடுதல்', labour: 'கூலி', insurance: 'காப்பீடு',
     totalCost: 'மொத்த சேமிப்பு செலவு', costPerKg: 'ஒரு கிலோ செலவு',
-    sellToday: 'இன்று விற்கவும்', sellPeak: 'உச்ச விலையில் விற்கவும்',
+    sellToday: 'உற்பத்தி செலவு', sellPeak: 'வருவாய்',
+    totalProdCost: 'உற்பத்தி செலவு', totalRevenue: 'வருவாய்',
     netProfit: 'நிகர லாபம்', breakEven: 'பிரேக்-ஈவன்',
     aiEconAdvice: '📊 AI பொருளாதார ஆலோசனை',
     bestChoice: 'உங்களுக்கான சிறந்த தேர்வு',
@@ -332,6 +400,31 @@ const T = {
     totalCostLabel: 'மொத்த செலவு', prepSteps: 'தயாரிப்பு படிகள்:',
     whereToBuy: '🏪 எங்கே வாங்குவது',
     recalcPlanner: 'உற்பத்தி செலவை மீண்டும் கணக்கிடுங்கள்',
+    productionCostTab: 'உற்பத்தி செலவு',
+    seedCalcTitle: 'எளிய விதை செலவு கணக்கீடு',
+    seedCalcSub: 'விவசாயிக்கு எளிமையான 9 படிகள்',
+    farmDetails: 'பண்ணை விவரங்கள்',
+    varietyLabel: 'வகை',
+    acresLabel: 'ஏக்கர்',
+    yieldLabel: 'மகசூல் (kg)',
+    priceLabel: 'விலை (ரூ/kg)',
+    costSectionsLabel: 'எளிய செலவுகள் (ரூ.)',
+    lPrepLabel: '1. நிலம் தயாரிப்பு & டிராக்டர்',
+    sNursLabel: '2. விதைகள் & நாற்றங்கால்',
+    fertLabel: '3. உரம்',
+    chemLabel: '4. பூச்சிக்கொல்லிகள் & களைக்கொல்லிகள்',
+    laborLabel: '5. வாடகை உழைப்பு',
+    harvLabel: '6. அறுவடை இயந்திரம்',
+    postHLabel: '7. உலர்த்துதல், பைகள் & பதப்படுத்துதல்',
+    transpLabel: '8. போக்குவரத்து & சந்தை',
+    otherLabel: '9. இதர (நீர், கடன்கள்)',
+    calcProfitBtn: 'எனது லாபத்தை கணக்கிடுக',
+    getFarmerAiBtn: 'AI விவசாயி ஆலோசனை பெறு',
+    costPerAcre: 'ஒரு ஏக்கர் செலவு',
+    breakEvenPrice: 'பிரேக்-ஈவன் விலை',
+    totalRevLabel: 'மொத்த வருவாய்',
+    marginLabel: 'லாபம் சதவீதம்',
+    aiRecommendations: 'AI பரிந்துரைகள்',
   },
 };
 
@@ -552,8 +645,8 @@ function RiskResultPanel({ data, tx }) {
   const headerGrads = isLow
     ? ['#064e3b', '#16a34a']
     : isMed
-    ? ['#92400e', '#d97706']
-    : ['#7f1d1d', '#dc2626'];
+      ? ['#92400e', '#d97706']
+      : ['#7f1d1d', '#dc2626'];
 
   return (
     <View style={st.resultWrapper}>
@@ -694,23 +787,23 @@ function CostResultPanel({ data, tx }) {
         </View>
       </LinearGradient>
 
-      {/* ── Price comparison ── */}
+      {/* ── Cost vs Revenue comparison ── */}
       <View style={st.priceCompareCard}>
         <View style={st.priceCompareItem}>
           <View style={st.priceCompareIconBox}>
-            <MaterialCommunityIcons name="cash" size={20} color={C.grey5} />
+            <MaterialCommunityIcons name="sprout" size={20} color={C.grey5} />
           </View>
-          <Text style={st.priceCompareLabel}>{tx.sellToday}</Text>
-          <Text style={st.priceCompareValueNeutral}>{fmtLKR(data.sell_now_value)}</Text>
+          <Text style={st.priceCompareLabel}>{tx.totalProdCost}</Text>
+          <Text style={st.priceCompareValueNeutral}>{fmtLKR(data.total_production_cost)}</Text>
         </View>
         <View style={st.priceArrow}>
           <MaterialCommunityIcons name="arrow-right-bold" size={22} color={pColor} />
         </View>
         <View style={st.priceCompareItem}>
           <View style={[st.priceCompareIconBox, { backgroundColor: pColor + '18' }]}>
-            <MaterialCommunityIcons name="rocket-launch" size={20} color={pColor} />
+            <MaterialCommunityIcons name="cash-multiple" size={20} color={pColor} />
           </View>
-          <Text style={[st.priceCompareLabel, { color: pColor }]}>{tx.sellPeak}</Text>
+          <Text style={[st.priceCompareLabel, { color: pColor }]}>{tx.totalRevenue}</Text>
           <Text style={[st.priceCompareValueBold, { color: pColor }]}>{fmtLKR(data.sell_peak_value)}</Text>
         </View>
       </View>
@@ -744,6 +837,7 @@ function CostResultPanel({ data, tx }) {
         {[
           { icon: 'bag-personal', label: tx.storageBags, value: data.effective_bag_cost, color: C.blue },
           { icon: 'warehouse', label: tx.rent, value: data.rent_cost, color: C.purple },
+          ...(data.maint_cost > 0 ? [{ icon: 'wrench', label: tx.maintTotal, value: data.maint_cost, color: C.teal }] : []),
           { icon: 'spray', label: tx.fumigation, value: data.fumigation_cost, color: C.orange },
           { icon: 'account-hard-hat', label: tx.labour, value: data.labour_cost, color: C.teal },
           { icon: 'shield-check', label: tx.insurance, value: data.insurance_cost, color: C.green },
@@ -800,7 +894,7 @@ function CostResultPanel({ data, tx }) {
           </View>
           <Text style={[st.actionCalloutTitle, { color: pColor }]}>{tx.aiEconAdvice}</Text>
         </View>
-        <Text style={st.actionCalloutBody}>{data.ai_best_advice}</Text>
+        <Text style={st.actionCalloutBody}>{data.ai_economic_verdict}</Text>
         {data.ai_risk_warning ? (
           <View style={st.aiWarnRow}>
             <MaterialCommunityIcons name="alert-octagon" size={15} color={C.red} />
@@ -939,6 +1033,211 @@ function RecommendResultPanel({ data, tx }) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+//  SIMPLIFIED SEED PRODUCTION COST CALCULATOR
+// ════════════════════════════════════════════════════════════════════════════
+function SeedProductionCalculator({ tx, lang, apiPost }) {
+  const [seedForm, setSeedForm] = useState({
+    variety: 'Bg 352', 
+    landAreaAcres: '1', 
+    expectedYieldKg: '2000', 
+    sellingPriceKg: '150',
+    
+    // Simplified cost categories
+    landPrep: '',      // Land Prep & Tractor
+    seedNursery: '',   // Seeds & Nursery
+    fertilizer: '',    // Fertilizer
+    chemicals: '',     // Pesticides & Weedicides
+    labor: '',         // Hired Labor
+    harvesting: '',    // Harvesting Machinery
+    postHarvest: '',   // Processing & Bags
+    transport: '',     // Transport & Market
+    other: '',         // Other Expenses (Water, Loans)
+  });
+
+  const [seedResult, setSeedResult] = useState(null);
+  const [loadingSeed, setLoadingSeed] = useState(false);
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [loadingAi, setLoadingAi] = useState(false);
+
+  const renderSimpleInput = (label, icon, field, placeholder) => (
+    <View key={field} style={{ marginBottom: 16 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 8 }}>
+        <MaterialCommunityIcons name={icon} size={18} color={C.orange} style={{ marginRight: 6 }} />
+        <Text style={{ fontSize: 14, fontWeight: '700', color: C.grey8 }}>{label}</Text>
+      </View>
+      <TextInput 
+        style={[st.fullInput, { backgroundColor: C.white, borderColor: C.grey3 }]} 
+        keyboardType={field === 'variety' ? 'default' : 'decimal-pad'} 
+        value={String(seedForm[field] || '')} 
+        onChangeText={(v) => setSeedForm({ ...seedForm, [field]: v })} 
+        placeholder={placeholder || "0  (Rs.)"} 
+      />
+    </View>
+  );
+
+  const computeSeedCost = () => {
+    setLoadingSeed(true);
+    const sf = seedForm;
+    const toNum = (val) => Number(val) || 0;
+    
+    const landPrep = toNum(sf.landPrep);
+    const seedNursery = toNum(sf.seedNursery);
+    const fertilizer = toNum(sf.fertilizer);
+    const chemicals = toNum(sf.chemicals);
+    const labor = toNum(sf.labor);
+    const harvesting = toNum(sf.harvesting);
+    const postHarvest = toNum(sf.postHarvest);
+    const transport = toNum(sf.transport);
+    const other = toNum(sf.other);
+
+    const totalCost = landPrep + seedNursery + fertilizer + chemicals + labor + harvesting + postHarvest + transport + other;
+    const yieldKg = toNum(sf.expectedYieldKg);
+    const landAcres = toNum(sf.landAreaAcres) || 1;
+    const costPerAcre = totalCost / landAcres;
+    const breakEven = yieldKg > 0 ? (totalCost / yieldKg) : 0;
+    const revenue = yieldKg * toNum(sf.sellingPriceKg);
+    const profit = revenue - totalCost;
+    const margin = revenue > 0 ? ((profit / revenue) * 100) : 0;
+
+    const res = {
+      landPrep, seedNursery, fertilizer, chemicals, labor, harvesting, postHarvest, transport, other,
+      totalCost, costPerAcre, breakEven, revenue, profit, margin
+    };
+
+    setSeedResult(res);
+    setAiAnalysis(null);
+    setLoadingSeed(false);
+  };
+
+  const getSeedAiAnalysis = async () => {
+    if (!seedResult) return;
+    setLoadingAi(true);
+    try {
+      const promptText = `I am producing rice seeds in Sri Lanka.
+Variety: ${seedForm.variety}, Land: ${seedForm.landAreaAcres} acres.
+Yield: ${seedForm.expectedYieldKg} kg, Selling price: Rs. ${seedForm.sellingPriceKg}/kg.
+My costs are:
+Land Prep & Tractor: Rs. ${seedResult.landPrep}
+Seeds & Nursery: Rs. ${seedResult.seedNursery}
+Fertilizer: Rs. ${seedResult.fertilizer}
+Pesticides & Weedicides: Rs. ${seedResult.chemicals}
+Hired Labor: Rs. ${seedResult.labor}
+Harvesting Machinery: Rs. ${seedResult.harvesting}
+Processing & Bags: Rs. ${seedResult.postHarvest}
+Transport & Market: Rs. ${seedResult.transport}
+Other: Rs. ${seedResult.other}
+Total Cost: Rs. ${seedResult.totalCost}. Profit: Rs. ${seedResult.profit}.
+Give me 3 short, highly tailored, expert cost-reduction recommendations for Sri Lankan farmers. Explain simply. Do not write a long essay. Just 3 points.`;
+      
+      const response = await apiPost('/api/guardian/chat', { question: promptText, lang: lang });
+      if (response && response.answer) {
+        setAiAnalysis(response.answer);
+      } else if (response && response.error) {
+        setAiAnalysis("Error: " + response.error);
+      } else {
+        setAiAnalysis("Unable to fetch AI analysis. Check your internet connection.");
+      }
+    } catch (e) {
+      console.log(e);
+      Alert.alert("Error", "Could not fetch AI analysis.");
+    } finally {
+      setLoadingAi(false);
+    }
+  };
+
+  return (
+    <View style={st.card}>
+      <SectionHeader icon="seed" color={C.orange} title={tx.seedCalcTitle || "Simple Seed Cost Calculator"} sub={tx.seedCalcSub || "Farmer-friendly 9-step calculation"} />
+      
+      <View style={{ backgroundColor: C.orangeLight, padding: 16, borderRadius: 12, marginBottom: 20 }}>
+        <Text style={{ fontSize: 16, fontWeight: '800', color: C.orange, marginBottom: 12 }}>{tx.farmDetails || "Farm Details"}</Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            {renderSimpleInput(tx.varietyLabel || "Variety", "sprout", "variety", "e.g. Bg 352")}
+          </View>
+          <View style={{ flex: 1 }}>
+            {renderSimpleInput(tx.acresLabel || "Acres", "ruler-square", "landAreaAcres", "1")}
+          </View>
+        </View>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <View style={{ flex: 1 }}>
+            {renderSimpleInput(tx.yieldLabel || "Yield (kg)", "scale", "expectedYieldKg", "2000")}
+          </View>
+          <View style={{ flex: 1 }}>
+            {renderSimpleInput(tx.priceLabel || "Price (Rs/kg)", "cash", "sellingPriceKg", "150")}
+          </View>
+        </View>
+      </View>
+
+      <View style={{ backgroundColor: C.grey0, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: C.grey2, marginBottom: 20 }}>
+        <Text style={{ fontSize: 16, fontWeight: '800', color: C.ink, marginBottom: 16 }}>{tx.costSectionsLabel || "Simple Cost Sections (Rs.)"}</Text>
+        
+        {renderSimpleInput(tx.lPrepLabel || "1. Land Prep & Tractor", "tractor", "landPrep")}
+        {renderSimpleInput(tx.sNursLabel || "2. Seeds & Nursery", "seed-outline", "seedNursery")}
+        {renderSimpleInput(tx.fertLabel || "3. Fertilizer", "sack", "fertilizer")}
+        {renderSimpleInput(tx.chemLabel || "4. Pesticides & Weedicides", "shield-bug", "chemicals")}
+        {renderSimpleInput(tx.laborLabel || "5. Hired Labor", "account-hard-hat", "labor")}
+        {renderSimpleInput(tx.harvLabel || "6. Harvesting Machinery", "scythe", "harvesting")}
+        {renderSimpleInput(tx.postHLabel || "7. Drying, Bags & Processing", "barn", "postHarvest")}
+        {renderSimpleInput(tx.transpLabel || "8. Transport & Market", "truck", "transport")}
+        {renderSimpleInput(tx.otherLabel || "9. Other Expenses (Water, Loans)", "chart-pie", "other")}
+      </View>
+
+      <TouchableOpacity style={[st.primaryBtn, { backgroundColor: C.orange }]} onPress={computeSeedCost} disabled={loadingSeed}>
+        {loadingSeed ? <ActivityIndicator color={C.white} /> : <><MaterialCommunityIcons name="calculator" size={18} color={C.white} /><Text style={st.primaryBtnTxt}> {tx.calcProfitBtn || "Calculate My Profit"}</Text></>}
+      </TouchableOpacity>
+
+      {seedResult && (
+        <View style={[st.resultWrapper, { marginTop: 24 }]}>
+          <LinearGradient colors={['#9a3412', '#ea580c']} style={st.ecoHero} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+            <View style={st.ecoHeroContent}>
+              <View style={[st.ecoHeroIconCircle, { backgroundColor: 'rgba(255,255,255,0.15)' }]}>
+                <MaterialCommunityIcons name={seedResult.profit >= 0 ? 'trending-up' : 'trending-down'} size={36} color={C.white} />
+              </View>
+              <View style={{ flex: 1, paddingLeft: 14 }}>
+                <View style={st.ecoHeroBadge}>
+                  <Text style={st.ecoHeroBadgeTxt}>{seedResult.profit >= 0 ? (tx.profitable || 'PROFITABLE') : (tx.lossAlert || 'LOSS')}</Text>
+                </View>
+                <Text style={st.ecoHeroVerdict}>{tx.netProfit || "Net Profit"}: Rs. {seedResult.profit.toLocaleString()}</Text>
+              </View>
+            </View>
+          </LinearGradient>
+
+          <View style={st.costBreakdownCard}>
+            <View style={st.costTotalRow}>
+              <Text style={st.costTotalLabel}>{tx.totalCostLabel || "Total Cost"}</Text>
+              <Text style={[st.costTotalValue, { color: C.orange }]}>Rs. {seedResult.totalCost.toLocaleString()}</Text>
+            </View>
+            <View style={st.costDivider} />
+            <View style={st.costRow}><Text style={st.costRowLabel}>{tx.costPerAcre || "Cost per Acre"}</Text><Text style={st.costRowValue}>Rs. {seedResult.costPerAcre.toLocaleString()}</Text></View>
+            <View style={st.costRow}><Text style={st.costRowLabel}>{tx.costPerKg || "Cost per 1 kg"}</Text><Text style={st.costRowValue}>Rs. {seedResult.breakEven.toFixed(2)}</Text></View>
+            <View style={st.costRow}><Text style={st.costRowLabel}>{tx.breakEvenPrice || "Break-even Price"}</Text><Text style={st.costRowValue}>Rs. {seedResult.breakEven.toFixed(2)}/kg</Text></View>
+            <View style={st.costRow}><Text style={st.costRowLabel}>{tx.totalRevLabel || "Total Revenue"}</Text><Text style={st.costRowValue}>Rs. {seedResult.revenue.toLocaleString()}</Text></View>
+            <View style={st.costRow}><Text style={st.costRowLabel}>{tx.marginLabel || "Margin"}</Text><Text style={st.costRowValue}>{seedResult.margin.toFixed(1)}%</Text></View>
+          </View>
+
+          {!aiAnalysis ? (
+            <TouchableOpacity style={[st.primaryBtn, { backgroundColor: C.purple, marginTop: 16 }]} onPress={getSeedAiAnalysis} disabled={loadingAi}>
+              {loadingAi ? <ActivityIndicator color={C.white} /> : <><MaterialCommunityIcons name="robot-outline" size={18} color={C.white} /><Text style={st.primaryBtnTxt}> {tx.getFarmerAiBtn || "Get AI Farmer Advice"}</Text></>}
+            </TouchableOpacity>
+          ) : (
+            <View style={[st.actionCallout, { backgroundColor: C.purple + '0d', borderColor: C.purple + '35', borderLeftColor: C.purple, marginTop: 16 }]}>
+              <View style={st.actionCalloutHead}>
+                <View style={[st.actionCalloutIconBox, { backgroundColor: C.purple + '20' }]}>
+                  <MaterialCommunityIcons name="robot-outline" size={20} color={C.purple} />
+                </View>
+                <Text style={[st.actionCalloutTitle, { color: C.purple }]}>{tx.aiRecommendations || "AI Recommendations"}</Text>
+              </View>
+              <Text style={st.actionCalloutBody}>{aiAnalysis}</Text>
+            </View>
+          )}
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 //  MAIN SCREEN
 // ════════════════════════════════════════════════════════════════════════════
 export default function StorageDashboardScreen({ navigation }) {
@@ -967,7 +1266,9 @@ export default function StorageDashboardScreen({ navigation }) {
 
   const [costForm, setCostForm] = useState({
     quantity_kg: 1000, bag_type: 'gunny', duration_months: 3,
-    storage_location: 'home', variety: 'Bg 352', current_price: '', expected_price: '',
+    storage_location: 'home', variety: 'Bg 352',
+    production_cost_kg: '', selling_price: '',
+    daily_maintenance_cost: '',
   });
   const [costResult, setCostResult] = useState(null);
   const [loadingCost, setLoadingCost] = useState(false);
@@ -1027,17 +1328,104 @@ export default function StorageDashboardScreen({ navigation }) {
     finally { setLoadingRisk(false); }
   };
 
-  const computeCost = async () => {
-    if (!costForm.quantity_kg || Number(costForm.quantity_kg) <= 0) {
-      Alert.alert('Input Error', 'Please enter the quantity in kg.'); return;
-    }
+  const computeCost = () => {
+    const qty = Number(costForm.quantity_kg);
+    if (!qty || qty <= 0) { Alert.alert('Input Error', 'Please enter the quantity in kg.'); return; }
     setLoadingCost(true); setCostResult(null);
-    try {
-      const body = { ...costForm, lang, quantity_kg: Number(costForm.quantity_kg), duration_months: Number(costForm.duration_months), current_price: costForm.current_price ? Number(costForm.current_price) : undefined, expected_price: costForm.expected_price ? Number(costForm.expected_price) : undefined };
-      const data = await apiPost('/api/guardian/calculate_costs', body);
-      if (data.error) Alert.alert('Error', data.error); else setCostResult(data);
-    } catch { Alert.alert('Connection Error', 'Could not reach AI server.'); }
-    finally { setLoadingCost(false); }
+
+    // ── Sri Lanka real-world cost data (2024) ──────────────────────────────
+    const BAG_SPECS = {
+      hermetic:  { capacity_kg: 50, unit_cost: 850,  lifespan_years: 5, max_months: 9 },
+      woven:     { capacity_kg: 50, unit_cost: 85,   lifespan_years: 1, max_months: 4 },
+      gunny:     { capacity_kg: 50, unit_cost: 120,  lifespan_years: 1, max_months: 3 },
+      polythene: { capacity_kg: 25, unit_cost: 45,   lifespan_years: 0.5, max_months: 3 },
+      metalbin:  { capacity_kg: 200, unit_cost: 8500, lifespan_years: 15, max_months: 999 },
+    };
+    const RENT_PER_KG_MONTH = { home: 0, shed: 1.5, warehouse: 4.5, coop: 3.0 };
+    const FUMIGATION_PER_KG = 1.8;   // Phostoxin tablet, 2 applications
+    const LABOUR_PER_KG    = 3.5;    // loading/unloading
+    const INSURANCE_RATE   = 0.005;  // 0.5% of value
+
+    // ── Default selling prices (LKR/kg paddy, 2024 SL average) ──────────────
+    const VARIETY_SELL_PRICES = {
+      'Bg 352': 125, 'Bg 300': 120, 'Bg 94-1': 118, 'Bg 358': 122, 'Bg 366': 123,
+      'Bg 379-2': 121, 'Bg 406': 124, 'At 308': 116, 'At 362': 117, 'Ld 356': 119,
+      'Bw 272-6B': 115, 'Bw 364': 117, 'Pakwenna': 135, 'Sudu Heenati': 145,
+      'Rathu Heenati': 148, 'Samba': 155, 'Nadu': 130, 'Keeri Samba': 160,
+      'Red Raw Rice': 140, 'White Raw Rice': 138,
+    };
+    // Default production cost per kg (SL average 2024)
+    const DEFAULT_PROD_COST = 85; // Rs./kg
+
+    const bagSpec   = BAG_SPECS[costForm.bag_type] || BAG_SPECS.gunny;
+    const months    = Number(costForm.duration_months);
+    const days      = months * 30;
+    const bags_n    = Math.ceil(qty / bagSpec.capacity_kg);
+
+    // Effective bag cost (amortised over lifespan)
+    const effective_bag_cost = Math.round((bagSpec.unit_cost * bags_n) / (bagSpec.lifespan_years * (12 / months) || 1));
+
+    // Maintenance cost: user-entered daily × days
+    const dailyMaint  = Number(costForm.daily_maintenance_cost) || 0;
+    const maint_cost  = dailyMaint > 0 ? Math.round(dailyMaint * days) : 0;
+
+    const rent_cost       = Math.round(qty * (RENT_PER_KG_MONTH[costForm.storage_location] || 0) * months);
+    const fumigation_cost = Math.round(qty * FUMIGATION_PER_KG);
+    const labour_cost     = Math.round(qty * LABOUR_PER_KG);
+
+    // Production cost & selling price
+    const prodCostKg  = costForm.production_cost_kg ? Number(costForm.production_cost_kg) : DEFAULT_PROD_COST;
+    const sellPriceKg = costForm.selling_price ? Number(costForm.selling_price) : (VARIETY_SELL_PRICES[costForm.variety] || 122);
+
+    const total_production_cost = Math.round(qty * prodCostKg);
+    const sell_revenue          = Math.round(qty * sellPriceKg);
+    const insurance_cost        = Math.round(sell_revenue * INSURANCE_RATE);
+    const total_storage_cost    = effective_bag_cost + maint_cost + rent_cost + fumigation_cost + labour_cost + insurance_cost;
+    const total_cost_all        = total_production_cost + total_storage_cost;
+    const net_profit            = sell_revenue - total_cost_all;
+    const cost_per_kg           = ((total_storage_cost) / qty).toFixed(1);
+    const break_even_price      = Math.round(prodCostKg + total_storage_cost / qty);
+    const roi_pct               = total_cost_all > 0 ? ((net_profit / total_cost_all) * 100).toFixed(1) : '0';
+    const profitability         = net_profit > total_storage_cost * 0.5 ? 'YES' : net_profit > 0 ? 'MARGINAL' : 'NO';
+    const viable                = months <= bagSpec.max_months;
+
+    const margin_kg = (sellPriceKg - prodCostKg - total_storage_cost / qty).toFixed(1);
+    const advice = !viable
+      ? `⚠️ ${BAG_META[costForm.bag_type]?.label} bags are only suitable up to ${bagSpec.max_months} months. Switch to hermetic or metal bin for longer storage.`
+      : net_profit > 0
+        ? `Your margin is Rs. ${margin_kg}/kg. Selling ${qty} kg of ${costForm.variety} at Rs. ${sellPriceKg}/kg after ${months} months gives Rs. ${net_profit.toLocaleString()} net profit after all costs.`
+        : `Selling price (Rs. ${sellPriceKg}/kg) does not cover production cost (Rs. ${prodCostKg}/kg) + storage cost (Rs. ${(total_storage_cost/qty).toFixed(1)}/kg). Try to negotiate a higher selling price or reduce storage costs.`;
+
+    setTimeout(async () => {
+      const result = {
+        bags_required: bags_n, effective_bag_cost, maint_cost, rent_cost,
+        fumigation_cost, labour_cost, insurance_cost, total_storage_cost,
+        total_production_cost, total_cost_all,
+        cost_per_kg, sell_now_value: total_production_cost, sell_peak_value: sell_revenue,
+        net_profit, break_even_price, roi_pct, profitability,
+        ai_economic_verdict: advice, viable,
+        prod_cost_kg: prodCostKg, selling_price_kg: sellPriceKg,
+        daily_maint_used: dailyMaint, duration_months: months,
+      };
+
+      // Call LLM for enriched AI advice
+      try {
+        const llmBody = {
+          quantity_kg: qty, variety: costForm.variety, bag_type: costForm.bag_type,
+          duration_months: months, storage_location: costForm.storage_location,
+          production_cost_kg: prodCostKg, selling_price_kg: sellPriceKg,
+          total_storage_cost, net_profit, profitability,
+          break_even_price, cost_per_kg, roi_pct, lang,
+        };
+        const llmRes = await apiPost('/api/guardian/calculate_costs', llmBody);
+        if (llmRes && !llmRes.error && llmRes.ai_economic_verdict) {
+          result.ai_economic_verdict = llmRes.ai_economic_verdict;
+        }
+      } catch (_) { /* keep local advice if API fails */ }
+
+      setCostResult(result);
+      setLoadingCost(false);
+    }, 0);
   };
 
   const computeRecommend = async () => {
@@ -1056,7 +1444,7 @@ export default function StorageDashboardScreen({ navigation }) {
 
       {/* District */}
       <View style={{ marginBottom: 16 }}>
-        <Text style={st.fieldLabel}>📍 {tx.district}</Text>
+        <Text style={st.fieldLabel}>{tx.district}</Text>
         <TouchableOpacity style={st.pickerBtn} onPress={() => setShowDistrictPicker(true)}>
           <MaterialCommunityIcons name="map-marker" size={16} color={C.green} />
           <Text style={st.pickerBtnTxt}>{selectedDistrict ? selectedDistrict.label : '— Select district —'}</Text>
@@ -1070,35 +1458,6 @@ export default function StorageDashboardScreen({ navigation }) {
         )}
       </View>
 
-      {/* Moisture chips */}
-      <View style={st.moistureBox}>
-        <Text style={st.fieldLabel}>{tx.moistureContent}</Text>
-        <Text style={st.hintSmall}>{tx.moistureHint}</Text>
-        <View style={st.mcRow}>
-          {[10, 12, 13, 14, 15, 16, 18].map((mc) => {
-            const isSel = riskForm.moisture_pct === mc;
-            const isRisky = mc >= 14;
-            return (
-              <TouchableOpacity key={mc}
-                style={[st.mcChip, isSel && { backgroundColor: isRisky ? C.red : C.green, borderColor: isRisky ? C.red : C.green }]}
-                onPress={() => setRiskForm({ ...riskForm, moisture_pct: mc })}
-              >
-                <Text style={[st.mcChipTxt, isSel && { color: C.white }]}>{mc}%</Text>
-                {mc === 13 && <Text style={{ fontSize: 7, color: isSel ? C.white : C.green, fontWeight: '800' }}>{tx.safe}</Text>}
-                {mc === 14 && <Text style={{ fontSize: 7, color: isSel ? C.white : C.amber, fontWeight: '800' }}>{tx.limit}</Text>}
-                {mc >= 16 && <Text style={{ fontSize: 7, color: isSel ? C.white : C.red, fontWeight: '800' }}>{tx.danger}</Text>}
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 10 }}>
-          <Text style={st.fieldLabel}>{tx.orEnterExact}</Text>
-          <TextInput style={st.compactInput} keyboardType="decimal-pad"
-            value={String(riskForm.moisture_pct)}
-            onChangeText={(v) => setRiskForm({ ...riskForm, moisture_pct: parseFloat(v) || 13.5 })}
-            placeholder="e.g. 13.8" />
-        </View>
-      </View>
 
       <ChipGroup label={tx.storageBagType}
         options={Object.entries(BAG_META).map(([v, m]) => ({ value: v, label: m.label, icon: m.icon }))}
@@ -1205,19 +1564,38 @@ export default function StorageDashboardScreen({ navigation }) {
         options={Object.entries(LOCATION_META).map(([v, m]) => ({ value: v, label: m.label }))}
         value={costForm.storage_location} onChange={(v) => setCostForm({ ...costForm, storage_location: v })} color={C.blue} />
 
-      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}>
-        <View style={{ flex: 1 }}>
-          <Text style={st.fieldLabel}>{tx.currentPrice}</Text>
-          <TextInput style={st.fullInput} keyboardType="decimal-pad" value={costForm.current_price}
-            onChangeText={(v) => setCostForm({ ...costForm, current_price: v })} placeholder="Auto from market" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={st.fieldLabel}>{tx.expectedPeak}</Text>
-          <TextInput style={st.fullInput} keyboardType="decimal-pad" value={costForm.expected_price}
-            onChangeText={(v) => setCostForm({ ...costForm, expected_price: v })} placeholder="Auto from forecast" />
+      {/* Daily maintenance cost */}
+      <View style={{ marginBottom: 20 }}>
+        <Text style={st.fieldLabel}>🔧 {tx.dailyMaintCost}</Text>
+        <TextInput
+          style={st.fullInput}
+          keyboardType="decimal-pad"
+          value={costForm.daily_maintenance_cost}
+          onChangeText={(v) => setCostForm({ ...costForm, daily_maintenance_cost: v })}
+          placeholder="e.g. 150  (Rs. per day)"
+        />
+        <View style={st.hintBox}>
+          <Text style={st.hintText}>💡 {tx.dailyMaintHint}</Text>
         </View>
       </View>
-      <Text style={st.hintText}>{tx.priceHint}</Text>
+
+      <View style={{ marginBottom: 20 }}>
+        <Text style={st.fieldLabel}>🌱 {tx.productionCost}</Text>
+        <TextInput style={st.fullInput} keyboardType="decimal-pad" value={costForm.production_cost_kg}
+          onChangeText={(v) => setCostForm({ ...costForm, production_cost_kg: v })} placeholder="e.g. 85  (Rs. per kg)" />
+        <View style={st.hintBox}>
+          <Text style={st.hintText}>{tx.productionCostHint}</Text>
+        </View>
+      </View>
+
+      <View style={{ marginBottom: 20 }}>
+        <Text style={st.fieldLabel}>💰 {tx.sellingPrice}</Text>
+        <TextInput style={st.fullInput} keyboardType="decimal-pad" value={costForm.selling_price}
+          onChangeText={(v) => setCostForm({ ...costForm, selling_price: v })} placeholder="e.g. 125  (Rs. per kg)" />
+        <View style={st.hintBox}>
+          <Text style={st.hintText}>{tx.sellingPriceHint}</Text>
+        </View>
+      </View>
 
       <TouchableOpacity style={[st.primaryBtn, { backgroundColor: C.blue }]} onPress={computeCost} disabled={loadingCost}>
         {loadingCost
@@ -1232,7 +1610,7 @@ export default function StorageDashboardScreen({ navigation }) {
   // ─── Render Recommend Tab ─────────────────────────────────────────────────
   const renderRecommendTab = () => (
     <View style={st.card}>
-      <SectionHeader icon="lightbulb-on" color={C.purple} title={tx.recTitle} sub={tx.recSub} />
+      <SectionHeader color={C.purple} title={tx.recTitle} sub={tx.recSub} />
 
       <View style={{ marginBottom: 16 }}>
         <Text style={st.fieldLabel}>{tx.qty}</Text>
@@ -1241,7 +1619,7 @@ export default function StorageDashboardScreen({ navigation }) {
       </View>
 
       <View style={{ marginBottom: 16 }}>
-        <Text style={st.fieldLabel}>🌾 {tx.riceVariety}</Text>
+        <Text style={st.fieldLabel}> {tx.riceVariety}</Text>
         <TouchableOpacity style={st.pickerBtn} onPress={() => setRecShowVarietyPicker(true)}>
           <MaterialCommunityIcons name="grain" size={16} color={C.purple} />
           <Text style={st.pickerBtnTxt}>{recForm.variety || 'Select variety'}</Text>
@@ -1268,19 +1646,11 @@ export default function StorageDashboardScreen({ navigation }) {
         </View>
       </View>
 
-      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 4 }}>
-        <View style={{ flex: 1 }}>
-          <Text style={st.fieldLabel}>{tx.moisture}</Text>
-          <TextInput style={st.fullInput} keyboardType="decimal-pad" value={String(recForm.moisture_pct)}
-            onChangeText={(v) => setRecForm({ ...recForm, moisture_pct: parseFloat(v) || 13.5 })} placeholder="13.5" />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={st.fieldLabel}>{tx.estTemp}</Text>
-          <TextInput style={st.fullInput} keyboardType="decimal-pad" value={String(recForm.temp_c)}
-            onChangeText={(v) => setRecForm({ ...recForm, temp_c: parseFloat(v) || 28 })} placeholder="28" />
-        </View>
+      <View style={{ marginBottom: 16 }}>
+        <Text style={st.fieldLabel}>{tx.estTemp}</Text>
+        <TextInput style={st.fullInput} keyboardType="decimal-pad" value={String(recForm.temp_c)}
+          onChangeText={(v) => setRecForm({ ...recForm, temp_c: parseFloat(v) || 28 })} placeholder="28" />
       </View>
-
       <TouchableOpacity style={[st.primaryBtn, { backgroundColor: C.purple }]} onPress={computeRecommend} disabled={loadingRec}>
         {loadingRec
           ? <><ActivityIndicator color={C.white} /><Text style={st.primaryBtnTxt}> {tx.aiThinking}</Text></>
@@ -1301,7 +1671,7 @@ export default function StorageDashboardScreen({ navigation }) {
         <View style={st.modalOverlay}>
           <View style={st.modalSheet}>
             <View style={st.modalTop}>
-              <Text style={st.modalTopTitle}>📍 {tx.district}</Text>
+              <Text style={st.modalTopTitle}> {tx.district}</Text>
               <TouchableOpacity onPress={() => setShowDistrictPicker(false)}>
                 <MaterialCommunityIcons name="close" size={22} color={C.grey6} />
               </TouchableOpacity>
@@ -1329,7 +1699,7 @@ export default function StorageDashboardScreen({ navigation }) {
           <View style={st.modalOverlay}>
             <View style={st.modalSheet}>
               <View style={st.modalTop}>
-                <Text style={st.modalTopTitle}>🌾 {tx.riceVariety}</Text>
+                <Text style={st.modalTopTitle}>{tx.riceVariety}</Text>
                 <TouchableOpacity onPress={m.onClose}><MaterialCommunityIcons name="close" size={22} color={C.grey6} /></TouchableOpacity>
               </View>
               <ScrollView>
@@ -1345,8 +1715,9 @@ export default function StorageDashboardScreen({ navigation }) {
         </Modal>
       ))}
 
-      <ScrollView contentContainerStyle={st.scroll} showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} colors={[C.green]} />}>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }} keyboardVerticalOffset={Platform.OS === 'android' ? 24 : 0}>
+        <ScrollView contentContainerStyle={st.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData(); }} colors={[C.green]} />}>
 
         {/* Language bar */}
         <View style={st.langBar}>
@@ -1414,6 +1785,7 @@ export default function StorageDashboardScreen({ navigation }) {
             { key: 'risk', icon: 'shield-search', label: tx.riskScore, color: C.green },
             { key: 'cost', icon: 'calculator', label: tx.economics, color: C.blue },
             { key: 'recommend', icon: 'lightbulb-on', label: tx.recommend, color: C.purple },
+            { key: 'seed', icon: 'seed', label: tx.productionCostTab || 'Production Cost', color: C.orange },
           ].map((tab) => (
             <TouchableOpacity key={tab.key}
               style={[st.tabBtn, activeTab === tab.key && { borderBottomWidth: 2.5, borderBottomColor: tab.color, backgroundColor: tab.color + '08' }]}
@@ -1427,6 +1799,7 @@ export default function StorageDashboardScreen({ navigation }) {
         {activeTab === 'risk' && renderRiskTab()}
         {activeTab === 'cost' && renderCostTab()}
         {activeTab === 'recommend' && renderRecommendTab()}
+        {activeTab === 'seed' && <SeedProductionCalculator tx={tx} lang={lang} apiPost={apiPost} />}
 
         {/* Harvest batches */}
         <View style={st.batchSectionHeader}>
@@ -1477,6 +1850,7 @@ export default function StorageDashboardScreen({ navigation }) {
 
         <View style={{ height: 48 }} />
       </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -1521,13 +1895,14 @@ const st = StyleSheet.create({
   secSub: { fontSize: 12, color: C.grey5, marginTop: 1 },
 
   // Card
-  card: { backgroundColor: C.white, borderRadius: 18, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: C.grey2, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, elevation: 2 },
+  card: { backgroundColor: C.white, borderRadius: 24, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: C.grey1, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 12, elevation: 3 },
 
   // Fields
-  fieldLabel: { color: C.grey7, fontSize: 12, fontWeight: '800', marginBottom: 8, letterSpacing: 0.3 },
-  fullInput: { borderWidth: 1.5, borderColor: C.grey2, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, backgroundColor: C.grey0, color: C.ink, fontSize: 15, fontWeight: '600' },
-  compactInput: { borderWidth: 1.5, borderColor: C.grey2, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 9, backgroundColor: C.grey0, color: C.ink, fontSize: 14, fontWeight: '600', width: 100 },
-  hintText: { fontSize: 11, color: C.grey5, marginTop: -6, marginBottom: 12 },
+  fieldLabel: { color: C.grey8, fontSize: 13, fontWeight: '800', marginBottom: 8, letterSpacing: 0.4 },
+  fullInput: { borderWidth: 1, borderColor: C.grey2, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, backgroundColor: C.white, color: C.ink, fontSize: 16, fontWeight: '700', shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 4, elevation: 1 },
+  compactInput: { borderWidth: 1, borderColor: C.grey2, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: C.white, color: C.ink, fontSize: 15, fontWeight: '700', width: 110, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 4, elevation: 1 },
+  hintBox: { marginTop: 8, marginBottom: 0, paddingHorizontal: 2 },
+  hintText: { fontSize: 11, color: C.grey5, lineHeight: 16 },
   hintSmall: { fontSize: 11, color: C.grey5, marginBottom: 10 },
 
   // Moisture
@@ -1538,15 +1913,15 @@ const st = StyleSheet.create({
 
   // Chips
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 9, borderRadius: 10, borderWidth: 1.5, borderColor: C.grey2, backgroundColor: C.grey0 },
-  chipTxt: { fontSize: 12, fontWeight: '700', color: C.grey6 },
+  chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: C.grey2, backgroundColor: C.white, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 3, elevation: 1 },
+  chipTxt: { fontSize: 13, fontWeight: '800', color: C.grey6 },
 
   bagDescBox: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 10, borderRadius: 10, borderWidth: 1, marginBottom: 16, backgroundColor: C.grey0 },
   bagDescTxt: { fontSize: 12, fontWeight: '600', flex: 1 },
 
   // Button
-  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 14, paddingVertical: 16, marginTop: 12, gap: 8, shadowOpacity: 0.2, shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 4 },
-  primaryBtnTxt: { color: C.white, fontSize: 15, fontWeight: '900' },
+  primaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', borderRadius: 16, paddingVertical: 18, marginTop: 16, gap: 8, shadowOpacity: 0.25, shadowRadius: 10, shadowOffset: { width: 0, height: 5 }, elevation: 5 },
+  primaryBtnTxt: { color: C.white, fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
 
   // ── RESULT WRAPPER ───────────────────────────────────────────────────────
   resultWrapper: { marginTop: 20, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: C.grey2, backgroundColor: C.white, elevation: 6, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 16, shadowOffset: { height: 6, width: 0 } },
@@ -1710,8 +2085,8 @@ const st = StyleSheet.create({
   langBtnTxt: { fontSize: 12, fontWeight: '700', color: C.grey6 },
 
   // Picker
-  pickerBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderColor: C.grey2, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 12, backgroundColor: C.grey0 },
-  pickerBtnTxt: { flex: 1, fontSize: 14, fontWeight: '600', color: C.ink },
+  pickerBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1, borderColor: C.grey2, borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, backgroundColor: C.white, shadowColor: '#000', shadowOpacity: 0.03, shadowRadius: 4, elevation: 1 },
+  pickerBtnTxt: { flex: 1, fontSize: 15, fontWeight: '700', color: C.ink },
   tempBadge: { backgroundColor: '#fef3c7', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3 },
   tempBadgeTxt: { fontSize: 11, fontWeight: '800', color: '#92400e' },
 

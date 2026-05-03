@@ -10,6 +10,7 @@ import {
     Easing
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import ParticleTextEffect from '../components/ui/ParticleTextEffect';
 
 const { width, height } = Dimensions.get('window');
 
@@ -59,7 +60,7 @@ const WelcomeScreen = ({ navigation }) => {
         // Auto-navigate to SignIn after delay
         const timer = setTimeout(() => {
             navigation.replace('SignIn');
-        }, 4500);
+        }, 11500);
 
         return () => clearTimeout(timer);
     }, []);
@@ -91,7 +92,7 @@ const WelcomeScreen = ({ navigation }) => {
                             </LinearGradient>
                         </View>
 
-                        <Text style={s.appName}>AgroMind</Text>
+                        <ParticleTextEffect words={["WELCOME", "FARMER", "AGROMIND"]} />
                         <View style={s.accentLine} />
 
                         <Text style={s.tagline}>

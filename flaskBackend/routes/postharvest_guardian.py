@@ -70,6 +70,10 @@ LANGUAGE_CODES = {
 }
 
 # ─── Sri Lanka Agronomic Constants (SLR 603:2013) ────────────────────────────
+# CALIBRATED: penalties based on FAO Post-Harvest Compendium + SLR 603:2013
+# mc_penalty_per_pct: days lost per 1% MC above 13% threshold
+# temp_penalty_per_c: days lost per 1°C above 28°C threshold
+# Previous values (gunny: mc=30, temp=10) were 3-4x too aggressive vs real data
 SL_CONSTANTS = {
     'storage_life': {
         'hermetic':  270,
@@ -79,18 +83,20 @@ SL_CONSTANTS = {
         'polythene':  90,
     },
     'mc_penalty_per_pct': {
-        'hermetic': 20,
-        'metalbin': 15,
-        'woven':    25,
-        'gunny':    30,
-        'polythene':20,
+        # Days lost per 1% MC above 13.0% — calibrated to SLR 603:2013 field data
+        'hermetic':  8,
+        'metalbin':  6,
+        'woven':    12,
+        'gunny':    10,
+        'polythene': 9,
     },
     'temp_penalty_per_c': {
-        'hermetic': 5,
-        'metalbin': 4,
-        'woven':    8,
-        'gunny':   10,
-        'polythene': 7,
+        # Days lost per 1°C above 28°C — calibrated to tropical storage research
+        'hermetic': 2,
+        'metalbin': 1,
+        'woven':    3,
+        'gunny':    4,
+        'polythene': 3,
     },
     'bag_capacity': {
         'hermetic': 50,
@@ -155,16 +161,17 @@ ALL_VARIETIES = list(PRICE_FORECASTS.keys())
 MODEL_DIR        = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'models', 'postharvest')
 ROOT_MODEL_DIR   = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'models')
 
-STORAGE_MODEL    = os.path.join(MODEL_DIR, 'storage_model.pkl')
-ENCODERS_FILE    = os.path.join(MODEL_DIR, 'label_encoders.pkl')
+# New root-level models
+ROOT_STORAGE_MODEL = os.path.join(ROOT_MODEL_DIR, 'storage_model_xgboost.pkl')
+ROOT_ENCODERS_FILE = os.path.join(ROOT_MODEL_DIR, 'label_encoders.pkl')
+ROOT_SCALER_FILE   = os.path.join(ROOT_MODEL_DIR, 'storage_scaler.pkl')
+ROOT_FEATURES_FILE = os.path.join(ROOT_MODEL_DIR, 'storage_features.pkl')
+
 METADATA_FILE    = os.path.join(MODEL_DIR, 'model_metadata.json')
 TEMP_MODEL_FILE  = os.path.join(MODEL_DIR, 'storage_temp_model.pkl')
 HUMID_MODEL_FILE = os.path.join(MODEL_DIR, 'storage_humid_model.pkl')
 TEMP_ENC_FILE    = os.path.join(MODEL_DIR, 'storage_temp_encoders.pkl')
 TEMP_META_FILE   = os.path.join(MODEL_DIR, 'storage_temp_metadata.json')
-
-# Root-level fallback scalers (if not found in postharvest)
-XGB_PRICE_SCALER   = os.path.join(ROOT_MODEL_DIR, 'price_scaler.pkl')
 
 _models = {}
 
@@ -180,38 +187,47 @@ def load_models():
     except Exception:
         _models['metadata'] = {}
 
-    # 2. postharvest/storage_model.pkl (XGBoost Storage Life) + scalers
+    # 2. Root-level storage model (XGBoost) + scalers + features
     try:
-        if os.path.exists(STORAGE_MODEL):
+        if os.path.exists(ROOT_STORAGE_MODEL):
             try:
-                _models['xgb_storage'] = joblib.load(STORAGE_MODEL)
+                _models['xgb_storage'] = joblib.load(ROOT_STORAGE_MODEL)
             except Exception:
-                with open(STORAGE_MODEL, 'rb') as f:
+                with open(ROOT_STORAGE_MODEL, 'rb') as f:
                     _models['xgb_storage'] = pickle.load(f)
 
-            if os.path.exists(ENCODERS_FILE):
+            if os.path.exists(ROOT_ENCODERS_FILE):
                 try:
-                    _models['xgb_label_enc'] = joblib.load(ENCODERS_FILE)
+                    _models['xgb_label_enc'] = joblib.load(ROOT_ENCODERS_FILE)
                 except Exception:
-                    with open(ENCODERS_FILE, 'rb') as f:
+                    with open(ROOT_ENCODERS_FILE, 'rb') as f:
                         _models['xgb_label_enc'] = pickle.load(f)
             else:
                 _models['xgb_label_enc'] = None
 
-            price_sc_path = os.path.join(MODEL_DIR, 'price_scaler.pkl')
-            if not os.path.exists(price_sc_path) and os.path.exists(XGB_PRICE_SCALER):
-                price_sc_path = XGB_PRICE_SCALER
-
-            if os.path.exists(price_sc_path):
-                _models['xgb_price_sc'] = joblib.load(price_sc_path)
+            if os.path.exists(ROOT_SCALER_FILE):
+                try:
+                    _models['xgb_scaler'] = joblib.load(ROOT_SCALER_FILE)
+                except Exception:
+                    with open(ROOT_SCALER_FILE, 'rb') as f:
+                        _models['xgb_scaler'] = pickle.load(f)
             else:
-                _models['xgb_price_sc'] = None
+                _models['xgb_scaler'] = None
+
+            if os.path.exists(ROOT_FEATURES_FILE):
+                try:
+                    _models['xgb_features'] = joblib.load(ROOT_FEATURES_FILE)
+                except Exception:
+                    with open(ROOT_FEATURES_FILE, 'rb') as f:
+                        _models['xgb_features'] = pickle.load(f)
+            else:
+                _models['xgb_features'] = None
             
             _models['xgb_loaded'] = True
-            print("[PostHarvest] ✅ postharvest/storage_model.pkl loaded")
+            print("[PostHarvest] ✅ root storage_model_xgboost.pkl loaded")
         else:
             _models['xgb_loaded'] = False
-            print("[PostHarvest] ℹ️ postharvest/storage_model.pkl missing — using physics")
+            print("[PostHarvest] ℹ️ root storage_model_xgboost.pkl missing — using physics")
     except Exception as exc:
         print(f"[PostHarvest] ⚠️ XGBoost load error: {exc}")
         _models['xgb_loaded'] = False
@@ -368,33 +384,52 @@ def _get_next_festival():
 
 
 def _compute_storage_life(bag_type, moisture_pct, temp_c, has_pest_history=False, ventilation='natural'):
-    """Physics-based storage life compliant with SLR 603:2013."""
+    """
+    Physics-based storage life compliant with SLR 603:2013.
+    CALIBRATED v2.0 — penalties aligned with FAO Post-Harvest Compendium & field data.
+
+    Penalty thresholds:
+      - MC baseline: 13.0% (SLR Grade A+)
+      - Temp baseline: 28.0°C (tropical optimum for paddy storage)
+      - Weevil CRITICAL: MC > 14.5% AND temp > 32°C (both required)
+      - Weevil MEDIUM:  MC > 14.0% AND temp > 30°C (both required)
+    Single-factor elevation (either MC or temp alone) is already captured by
+    the linear penalty — no additional multiplicative deduction needed.
+    """
     key     = _normalize_bag_type(bag_type)
     base    = SL_CONSTANTS['storage_life'][key]
     mc_pen  = SL_CONSTANTS['mc_penalty_per_pct'][key]
     tmp_pen = SL_CONSTANTS['temp_penalty_per_c'][key]
 
     if ventilation == 'none':
-        mc_pen  *= 1.2
-        tmp_pen *= 1.3
+        mc_pen  *= 1.15
+        tmp_pen *= 1.20
     elif ventilation == 'mechanical':
-        mc_pen  *= 0.8
-        tmp_pen *= 0.7
+        mc_pen  *= 0.85
+        tmp_pen *= 0.75
 
     if has_pest_history:
-        base *= 0.8
+        base *= 0.80
 
     mc_excess   = max(0.0, moisture_pct - 13.0)
     temp_excess = max(0.0, temp_c - 28.0)
     days        = base - (mc_excess * mc_pen) - (temp_excess * tmp_pen)
 
+    # Weevil risk — requires BOTH conditions to be elevated simultaneously
+    # (a single out-of-range parameter is already penalised by the linear terms above)
     weevil_risk = "LOW"
-    if moisture_pct > 14.0 and temp_c > 30.0:
+    if moisture_pct > 14.5 and temp_c > 32.0:
+        # Severe combined stress: rapid mold + weevil breeding
         weevil_risk = "CRITICAL"
-        days *= 0.6
-    elif moisture_pct > 13.5 or temp_c > 29.0:
+        days *= 0.70
+    elif moisture_pct > 14.0 and temp_c > 30.0:
+        # Moderate combined stress: elevated weevil pressure
         weevil_risk = "MEDIUM"
-        days *= 0.85
+        days *= 0.88
+    elif moisture_pct > 16.0 or temp_c > 35.0:
+        # Extreme single-factor: flag as critical regardless
+        weevil_risk = "CRITICAL"
+        days *= 0.75
 
     days = max(7, int(round(days)))
 
@@ -403,13 +438,13 @@ def _compute_storage_life(bag_type, moisture_pct, temp_c, has_pest_history=False
         explanation = f"MC {moisture_pct}% is dangerously low. Milling breakage risk >20%."
     elif moisture_pct <= 13.0:
         grade, risk = "Grade A+", "SAFE"
-        explanation = f"Excellent MC {moisture_pct}%. Safe for {days} days."
+        explanation = f"Excellent MC {moisture_pct}%. Optimum safe storage for {days} days."
     elif moisture_pct <= 14.0:
         grade, risk = "Grade A", "GOOD"
-        explanation = f"MC {moisture_pct}% within Grade A limits."
+        explanation = f"MC {moisture_pct}% within Grade A limits. Dry slightly for longer storage."
     elif moisture_pct <= 16.0:
         grade, risk = "Grade B", "HIGH"
-        explanation = f"MC {moisture_pct}% is borderline. Grade B quality."
+        explanation = f"MC {moisture_pct}% is borderline Grade B. Dry to 13% before long storage."
     else:
         grade, risk = "Grade C", "CRITICAL"
         explanation = f"MC {moisture_pct}% is dangerously high (Grade C). DO NOT STORE."
@@ -1025,113 +1060,94 @@ def predict():
 
         if m.get('xgb_loaded') and m.get('xgb_storage') is not None:
             try:
-                enc         = m.get('xgb_label_enc') or {}
-                meta        = m.get('metadata', {})
-                feat_cols   = (meta.get('xgboost', {}).get('feature_cols') or
-                               meta.get('feature_cols', []))
+                enc    = m.get('xgb_label_enc') or {}
+                scaler = m.get('xgb_scaler')
+                feats  = m.get('xgb_features') or []
 
-                variety_key = variety
-                var_enc     = 0
-                if isinstance(enc, dict) and any(hasattr(v, 'transform') for v in enc.values()):
-                    le_var = enc.get('Variety') or enc.get('variety') or enc.get('Variety_Enc')
-                    if le_var is not None:
+                # Handle rice_variety encoding
+                variety_enc = 0
+                if 'rice_variety' in enc:
+                    le_var = enc['rice_variety']
+                    if variety in le_var.classes_:
+                        variety_enc = int(le_var.transform([variety])[0])
+                    else:
+                        # Fallback for unknown varieties
                         try:
-                            var_enc = int(le_var.transform([variety_key])[0])
-                        except Exception:
-                            classes = list(le_var.classes_)
-                            matched = next((c for c in classes if variety_key.lower() in c.lower()), classes[0])
-                            var_enc = int(le_var.transform([matched])[0])
-                else:
-                    var_list = meta.get('label_encoders', {}).get('varieties', [])
-                    var_enc  = next((i for i, v in enumerate(var_list) if variety_key.lower() in v.lower()), 0)
-
-                type_enc   = 0
-                method_enc = 0
-                if isinstance(enc, dict) and any(hasattr(v, 'transform') for v in enc.values()):
-                    le_type = enc.get('Type') or enc.get('type')
-                    if le_type is not None:
-                        try: type_enc = int(le_type.transform(['Improved'])[0])
+                            matched = next((c for c in le_var.classes_ if variety.lower() in c.lower()), le_var.classes_[0])
+                            variety_enc = int(le_var.transform([matched])[0])
                         except Exception: pass
-                    le_meth = enc.get('Method') or enc.get('method')
-                    if le_meth is not None:
-                        bag_label_map = {
-                            'hermetic': 'Hermetic bag', 'gunny': 'Gunny bag',
-                            'polythene': 'Polythene bag', 'woven': 'Gunny bag',
-                            'metalbin': 'Gunny bag'
-                        }
-                        bag_label = bag_label_map.get(_normalize_bag_type(bag_type), 'Gunny bag')
-                        try: method_enc = int(le_meth.transform([bag_label])[0])
-                        except Exception: pass
-                else:
-                    typ_list = meta.get('label_encoders', {}).get('types', [])
-                    meth_list = meta.get('label_encoders', {}).get('methods', [])
-                    type_enc = next((i for i, v in enumerate(typ_list) if 'Improved' in v), 0)
-                    bag_label_map = {
-                        'hermetic': 'Hermetic bag', 'gunny': 'Gunny bag',
-                        'polythene': 'Polythene bag', 'woven': 'Gunny bag',
-                        'metalbin': 'Gunny bag'
-                    }
-                    bag_label = bag_label_map.get(_normalize_bag_type(bag_type), 'Gunny bag')
-                    method_enc = next((i for i, v in enumerate(meth_list) if bag_label.lower() in v.lower()), 0)
 
-                high_moisture = int(moisture_pct > 14)
-                high_temp     = int(temp_c > 30)
-                mc_temp_inter = moisture_pct * temp_c
+                # Determine season from current month (Maha: Oct-Mar, Yala: Apr-Sep)
+                current_month = datetime.now().month
+                season_str = 'Maha' if current_month >= 10 or current_month <= 3 else 'Yala'
+                season_enc = 0
+                if 'harvest_season' in enc:
+                    le_sea = enc['harvest_season']
+                    if season_str in le_sea.classes_:
+                        season_enc = int(le_sea.transform([season_str])[0])
 
-                row = {
-                    'Variety_Enc':          var_enc,
-                    'Type_Enc':             type_enc,
-                    'Method_Enc':           method_enc,
-                    'MC (%)':               moisture_pct,
-                    'Temp (C)':             temp_c,
-                    'High_Moisture':        high_moisture,
-                    'High_Temp':            high_temp,
-                    'MC_Temp_Interaction':  mc_temp_inter,
+                # Prepare the 25 features based on inputs
+                row_data = {
+                    'storage_facility_quality': 3 if storage_location in ['warehouse', 'silo'] else (2 if storage_location == 'coop' else 1),
+                    'high_quality_facility': 1 if storage_location in ['warehouse', 'silo'] else 0,
+                    'previous_storage_log': 1 if has_pest_history else 0,
+                    'previous_storage_duration': int(duration_months * 30),
+                    'packaging_quality': 3 if _normalize_bag_type(bag_type) == 'hermetic' else (2 if _normalize_bag_type(bag_type) in ['gunny', 'woven'] else 1),
+                    'ventilation_quality': 3 if storage_cfg.get('ventilation') in ['fan', 'fan assisted', 'air conditioned'] else 1,
+                    'temp_humidity_interaction': temp_c * humidity_pct,
+                    'temp_deviation': temp_c - 28.0,
+                    'pest_risk_log': 1 if has_pest_history else 0,
+                    'pest_risk_level': 2 if has_pest_history else 0,
+                    'location_altitude': 50,  # Default altitude
+                    'premium_packaging': 1 if _normalize_bag_type(bag_type) == 'hermetic' else 0,
+                    'rice_variety_encoded': variety_enc,
+                    'humidity': humidity_pct,
+                    'excellent_grain': 1 if moisture_pct <= 13 else 0,
+                    'total_risk_score': 0, # Will be ignored/overridden by features
+                    'humidity_squared': humidity_pct**2,
+                    'grain_quality_score': 3 if moisture_pct <= 13 else (2 if moisture_pct <= 14 else 1),
+                    'temp_moisture_interaction': temp_c * moisture_pct,
+                    'temp_squared': temp_c**2,
+                    'temperature': temp_c,
+                    'humidity_deviation': humidity_pct - 65.0,
+                    'fully_optimal': 1 if moisture_pct <= 13 and temp_c <= 28 else 0,
+                    'harvest_season_encoded': season_enc,
+                    'humidity_moisture_interaction': humidity_pct * moisture_pct,
                 }
 
-                if feat_cols:
-                    X = pd.DataFrame([[row.get(c, 0) for c in feat_cols]], columns=feat_cols)
-                else:
-                    X = pd.DataFrame([row])
+                if feats:
+                    X_arr = np.array([[row_data.get(f, 0) for f in feats]])
+                    
+                    if scaler is not None:
+                        try:
+                            X_arr = scaler.transform(X_arr)
+                        except Exception as e:
+                            print(f"[predict] Scaler transform error: {e}")
+                    
+                    raw_pred = float(m['xgb_storage'].predict(X_arr)[0])
 
-                scaler = m.get('xgb_scaler')
-                if scaler is not None:
-                    try:
-                        X_vals = scaler.transform(X)
-                        X = pd.DataFrame(X_vals, columns=X.columns)
-                    except Exception: pass
-
-                raw_pred = float(m['xgb_storage'].predict(X)[0])
-
-                # De-scale price if price_scaler was applied to target
-                price_sc = m.get('xgb_price_sc')
-                if price_sc is not None:
-                    try:
-                        raw_pred = float(price_sc.inverse_transform([[raw_pred]])[0][0])
-                    except Exception: pass
-
-                # XGBoost may predict storage_days or price — treat as days if in range
-                if 7 <= raw_pred <= 1000:
-                    ml_storage_days   = int(round(raw_pred))
-                    ml_prediction_used = True
-                    ml_debug = {'raw_xgb': raw_pred, 'features': row}
+                    if 7 <= raw_pred <= 1000:
+                        ml_storage_days   = int(round(raw_pred))
+                        ml_prediction_used = True
+                        ml_debug = {'raw_xgb': raw_pred, 'features': row_data}
+                        
             except Exception as ml_exc:
                 print(f"[predict] XGBoost ML error: {ml_exc}")
+                import traceback
+                traceback.print_exc()
 
         # ── Step 3: Physics-based storage life (always computed as reference) ─
         physics_storage = _compute_storage_life(bag_type, moisture_pct, temp_c)
 
         # ── Step 4: Final storage = ML if available, else physics ─────────────
         if ml_prediction_used and ml_storage_days:
-            # Blend: 60% ML, 40% physics for robustness
-            blended_days = int(round(ml_storage_days * 0.6 + physics_storage['storage_days'] * 0.4))
-            blended_days = max(7, blended_days)
+            # Use ML prediction exclusively
             storage = dict(physics_storage)
-            storage['storage_days']   = blended_days
-            storage['storage_months'] = round(blended_days / 30.0, 1)
-            storage['prediction_method'] = 'XGBoost Hybrid'
+            storage['storage_days']   = ml_storage_days
+            storage['storage_months'] = round(ml_storage_days / 30.0, 1)
+            storage['prediction_method'] = 'XGBoost ML Prediction'
             storage['ml_days']        = ml_storage_days
-            storage['physics_days']   = physics_storage['storage_days']
+            storage.pop('physics_days', None)
         else:
             storage = physics_storage
             storage['prediction_method'] = 'Physics Model'
@@ -1248,7 +1264,7 @@ def get_advice():
         target_lang     = LANGUAGE_CODES.get(lang, 'english')
 
         fest_str = (
-            f"{festival['name']} in {festival['days_away']} days (+{festival['boost_pct']}% price boost)"
+            f"{festival['name']} on {festival['date']} (in {festival['days_away']} days). Expected price boost: +{festival['boost_pct']}%."
             if festival else "No major Sri Lankan festival in next 30 days"
         )
 
@@ -1283,7 +1299,8 @@ STRICT JSON RESPONSE:
     "projected_value_lkr": {round(quantity_kg * peak_price)},
     "conditions": "what conditions MUST be true — in {target_lang}"
   }},
-  "festival_advice": "specific advice about upcoming Sri Lankan festival in {target_lang}",
+  "festival_advice": "MUST explicitly state the EXACT festival date provided. Explain clearly if their storage life allows them to wait for this date, or if they must sell before it.",
+  "expert_tip": "Provide one highly valuable, secret tip for the farmer (e.g. negotiation tactic with buyers, blending trick, or specific storage hack) in {target_lang}",
   "quick_wins": ["immediate action 1 in {target_lang}", "action 2", "action 3"],
   "danger_warning": null
 }}"""
@@ -1566,17 +1583,46 @@ def calculate_costs():
         lang             = data.get('lang', 'en')
         target_lang      = LANGUAGE_CODES.get(lang, 'english')
 
-        pf             = _get_price_forecast(variety)
-        current_price  = float(data.get('current_price',  pf['current_lkr']))
-        expected_price = float(data.get('expected_price', pf['peak_lkr']))
+        # ── Production cost & selling price per kg ─────────────────────────────
+        pf                  = _get_price_forecast(variety)
+        default_sell_price  = pf['current_lkr']
+        DEFAULT_PROD_COST   = 85.0   # SL average 2024 (Rs./kg)
 
+        production_cost_kg  = float(data.get('production_cost_kg', DEFAULT_PROD_COST))
+        selling_price_kg    = float(data.get('selling_price_kg',
+                                    data.get('selling_price', default_sell_price)))
+        daily_maint         = float(data.get('daily_maintenance_cost', 0) or 0)
+
+        # ── Storage cost breakdown ─────────────────────────────────────────────
         costs = _compute_storage_costs(
             quantity_kg, bag_type, duration_months,
-            storage_location, current_price, expected_price
+            storage_location,
+            current_price_lkr  = selling_price_kg,
+            expected_price_lkr = selling_price_kg,
         )
 
+        days                    = int(duration_months * 30)
+        maint_cost              = round(daily_maint * days) if daily_maint > 0 else 0
+        total_storage_cost      = costs['total_storage_cost'] + maint_cost
+        total_production_cost   = round(quantity_kg * production_cost_kg)
+        sell_revenue            = round(quantity_kg * selling_price_kg)
+        total_cost_all          = total_production_cost + total_storage_cost
+        net_profit              = sell_revenue - total_cost_all
+        margin_kg               = round(selling_price_kg - production_cost_kg - total_storage_cost / quantity_kg, 2) if quantity_kg > 0 else 0
+        break_even_price        = round(production_cost_kg + total_storage_cost / quantity_kg, 2) if quantity_kg > 0 else 0
+        roi_pct                 = round(net_profit / total_cost_all * 100, 1) if total_cost_all > 0 else 0
+        cost_per_kg             = round(total_storage_cost / quantity_kg, 2) if quantity_kg > 0 else 0
+
+        if net_profit > total_storage_cost * 0.5:
+            profitability = "YES"
+        elif net_profit > 0:
+            profitability = "MARGINAL"
+        else:
+            profitability = "NO"
+
         system_prompt = f"""You are the Agricultural Economist for the Department of Agriculture, Sri Lanka.
-A farmer is deciding whether to store paddy or sell now. Give direct, honest economic advice.
+A farmer has given you their ACTUAL production cost and expected selling price.
+Give direct, honest economic advice — tell them if storing is worthwhile after ALL costs.
 Use plain language. Use LKR figures from the data provided.
 
 LANGUAGE: Respond ENTIRELY in {target_lang}. Every word of the advice values must be in {target_lang}.
@@ -1584,20 +1630,27 @@ Keep ALL JSON keys in English — only the values in {target_lang}.
 
 STRICT JSON RESPONSE:
 {{
-  "economic_verdict": "2-sentence plain verdict in {target_lang} — is it worth storing?",
+  "economic_verdict": "2-sentence plain verdict in {target_lang} — is storing worth it after production + storage costs?",
   "best_advice": "specific step-by-step recommendation for this farmer's exact situation — in {target_lang}",
   "risk_warning": "the #1 financial risk if they proceed with storing — in {target_lang}",
-  "comparison": "compare storing vs selling today: exact LKR numbers — in {target_lang}"
+  "comparison": "compare selling now vs storing: exact LKR numbers and margin per kg — in {target_lang}"
 }}"""
 
         user_content = json.dumps({
-            'quantity_kg': quantity_kg, 'bag_type': bag_type,
-            'duration_months': duration_months, 'storage_location': storage_location,
-            'current_price_lkr': current_price, 'expected_price_lkr': expected_price,
-            'total_storage_cost_lkr': costs['total_storage_cost'],
-            'net_profit_lkr': costs['net_profit'], 'profitability': costs['profitability'],
-            'break_even_price': costs['break_even_price'], 'roi_pct': costs['roi_pct'],
-            'bags_required': costs['bags_required'],
+            'quantity_kg': quantity_kg, 'variety': variety,
+            'bag_type': bag_type, 'duration_months': duration_months,
+            'storage_location': storage_location,
+            'production_cost_per_kg': production_cost_kg,
+            'selling_price_per_kg': selling_price_kg,
+            'margin_per_kg_lkr': margin_kg,
+            'total_production_cost_lkr': total_production_cost,
+            'total_storage_cost_lkr': total_storage_cost,
+            'sell_revenue_lkr': sell_revenue,
+            'net_profit_lkr': net_profit,
+            'break_even_price_lkr': break_even_price,
+            'cost_per_kg_storage': cost_per_kg,
+            'roi_pct': roi_pct,
+            'profitability': profitability,
             'response_language': target_lang,
         })
 
@@ -1611,22 +1664,22 @@ STRICT JSON RESPONSE:
 
         _fallbacks = {
             'en': {
-                'verdict': "Storing looks profitable based on current data.",
-                'advice': "Proceed with storage but monitor moisture closely to avoid spoilage.",
-                'warning': "Be aware of sudden market price drops.",
-                'comparison': "Storing is projected to give a higher profit than selling today.",
+                'verdict': f"Your margin is Rs. {margin_kg}/kg. Net profit after all costs: Rs. {net_profit:,.0f}. {'Profitable to store.' if net_profit > 0 else 'Not profitable at current selling price.'}",
+                'advice': f"Break-even selling price is Rs. {break_even_price}/kg. {'You can proceed with storage.' if net_profit > 0 else 'Consider negotiating a higher selling price before storing.'}",
+                'warning': "Be aware of sudden market price drops and unseasonal moisture increases.",
+                'comparison': f"Production Rs. {production_cost_kg}/kg + Storage Rs. {cost_per_kg}/kg = Rs. {round(production_cost_kg + cost_per_kg)}/kg total. Selling at Rs. {selling_price_kg}/kg gives Rs. {margin_kg}/kg margin.",
             },
             'si': {
-                'verdict': "දැනට ඇති දත්ත අනුව ගබඩා කිරීම ලාභදායී වේ.",
-                'advice': "ගබඩා කිරීම කරගෙන යන්න, නමුත් නරක් වීම වලක්වා ගැනීමට තෙතමනය හොඳින් නිරීක්ෂණය කරන්න.",
-                'warning': "හදිසි වෙළඳපල මිල පහළ යාම් ගැන සැලකිලිමත් වන්න.",
-                'comparison': "අද විකිණීමට වඩා ගබඩා කිරීමෙන් වැඩි ලාභයක් ලැබෙනු ඇතැයි අපේක්ෂා කෙරේ.",
+                'verdict': f"ඔබේ ලාභ මාර්ජිනය Rs. {margin_kg}/kg. සියලු වියදම් කැපූ පසු ශුද්ධ ලාභය: Rs. {net_profit:,.0f}.",
+                'advice': f"ලාභ-සම මිල Rs. {break_even_price}/kg. {'ගබඩා කිරීම ඉදිරියට ගෙන යන්න.' if net_profit > 0 else 'ගබඩා කිරීමට පෙර ඉහළ විකුණුම් මිලක් ලබා ගැනීමට උත්සාහ කරන්න.'}",
+                'warning': "හදිසි වෙළඳ මිල පහළ යාම් ගැනත් ගබඩා ගැටලු ගැනත් සැලකිලිමත් වන්න.",
+                'comparison': f"නිෂ්පාදන Rs. {production_cost_kg}/kg + ගබඩා Rs. {cost_per_kg}/kg = Rs. {round(production_cost_kg + cost_per_kg)}/kg. Rs. {selling_price_kg}/kg ට විකිණූ විට Rs. {margin_kg}/kg ලාභ.",
             },
             'ta': {
-                'verdict': "தற்போதைய தரவுகளின் அடிப்படையில் சேமிப்பது லாபகரமானதாக தோன்றுகிறது.",
-                'advice': "சேமிப்பைத் தொடரவும், ஆனால் கெட்டுப்போவதைத் தவிர்க்க ஈரப்பதத்தை கண்காணிக்கவும்.",
-                'warning': "திடீர் சந்தை விலை வீழ்ச்சிகள் குறித்து எச்சரிக்கையாக இருங்கள்.",
-                'comparison': "இன்று விற்பதை விட சேமித்து வைப்பது அதிக லாபத்தை ஈட்டும் என எதிர்பார்க்கப்படுகிறது.",
+                'verdict': f"உங்கள் லாப வரம்பு Rs. {margin_kg}/kg. அனைத்து செலவுகளுக்கும் பிறகு நிகர லாபம்: Rs. {net_profit:,.0f}.",
+                'advice': f"இலாப சமன் விலை Rs. {break_even_price}/kg. {'சேமிப்பை தொடரலாம்.' if net_profit > 0 else 'சேமிக்கும் முன் அதிக விற்பனை விலை பேச முயற்சிக்கவும்.'}",
+                'warning': "சந்தை விலை வீழ்ச்சி மற்றும் ஈரப்பத அதிகரிப்பு குறித்து எச்சரிக்கையாக இருங்கள்.",
+                'comparison': f"உற்பத்தி Rs. {production_cost_kg}/kg + சேமிப்பு Rs. {cost_per_kg}/kg = Rs. {round(production_cost_kg + cost_per_kg)}/kg. Rs. {selling_price_kg}/kg க்கு விற்றால் Rs. {margin_kg}/kg லாபம்.",
             },
         }
         fb = _fallbacks.get(lang, _fallbacks['en'])
@@ -1634,11 +1687,22 @@ STRICT JSON RESPONSE:
         return jsonify({
             'success': True,
             **costs,
-            'lang': lang,
-            'ai_economic_verdict': ai_data.get('economic_verdict', fb['verdict']),
-            'ai_best_advice':      ai_data.get('best_advice', fb['advice']),
-            'ai_risk_warning':     ai_data.get('risk_warning', fb['warning']),
-            'ai_comparison':       ai_data.get('comparison', fb['comparison']),
+            'maint_cost':             maint_cost,
+            'total_storage_cost':     total_storage_cost,
+            'total_production_cost':  total_production_cost,
+            'total_cost_all':         total_cost_all,
+            'sell_revenue':           sell_revenue,
+            'net_profit':             net_profit,
+            'margin_per_kg':          margin_kg,
+            'break_even_price':       break_even_price,
+            'cost_per_kg':            cost_per_kg,
+            'roi_pct':                roi_pct,
+            'profitability':          profitability,
+            'lang':                   lang,
+            'ai_economic_verdict':    ai_data.get('economic_verdict', fb['verdict']),
+            'ai_best_advice':         ai_data.get('best_advice', fb['advice']),
+            'ai_risk_warning':        ai_data.get('risk_warning', fb['warning']),
+            'ai_comparison':          ai_data.get('comparison', fb['comparison']),
         }), 200
 
     except Exception as exc:

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity,
   Dimensions, ActivityIndicator, Alert, SafeAreaView, KeyboardAvoidingView,
-  Platform, StatusBar, Modal, Image, FlatList, Animated
+  Platform, StatusBar, Modal, Image, FlatList, Animated, Keyboard
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Picker } from '@react-native-picker/picker';
@@ -227,6 +227,19 @@ export default function RegisterHarvestScreen({ navigation, route }) {
   const [storageRec, setStorageRec] = useState(null);
   const [loadingRec, setLoadingRec] = useState(false);
 
+  // ─── Container AI inline analysis ──────────────────────────────────────────
+  const [containerAiResult, setContainerAiResult] = useState(null);
+  const [containerAiLoading, setContainerAiLoading] = useState(false);
+
+  // ─── Keyboard Tracking for Footer ──────────────────────────────────────────
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+    const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, []);
+
   useEffect(() => {
     if (!permission) requestPermission();
     loadExistingLocations();
@@ -348,7 +361,7 @@ export default function RegisterHarvestScreen({ navigation, route }) {
         body: JSON.stringify({
           variety: variety || 'Bg 300',
           quantity_kg: parseFloat(qty) || 1000,
-          moisture_pct: parseFloat(moisture) || 13.5,
+          moisture_pct: 13.5,
           duration_months: 3,
           budget_lkr: 0,
         })
@@ -364,18 +377,60 @@ export default function RegisterHarvestScreen({ navigation, route }) {
     finally { setLoadingRec(false); }
   };
 
-  // ─── Manual AI chat ────────────────────────────────────────────────────────
-  const handleManualChat = async () => {
-    if (!chatInput.trim()) return;
-    const userMsg = { id: Date.now(), text: chatInput, isBot: false };
-    setChatMessages(prev => [...prev, userMsg]);
-    const q = chatInput;
-    setChatInput('');
-    setIsTyping(true);
+  // ─── Analyze container choice directly with LLM ──────────────────────────────
+  const analyzeContainerWithAI = async () => {
+    const { variety, quantityKg, containerCategory, storageMethod, ventilation, grade } = stockForm;
+    if (!quantityKg) {
+      Alert.alert('Missing Info', 'Please enter the quantity in KG first.');
+      return;
+    }
+    setContainerAiLoading(true);
+    setContainerAiResult(null);
     try {
-      // detect intent: logistics vs grading
-      const lowerInput = currentInput.toLowerCase();
-      const isGradingIntent = lowerInput.includes('grade') || lowerInput.includes('quality') || lowerInput.includes('audit') || lowerInput.includes('moisture');
+      const prompt = `I am storing ${quantityKg} kg of ${variety} paddy (Grade ${grade}) using ${storageMethod} (${containerCategory} type) with ${ventilation.toLowerCase()} ventilation. Analyze this container choice: is it suitable? What are the main risks? Give me 3 specific tips to maximize storage life. Keep the answer practical and under 120 words.`;
+      const res = await fetch(`${BASE_URL}/api/guardian/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: prompt,
+          context: {
+            variety,
+            quantity: quantityKg,
+            storage_method: storageMethod,
+            container_category: containerCategory,
+            ventilation,
+            grade,
+            requested_language: 'en',
+          }
+        })
+      });
+      const data = await res.json();
+      if (data.success && data.answer) {
+        setContainerAiResult(data.answer);
+      } else {
+        setContainerAiResult('AI service is busy. Tip: Hermetic bags (GrainPro/PICS) give best results for paddy stored over 3 months as they block oxygen and prevent weevil growth.');
+      }
+    } catch (e) {
+      setContainerAiResult('Network issue. Quick tip: For gunny bags, ensure pallets are 15cm off the floor and stack no more than 12 bags high. Check every 7 days for heat or pest signs.');
+    } finally {
+      setContainerAiLoading(false);
+    }
+  };
+
+  // ─── Manual AI chat ────────────────────────────────────────────────────────
+  const handleManualChat = async (questionOverride = null) => {
+    const q = questionOverride || chatInput;
+    if (!q.trim()) return;
+    
+    const userMsg = { id: Date.now(), text: q, isBot: false };
+    setChatMessages(prev => [...prev, userMsg]);
+    if (!questionOverride) setChatInput('');
+    setIsTyping(true);
+    
+    try {
+      // detect intent
+      const lowerInput = q.toLowerCase();
+      const isGradingIntent = lowerInput.includes('grade') || lowerInput.includes('quality') || lowerInput.includes('audit');
 
       const res = await fetch(`${BASE_URL}/api/guardian/chat`, {
         method: 'POST',
@@ -453,7 +508,6 @@ export default function RegisterHarvestScreen({ navigation, route }) {
     if (!stockForm.locationId) { Alert.alert('Required', 'Please select a storage location.'); return; }
     if (!stockForm.quantityKg || parseFloat(stockForm.quantityKg) <= 0) { Alert.alert('Required', 'Please enter quantity in KG.'); return; }
     if (!stockForm.acres || isNaN(parseFloat(stockForm.acres))) { Alert.alert('Required', 'Please enter land area in acres.'); return; }
-    if (!stockForm.moisture) { Alert.alert('Required', 'Please enter moisture content (%).'); return; }
 
     // Capacity check
     const qty = parseFloat(stockForm.quantityKg);
@@ -487,7 +541,7 @@ export default function RegisterHarvestScreen({ navigation, route }) {
           variety: stockForm.variety,
           quantity_kg: parseFloat(stockForm.quantityKg),
           acres: parseFloat(stockForm.acres),
-          moisture_pct: parseFloat(stockForm.moisture) || 0,
+          moisture_pct: 13.5,
           grade: stockForm.grade,
         })
       });
@@ -518,7 +572,6 @@ export default function RegisterHarvestScreen({ navigation, route }) {
         bags: parseFloat(stockForm.bags) || 0,
         prodCost: parseFloat(stockForm.prodCost) || 0,
         acres: parseFloat(stockForm.acres) || 0,
-        moisture: parseFloat(stockForm.moisture) || 0,
         updatedAt: new Date(),
       };
       if (docId) {
@@ -948,53 +1001,13 @@ export default function RegisterHarvestScreen({ navigation, route }) {
         value={stockForm.prodCost}
         onChangeText={v => setStockForm(p => ({ ...p, prodCost: v }))}
       />
-      <TouchableOpacity
-        style={styles.planBtn}
-        onPress={() => navigation.navigate('InputPlanner')}
-      >
-        <MaterialCommunityIcons name="calculator-variant" size={16} color="#1d4ed8" />
-        <Text style={styles.planBtnText}>Calculate with Input Planner</Text>
-      </TouchableOpacity>
+
     </View>
   );
 
   const renderStockStep2 = () => (
     <View style={styles.stepContent}>
       {renderStepHeader('Storage & Quality', 'shield-check')}
-
-      <Text style={styles.fieldLabel}>Moisture Content (%) *</Text>
-      <View style={styles.moistureRow}>
-        <TextInput
-          style={[styles.input, { flex: 1 }]}
-          keyboardType="numeric"
-          placeholder="Target: 13.5%"
-          placeholderTextColor="#9ca3af"
-          value={stockForm.moisture}
-          onChangeText={handleMoistureChange}
-        />
-        {stockForm.moisture ? (
-          <View style={[styles.moistureBadge, {
-            backgroundColor: parseFloat(stockForm.moisture) > 16 ? '#fee2e2' :
-              parseFloat(stockForm.moisture) > 14 ? '#fef9c3' : '#dcfce7'
-          }]}>
-            <Text style={[styles.moistureBadgeText, {
-              color: parseFloat(stockForm.moisture) > 16 ? '#dc2626' :
-                parseFloat(stockForm.moisture) > 14 ? '#ca8a04' : '#16a34a'
-            }]}>
-              {parseFloat(stockForm.moisture) > 16 ? '🔴 REJECT' : parseFloat(stockForm.moisture) > 14 ? '🟡 CAUTION' : '🟢 SAFE'}
-            </Text>
-          </View>
-        ) : null}
-      </View>
-
-      <View style={styles.moistureGuide}>
-        {[{ label: 'Grade A+', range: '≤ 13%', color: '#16a34a' }, { label: 'Grade A', range: '13-14%', color: '#22c55e' }, { label: 'Grade B', range: '14-16%', color: '#f59e0b' }, { label: 'Grade C', range: '16-18%', color: '#dc2626' }].map(m => (
-          <View key={m.label} style={styles.moistureGuideItem}>
-            <View style={[styles.moistureDot, { backgroundColor: m.color }]} />
-            <Text style={styles.moistureGuideText}>{m.label}: {m.range}</Text>
-          </View>
-        ))}
-      </View>
 
       <Text style={styles.fieldLabel}>Ventilation Condition</Text>
       <View style={styles.btnRow}>
@@ -1008,7 +1021,7 @@ export default function RegisterHarvestScreen({ navigation, route }) {
       <Text style={styles.fieldLabel}>Container Type Category</Text>
       <View style={styles.btnRow}>
         {Object.keys(CONTAINER_HIERARCHY).map(cat => (
-          <TouchableOpacity key={cat} style={[styles.pill, stockForm.containerCategory === cat && styles.pillActive]} onPress={() => handleContainerCategoryChange(cat)}>
+          <TouchableOpacity key={cat} style={[styles.pill, stockForm.containerCategory === cat && styles.pillActive]} onPress={() => { handleContainerCategoryChange(cat); setContainerAiResult(null); }}>
             <Text style={[styles.pillText, stockForm.containerCategory === cat && styles.pillTextActive]}>{cat}</Text>
           </TouchableOpacity>
         ))}
@@ -1018,7 +1031,7 @@ export default function RegisterHarvestScreen({ navigation, route }) {
       <View style={styles.pickerWrap}>
         <Picker
           selectedValue={stockForm.storageMethod}
-          onValueChange={v => setStockForm(p => ({ ...p, storageMethod: v }))}
+          onValueChange={v => { setStockForm(p => ({ ...p, storageMethod: v })); setContainerAiResult(null); }}
           style={{ color: '#111827' }} dropdownIconColor="#16a34a"
         >
           {CONTAINER_HIERARCHY[stockForm.containerCategory].map(m => (
@@ -1027,26 +1040,35 @@ export default function RegisterHarvestScreen({ navigation, route }) {
         </Picker>
       </View>
 
-      <TouchableOpacity style={styles.aiAnalyzeBtn} onPress={() => {
-        setChatVisible(true);
-        fetchStorageRecommendation(stockForm.variety, stockForm.quantityKg, stockForm.moisture, stockForm.containerCategory);
-      }}>
+      {/* AI Analyze Button */}
+      <TouchableOpacity
+        style={styles.aiAnalyzeBtn}
+        onPress={() => {
+          if (!stockForm.quantityKg) {
+            Alert.alert('Missing Info', 'Please enter the quantity in KG first.');
+            return;
+          }
+          setChatVisible(true);
+          const prompt = `I am storing ${stockForm.quantityKg} kg of ${stockForm.variety} paddy using ${stockForm.storageMethod}. Is this container suitable? What are the main risks? Give me 3 tips.`;
+          handleManualChat(prompt);
+        }}
+      >
         <MaterialCommunityIcons name="brain" size={16} color="#16a34a" />
         <Text style={styles.aiAnalyzeBtnText}>Analyze Container Choice with AI</Text>
       </TouchableOpacity>
 
-      {/* AI Recommendation Box */}
+      {/* Legacy recommendation box (from category change) */}
       {loadingRec && (
         <View style={styles.recLoading}>
           <ActivityIndicator size="small" color="#16a34a" />
-          <Text style={styles.recLoadingText}>AI analyzing best container...</Text>
+          <Text style={styles.recLoadingText}>Fetching recommendation...</Text>
         </View>
       )}
       {storageRec && storageRec.ai_recommendation && (
         <View style={styles.recCard}>
           <View style={styles.recCardHeader}>
             <MaterialCommunityIcons name="check-decagram" size={18} color="#16a34a" />
-            <Text style={styles.recCardTitle}>AI Recommendation</Text>
+            <Text style={styles.recCardTitle}>Container Recommendation</Text>
           </View>
           <Text style={styles.recBag}>Best: {storageRec.ai_recommendation.recommended_bag?.toUpperCase()}</Text>
           <Text style={styles.recReason}>{storageRec.ai_recommendation.recommendation_headline}</Text>
@@ -1180,7 +1202,7 @@ export default function RegisterHarvestScreen({ navigation, route }) {
         </View>
       )}
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }} keyboardVerticalOffset={Platform.OS === 'android' ? 24 : 0}>
         <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           {!mode && renderModePicker()}
           {mode === 'storage' && renderStorageStep()}
@@ -1188,7 +1210,7 @@ export default function RegisterHarvestScreen({ navigation, route }) {
         </ScrollView>
 
         {/* Footer */}
-        {mode && (
+        {mode && (!keyboardVisible || Platform.OS === 'ios') && (
           <View style={styles.footer}>
             <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
               <MaterialCommunityIcons name="arrow-left" size={18} color="#6b7280" />
@@ -1260,8 +1282,8 @@ export default function RegisterHarvestScreen({ navigation, route }) {
                 </TouchableOpacity>
               </View>
               <View style={styles.quickReplies}>
-                {['Best bag for 2000kg?', 'Safe moisture level?', 'How to prevent weevils?'].map(q => (
-                  <TouchableOpacity key={q} style={styles.quickReply} onPress={() => { setChatInput(q); handleManualChat(); }}>
+                {['Is my container safe?', 'How to prevent weevils?', 'Best bag for 6 months?', 'Should I use pallets?'].map(q => (
+                  <TouchableOpacity key={q} style={styles.quickReply} onPress={() => { setChatInput(q); handleManualChat(q); }}>
                     <Text style={styles.quickReplyText}>{q}</Text>
                   </TouchableOpacity>
                 ))}
@@ -1478,7 +1500,7 @@ const styles = StyleSheet.create({
   chatTriggerText: { color: '#16a34a', fontSize: 13, fontWeight: '700' },
 
   // Footer
-  footer: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#e5e7eb' },
+  footer: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingBottom: Platform.OS === 'android' ? 36 : 28, gap: 12, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#e5e7eb' },
   backBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 16 },
   backBtnText: { color: '#6b7280', fontWeight: '800', fontSize: 13 },
   nextBtn: { flex: 1, borderRadius: 16, overflow: 'hidden' },
