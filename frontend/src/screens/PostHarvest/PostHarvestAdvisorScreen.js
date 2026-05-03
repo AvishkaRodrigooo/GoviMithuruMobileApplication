@@ -691,15 +691,9 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
               </Text>
             </View>
             {stor.ml_days && (
-              <View style={styles.storageItem}>
-                <Text style={styles.storageItemLabel}>ML Prediction</Text>
-                <Text style={[styles.storageItemValue, { color: '#7c3aed' }]}>{stor.ml_days} days</Text>
-              </View>
-            )}
-            {stor.physics_days && (
-              <View style={styles.storageItem}>
-                <Text style={styles.storageItemLabel}>Physics Model</Text>
-                <Text style={styles.storageItemValue}>{stor.physics_days} days</Text>
+              <View style={[styles.storageItem, styles.storageItemFull]}>
+                <Text style={styles.storageItemLabel}>AI Predicted Storage Life</Text>
+                <Text style={[styles.storageItemValue, { color: '#7c3aed', fontSize: 20 }]}>{stor.ml_days} days</Text>
               </View>
             )}
           </View>
@@ -754,10 +748,10 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
         )}
 
         {/* CTA → Advisor */}
-        <TouchableOpacity style={styles.advisorCta} onPress={() => setActiveTab('advisor')}>
-          <MaterialCommunityIcons name="robot-happy-outline" size={20} color={C.white} />
+        <TouchableOpacity style={styles.advisorCta} onPress={() => fetchAdvice('en')}>
+          
           <Text style={styles.advisorCtaText}>Get AI Advisory Explanation</Text>
-          <MaterialCommunityIcons name="arrow-right" size={18} color={C.white} />
+          
         </TouchableOpacity>
       </View>
     );
@@ -1053,6 +1047,17 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
                 <CardHeader icon="calendar-star" title="Festival Timing Advice" />
                 <Text style={styles.adviceBodyText}>{advice.festival_advice}</Text>
               </SectionCard>
+            )}
+
+            {/* Expert Tip */}
+            {advice.expert_tip && (
+              <View style={styles.expertTipCard}>
+                <View style={styles.expertTipHeaderRow}>
+                  <MaterialCommunityIcons name="lightbulb-on-outline" size={20} color="#B45309" />
+                  <Text style={styles.expertTipTitle}>Expert Trade Secret</Text>
+                </View>
+                <Text style={styles.expertTipText}>{advice.expert_tip}</Text>
+              </View>
             )}
 
             {/* Danger Warning */}
@@ -1997,31 +2002,40 @@ const styles = StyleSheet.create({
 
   // ── Storage Grid
   storageGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: 'column',
     gap: 8,
-    marginBottom: 10,
+    marginBottom: 16,
   },
   storageItem: {
-    width: (width - 32 - 36 - 8) / 2,
+    width: '100%',
     backgroundColor: C.bg,
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 14,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
     borderWidth: 1,
     borderColor: C.cardBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  storageItemFull: {
+    paddingVertical: 16,
+    backgroundColor: '#f5f3ff', // light purple background for emphasis
+    borderColor: '#ddd6fe',
   },
   storageItemLabel: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
     color: C.textMuted,
     textTransform: 'uppercase',
     marginBottom: 4,
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
+    textAlign: 'center',
   },
   storageItemValue: {
-    fontSize: 14,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '900',
     color: C.textPrimary,
+    textAlign: 'center',
   },
   explanationBox: {
     flexDirection: 'row',
@@ -2351,6 +2365,31 @@ const styles = StyleSheet.create({
     color: C.red,
     fontWeight: '600',
     lineHeight: 19,
+  },
+
+  expertTipCard: {
+    backgroundColor: '#FFFBEB',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    marginBottom: 12,
+  },
+  expertTipHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    gap: 6,
+  },
+  expertTipTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#92400E',
+  },
+  expertTipText: {
+    fontSize: 14,
+    color: '#B45309',
+    lineHeight: 22,
   },
 
   quickWinsGrid: {

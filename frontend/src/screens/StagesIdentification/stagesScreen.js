@@ -14,6 +14,7 @@ import {
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as Speech from 'expo-speech';
+import BASE_URL from "../../utils/apiConfig";
 
 const StagesScreen = () => {
 
@@ -390,7 +391,7 @@ Generated on: ${new Date().toDateString()}
       };
 
       const response = await fetch(
-        "http://192.168.8.156:5000/predict-stage",
+        `${BASE_URL}/predict-stage`,
         {
           method: "POST",
           headers: {
