@@ -19,6 +19,7 @@ import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import * as Linking from 'expo-linking';
 import { LineChart, BarChart, PieChart } from 'react-native-chart-kit';
+import { File, Directory, Paths } from 'expo-file-system';
 
 const { width } = Dimensions.get('window');
 
@@ -124,80 +125,413 @@ const CropRecommendationResultsScreen = ({ route, navigation }) => {
   const suitabilityLevel = getSuitabilityLevel(suitabilityScore);
   const profitLevel = getProfitLevel(recommendation.estimatedProfit);
 
-  const handleSaveRecommendation = async () => {
-    setLoading(true);
-    try {
-      const htmlContent = `
+
+
+const handleSaveRecommendation = async () => {
+  setLoading(true);
+  try {
+    // Create HTML content for PDF with your desired format
+    const htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Crop Recommendation Report</title>
   <style>
-    body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; }
-    .section-title { background: #f0fdf4; padding: 10px; margin: 20px 0 10px 0; border-left: 5px solid #16a34a; }
-    .chart-bar { margin: 10px 0; }
-    .bar-bg { background: #e5e7eb; height: 30px; border-radius: 8px; overflow: hidden; }
-    .bar-fill { height: 100%; border-radius: 8px; display: flex; align-items: center; justify-content: flex-end; padding-right: 10px; color: white; font-weight: bold; }
+    body {
+      font-family: 'Courier New', monospace;
+      line-height: 1.5;
+      color: #000;
+      margin: 0;
+      padding: 20px;
+      background-color: #fff;
+    }
+    .report-title {
+      text-align: center;
+      font-size: 24px;
+      font-weight: bold;
+      margin: 0 0 10px 0;
+      color: #000;
+    }
+    .title-border {
+      border-top: 3px solid #000;
+      border-bottom: 3px solid #000;
+      padding: 10px 0;
+      margin: 10px 0 30px 0;
+      text-align: center;
+    }
+    .section {
+      margin-bottom: 25px;
+      page-break-inside: avoid;
+    }
+    .section-title {
+      background-color: #f0f0f0;
+      padding: 8px 15px;
+      margin: 20px 0 10px 0;
+      font-weight: bold;
+      border-left: 5px solid #16a34a;
+      font-size: 16px;
+    }
+    .section-divider {
+      border-top: 2px dashed #ccc;
+      margin: 15px 0;
+    }
+    .info-row {
+      margin: 8px 0;
+      padding-left: 10px;
+    }
+    .label {
+      font-weight: bold;
+      display: inline-block;
+      width: 200px;
+    }
+    .value {
+      display: inline-block;
+    }
+    .primary-variety-box {
+      border: 2px solid #16a34a;
+      padding: 15px;
+      margin: 15px 0;
+      background-color: #f9fff9;
+      border-radius: 5px;
+    }
+    .variety-name {
+      color: #065f46;
+      font-size: 20px;
+      font-weight: bold;
+      margin: 0 0 10px 0;
+    }
+    .confidence-badge {
+      display: inline-block;
+      background: ${recommendation.primary.confidence > 85 ? '#dcfce7' : 
+                   recommendation.primary.confidence > 70 ? '#fef9c3' : '#fee2e2'};
+      color: ${recommendation.primary.confidence > 85 ? '#166534' : 
+              recommendation.primary.confidence > 70 ? '#854d0e' : '#991b1b'};
+      padding: 5px 15px;
+      border-radius: 20px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      border: 1px solid #ccc;
+    }
+    .alternative-list {
+      margin-left: 20px;
+    }
+    .footer {
+      text-align: center;
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #ccc;
+      font-size: 12px;
+      color: #666;
+    }
+    .disclaimer {
+      background-color: #f5f5f5;
+      padding: 15px;
+      margin-top: 30px;
+      border: 1px solid #ddd;
+      font-size: 11px;
+      color: #666;
+    }
+    .contact-info {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #f0f9f0;
+      border: 1px solid #bbf7d0;
+    }
+    @media print {
+      body {
+        padding: 10px;
+      }
+      .page-break {
+        page-break-before: always;
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>🌾 Crop Recommendation Report</h1>
-  
-  <div class="section-title">🎯 PRIMARY RECOMMENDATION</div>
-  <h2>${recommendation.primary.variety}</h2>
-  <p>Match Score: ${recommendation.primary.confidence}%</p>
-  <p>Expected Yield: ${recommendation.primary.yield}</p>
+  <div class="title-border">
+    <h1 class="report-title">CROP RECOMMENDATION REPORT</h1>
+  </div>
 
-  <div class="section-title">🔄 ALTERNATIVE VARIETIES</div>
-  ${recommendation.alternatives.map(alt => `
-    <div class="chart-bar">
-      <strong>${alt.variety}</strong>
-      <div class="bar-bg">
-        <div class="bar-fill" style="width: ${alt.confidence}%; background: ${getConfidenceColor(alt.confidence)};">
-          ${alt.confidence}%
-        </div>
+  <div class="section">
+    <div class="info-row">
+      <span class="label">Date:</span>
+      <span class="value">${new Date().toLocaleDateString('en-LK', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      })}</span>
+    </div>
+    <div class="info-row">
+      <span class="label">Time:</span>
+      <span class="value">${new Date().toLocaleTimeString('en-LK', {hour: '2-digit', minute:'2-digit'})}</span>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="section-title">📌 FARM LOCATION DETAILS</div>
+    <div class="info-row">
+      <span class="label">District:</span>
+      <span class="value">${formData.district}</span>
+    </div>
+    <div class="info-row">
+      <span class="label">Village:</span>
+      <span class="value">${formData.village || 'Not specified'}</span>
+    </div>
+    <div class="info-row">
+      <span class="label">GN Division:</span>
+      <span class="value">${formData.gnDivision || 'Not specified'}</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🌾 FIELD CHARACTERISTICS</div>
+    <div class="info-row">
+      <span class="label">Field Size:</span>
+      <span class="value">${formData.fieldSize} ${formData.unit} (${recommendation.fieldSize.hectares} hectares)</span>
+    </div>
+    <div class="info-row">
+      <span class="label">Soil Type:</span>
+      <span class="value">${formData.soilType}</span>
+    </div>
+    <div class="info-row">
+      <span class="label">Water Availability:</span>
+      <span class="value">${formData.waterAvailability}</span>
+    </div>
+    <div class="info-row">
+      <span class="label">Season:</span>
+      <span class="value">${formData.season}</span>
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="section-title">🎯 PRIMARY RECOMMENDATION</div>
+    <div class="primary-variety-box">
+      <div class="confidence-badge">Confidence Score: ${recommendation.primary.confidence}%</div>
+      <h3 class="variety-name">${recommendation.primary.variety}</h3>
+      
+      <div class="info-row">
+        <span class="label">Expected Yield:</span>
+        <span class="value">${recommendation.primary.yield}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Growth Duration:</span>
+        <span class="value">${recommendation.primary.duration}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Risk Level:</span>
+        <span class="value">${recommendation.primary.riskLevel}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Market Price Range:</span>
+        <span class="value">${recommendation.primary.price}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Disease Resistance:</span>
+        <span class="value">${recommendation.primary.resistance}</span>
+      </div>
+      <div class="info-row">
+        <span class="label">Water Requirement:</span>
+        <span class="value">${recommendation.primary.waterNeed}</span>
+      </div>
+      
+      <div style="margin-top: 15px;">
+        <strong>Description:</strong><br>
+        ${recommendation.primary.description}
       </div>
     </div>
-  `).join('')}
+  </div>
 
-  <p style="margin-top: 30px; text-align: center;">Generated by AgroMind App</p>
+  <div class="section">
+    <div class="section-title">🔄 ALTERNATIVE VARIETIES</div>
+    <div class="alternative-list">
+      ${recommendation.alternatives.map((alt, index) => `
+        <div class="info-row">
+          <strong>${index + 1}. ${alt.variety}</strong><br>
+          &nbsp;&nbsp;&nbsp;&nbsp;• Confidence: ${alt.confidence}%<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;• Yield: ${alt.yield}<br>
+          &nbsp;&nbsp;&nbsp;&nbsp;• Risk Level: ${alt.riskLevel}
+        </div>
+        ${index < recommendation.alternatives.length - 1 ? '<br>' : ''}
+      `).join('')}
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="section">
+    <div class="section-title">📅 PLANNING DETAILS</div>
+    <div class="info-row">
+      <span class="label">Recommended Planting Window:</span>
+      <span class="value">${recommendation.plantingWindow}</span>
+    </div>
+    <div class="info-row">
+      <span class="label">Water Requirement:</span>
+      <span class="value">${recommendation.waterRequirement}</span>
+    </div>
+    <div class="info-row">
+      <span class="label">Expected Harvest:</span>
+      <span class="value">Approximately ${recommendation.primary.duration} after planting</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">💰 FINANCIAL PROJECTION</div>
+    <div class="info-row">
+      <span class="label">Estimated Total Yield:</span>
+      <span class="value">${recommendation.calculatedYield}</span>
+    </div>
+    <div class="info-row">
+      <span class="label">Estimated Profit:</span>
+      <span class="value">${recommendation.estimatedProfit}</span>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">🧪 FERTILIZER APPLICATION PLAN</div>
+    <div style="padding: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">
+      ${recommendation.fertilizerPlan}
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">💡 SPECIAL RECOMMENDATIONS & ADVICE</div>
+    <div style="padding: 10px; background-color: #fff9e6; border: 1px solid #f59e0b;">
+      ${recommendation.specialAdvice.replace(/•/g, '•')}
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">⚠️ RISK MANAGEMENT</div>
+    <div style="padding: 10px; background-color: #fee2e2; border: 1px solid #ef4444;">
+      1. Monitor weather forecasts regularly<br>
+      2. Consider crop insurance options<br>
+      3. Maintain proper drainage systems<br>
+      4. Regular pest and disease monitoring
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📞 CONTACT FOR SUPPORT</div>
+    <div class="contact-info">
+      • Local Agriculture Office: Contact your nearest agriculture extension officer<br>
+      • Emergency Helpline: 1920 (Government Agriculture Helpline)<br>
+      • Crop Advisory: Visit www.agridept.gov.lk
+    </div>
+  </div>
+
+  <div class="section-divider"></div>
+
+  <div class="footer">
+    <div style="text-align: center; border-top: 2px solid #000; border-bottom: 2px solid #000; padding: 10px; margin: 20px 0;">
+      <strong>GENERATED BY GOVIMITHURU PLATFORM</strong><br>
+      <em>AI-Driven Paddy Farming Assistant</em>
+    </div>
+    
+    <div class="disclaimer">
+      <strong>Disclaimer:</strong> This recommendation is generated based on the inputs provided. 
+      Actual results may vary based on actual field conditions, weather patterns, 
+      and farming practices. Always consult with local agriculture experts 
+      before making final decisions.
+    </div>
+  </div>
 </body>
 </html>
-      `;
+    `;
 
-      const { uri } = await Print.printToFileAsync({ html: htmlContent, base64: false });
-      const timestamp = new Date().toISOString().split('T')[0].replace(/-/g, '');
-      const filename = `Crop_Recommendation_${formData.district}_${timestamp}.pdf`;
-      
+    // Generate PDF
+    const { uri } = await Print.printToFileAsync({
+      html: htmlContent,
+      base64: false
+    });
+
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().split('T')[0].replace(/-/g, '');
+    const filename = `Crop_Recommendation_${formData.district}_${timestamp}.pdf`;
+    
+    // Get the documents directory using the new API
+    const downloadsDir = FileSystem.documentDirectory + 'downloads/';
+    
+    // Create downloads directory using new API
+    try {
+      // Use the new Directory API to check and create directory
       const dir = FileSystem.documentDirectory + 'downloads';
       const dirExists = await FileSystem.getInfoAsync(dir);
+      
       if (!dirExists.exists) {
         await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
       }
-      
-      const destinationUri = dir + '/' + filename;
-      await FileSystem.copyAsync({ from: uri, to: destinationUri });
-      
-      Alert.alert(
-        '✅ Report Generated!',
-        `Report saved as: ${filename}`,
-        [
-          { text: 'Open PDF', onPress: () => Linking.openURL(destinationUri) },
-          { text: 'Share', onPress: () => Sharing.shareAsync(destinationUri, { mimeType: 'application/pdf' }) },
-          { text: 'OK', style: 'cancel' }
-        ]
-      );
-      
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch (error) {
-      console.error('PDF generation error:', error);
-      Alert.alert('Error', 'Failed to generate PDF report. Please try again.');
-    } finally {
-      setLoading(false);
+    } catch (dirError) {
+      console.log('Directory error:', dirError);
+      // Continue anyway
     }
-  };
+    
+    // Define destination path
+    const destinationUri = downloadsDir + filename;
+    
+    try {
+      // Copy the PDF to downloads directory
+      await FileSystem.copyAsync({
+        from: uri,
+        to: destinationUri
+      });
+      
+      // Show success message
+      Alert.alert(
+  '✅ Report Generated Successfully!',
+  `Report saved as: ${filename}`,
+  [
+    {
+      text: 'Open PDF',
+      onPress: async () => {
+        try {
+          await Linking.openURL(destinationUri);
+        } catch (err) {
+          Alert.alert("Error", "Unable to open PDF");
+        }
+      }
+    },
+    {
+      text: 'Share',
+      onPress: async () => {
+        await Sharing.shareAsync(destinationUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: 'Share Crop Recommendation Report'
+        });
+      }
+    },
+    {
+      text: 'OK',
+      style: 'cancel'
+    }
+  ]
+);
+    } catch (copyError) {
+      console.log('Copy failed, sharing original:', copyError);
+      // If copy fails, share the original PDF
+      await Sharing.shareAsync(uri, {
+        mimeType: 'application/pdf',
+        dialogTitle: 'Save Crop Recommendation Report',
+        UTI: 'com.adobe.pdf'
+      });
+    }
+
+    setSaved(true);
+    setTimeout(() => setSaved(false), 3000);
+    
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    Alert.alert('Error', 'Failed to generate PDF report. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleShare = async () => {
     try {
