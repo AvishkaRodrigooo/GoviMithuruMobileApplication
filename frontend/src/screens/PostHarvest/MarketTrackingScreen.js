@@ -108,11 +108,14 @@ export default function MarketTrackingScreen({ navigation, route }) {
 
       setAllDeals(valid);
 
-      // Fetch farmer's own stocks for complete-deal stock deduction
+      // Fetch farmer's own stocks from 'harvests' collection
+      // (RegisterHarvestScreen saves stock to db.collection('harvests'))
       const uid = auth.currentUser?.uid;
       if (uid) {
-        const stockSnap = await db.collection('users').doc(uid)
-          .collection('stocks').get();
+        const stockSnap = await db
+          .collection('harvests')
+          .where('userId', '==', uid)
+          .get();
         setFarmerStocks(stockSnap.docs.map(d => ({ id: d.id, ...d.data() })));
       }
     } catch (e) {
@@ -224,10 +227,12 @@ export default function MarketTrackingScreen({ navigation, route }) {
   const grandTotal = riceTotal + (transportCostTotal || 0);
 
   // Matching farmer stock for this deal's variety
+  // farmerStocks now comes from 'harvests' collection
   const matchingStock = farmerStocks.find(
-    s => s.variety?.toLowerCase() === selectedDeal?.variety?.toLowerCase()
+    s => (s.variety || '').toLowerCase() === (selectedDeal?.variety || '').toLowerCase()
+      && (parseFloat(s.quantityKg) || 0) > 0   // only consider batches that still have stock
   );
-  const maxSellable = matchingStock?.quantityKg || matchingStock?.quantity || 9999;
+  const maxSellable = parseFloat(matchingStock?.quantityKg) || 9999;
 
   const validateCompleteDeal = () => {
     if (!dealQtyNum || dealQtyNum <= 0) {
@@ -250,6 +255,7 @@ export default function MarketTrackingScreen({ navigation, route }) {
   const handleConfirmDeal = async () => {
     if (!validateCompleteDeal()) return;
     setCompleting(true);
+
     try {
       const uid = auth.currentUser?.uid;
       if (!uid) {
@@ -257,16 +263,54 @@ export default function MarketTrackingScreen({ navigation, route }) {
         setCompleting(false);
         return;
       }
-      const now = new Date().toISOString();
 
-      // 1. Save completed deal to user's own sub-collection (always permitted)
+      const now = new Date().toISOString();
+      const dealVariety = (selectedDeal?.variety || '').trim();
+      const soldQty = dealQtyNum; // amount the farmer is selling
+
+      // ─────────────────────────────────────────────────────────────────────
+      // STEP 1 — FRESH direct Firestore query for farmer's harvest batches
+      //          Do NOT rely on stale in-memory farmerStocks state.
+      //          Fetch all batches for this user right now.
+      // ─────────────────────────────────────────────────────────────────────
+      const harvestSnap = await db
+        .collection('harvests')
+        .where('userId', '==', uid)
+        .get();
+
+      const allBatches = harvestSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      // ─────────────────────────────────────────────────────────────────────
+      // STEP 2 — Multi-strategy variety matching
+      //   Strategy 1: exact case-insensitive match
+      //   Strategy 2: normalized match (remove spaces/dots)
+      //   Strategy 3: one contains the other
+      // ─────────────────────────────────────────────────────────────────────
+      const normalize = (s) => (s || '').toLowerCase().replace(/[\s.\-_]/g, '');
+      const dealNorm = normalize(dealVariety);
+
+      let matchedBatches = allBatches.filter(b => {
+        const bv = (b.variety || '').trim();
+        // Strategy 1: exact case-insensitive
+        if (bv.toLowerCase() === dealVariety.toLowerCase()) return true;
+        // Strategy 2: normalized
+        if (normalize(bv) === dealNorm) return true;
+        // Strategy 3: contains
+        if (bv.toLowerCase().includes(dealVariety.toLowerCase())) return true;
+        if (dealVariety.toLowerCase().includes(bv.toLowerCase())) return true;
+        return false;
+      }).filter(b => (parseFloat(b.quantityKg) || 0) > 0); // only batches with stock
+
+      // ─────────────────────────────────────────────────────────────────────
+      // STEP 3 — Save the completed deal record (always succeeds)
+      // ─────────────────────────────────────────────────────────────────────
       await db.collection('users').doc(uid).collection('completedDeals').add({
         dealId: selectedDeal.id,
         dealerId: selectedDeal.dealerId || '',
         dealerName: selectedDeal.dealerName,
-        riceVariety: selectedDeal.variety,
+        riceVariety: dealVariety,
         grade: selectedDeal.grade,
-        quantitySoldKg: dealQtyNum,
+        quantitySoldKg: soldQty,
         pricePerKg: selectedDeal.pricePerKg || selectedDeal.price,
         riceAmount: riceTotal,
         transportUsed: useTransport,
@@ -275,42 +319,72 @@ export default function MarketTrackingScreen({ navigation, route }) {
         completedAt: now,
       });
 
-      // 2. Deduct from farmer's stock (user-scoped — always permitted)
-      if (matchingStock) {
-        const newQty = Math.max(0, (matchingStock.quantityKg || matchingStock.quantity || 0) - dealQtyNum);
-        await db.collection('users').doc(uid)
-          .collection('stocks').doc(matchingStock.id)
-          .update({ quantityKg: newQty, quantity: newQty, updatedAt: now });
+      // ─────────────────────────────────────────────────────────────────────
+      // STEP 4 — Deduct quantity from matched harvest batches
+      //          If multiple batches match, deduct from the one with
+      //          the highest quantity first (FIFO-like logic).
+      // ─────────────────────────────────────────────────────────────────────
+      if (matchedBatches.length > 0) {
+        // Sort: highest quantity first
+        matchedBatches.sort((a, b) =>
+          (parseFloat(b.quantityKg) || 0) - (parseFloat(a.quantityKg) || 0)
+        );
 
-        setFarmerStocks(prev => prev.map(s =>
-          s.id === matchingStock.id
-            ? { ...s, quantityKg: newQty, quantity: newQty }
-            : s
-        ));
+        let remaining = soldQty;
+
+        for (const batch of matchedBatches) {
+          if (remaining <= 0) break;
+          const batchQty = parseFloat(batch.quantityKg) || 0;
+          const deduct = Math.min(batchQty, remaining);
+          const newQty = Math.max(0, batchQty - deduct);
+
+          // ── Direct Firestore write to harvests collection ──
+          await db.collection('harvests').doc(batch.id).update({
+            quantityKg: newQty,
+            bags: newQty > 0 ? Math.ceil(newQty / 50) : 0,
+            updatedAt: now,
+          });
+
+          remaining -= deduct;
+        }
+
+        // Refresh local farmerStocks state so UI shows updated values
+        const refreshedSnap = await db
+          .collection('harvests')
+          .where('userId', '==', uid)
+          .get();
+        setFarmerStocks(refreshedSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+
+      } else {
+        // No matching batch found — still complete the deal but warn
+        console.warn(
+          `[handleConfirmDeal] No harvest batch found for variety: "${dealVariety}".`,
+          `Available batches: ${allBatches.map(b => `"${b.variety}"(${b.quantityKg}kg)`).join(', ')}`
+        );
+        // Still complete the deal — just no stock deduction
       }
 
-      // 3. Try to update dealer's market listing (may fail if rules restrict it — non-blocking)
+      // ─────────────────────────────────────────────────────────────────────
+      // STEP 5 — Non-blocking updates (dealer listing + farmerOrders)
+      // ─────────────────────────────────────────────────────────────────────
       try {
-        const newFilled = (selectedDeal.filledQuantityKg || 0) + dealQtyNum;
+        const newFilled = (selectedDeal.filledQuantityKg || 0) + soldQty;
         const dealUpdate = { filledQuantityKg: newFilled };
         if (selectedDeal.maxQuantityKg && newFilled >= selectedDeal.maxQuantityKg) {
           dealUpdate.status = 'completed';
         }
         await db.collection('marketPrices').doc(selectedDeal.id).update(dealUpdate);
-      } catch (_) {
-        // Silently skip — farmer doesn't have write access to dealer listings
-      }
+      } catch (_) { /* farmer may not have write access to dealer listings */ }
 
-      // 4. Write order to root farmerOrders (dealer can query by their dealerId)
       try {
         await db.collection('farmerOrders').add({
           dealerId: selectedDeal.dealerId || '',
           dealerName: selectedDeal.dealerName,
           farmerId: uid,
           dealId: selectedDeal.id,
-          riceVariety: selectedDeal.variety,
+          riceVariety: dealVariety,
           grade: selectedDeal.grade,
-          quantitySoldKg: dealQtyNum,
+          quantitySoldKg: soldQty,
           pricePerKg: selectedDeal.pricePerKg || selectedDeal.price,
           riceAmount: riceTotal,
           transportUsed: useTransport,
@@ -320,13 +394,13 @@ export default function MarketTrackingScreen({ navigation, route }) {
           completedAt: now,
           isNew: true,
         });
-      } catch (_) {
-        // Non-blocking if farmerOrders write rules not set yet
-      }
+      } catch (_) { /* non-blocking */ }
 
       setCompleteDealStep('success');
+
     } catch (e) {
-      console.error('handleConfirmDeal:', e);
+      console.error('handleConfirmDeal error:', e);
+
       const msg = e?.code === 'permission-denied'
         ? 'Permission denied. Please ensure you are signed in.'
         : 'Could not complete deal. Please try again.';

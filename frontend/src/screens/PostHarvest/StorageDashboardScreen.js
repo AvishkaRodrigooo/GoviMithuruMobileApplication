@@ -1769,6 +1769,7 @@ export default function StorageDashboardScreen({ navigation }) {
             { label: tx.market, icon: 'trending-up', color: C.blue, bg: C.blueLight, nav: 'MarketTracking' },
             { label: tx.aiChat, icon: 'chat-processing', color: C.purple, bg: C.purpleLight, nav: 'BeginnerStorageGuide' },
             { label: tx.inventory, icon: 'clipboard-list', color: C.amber, bg: C.amberLight, nav: 'InventoryList' },
+            { label: 'P&L Report', icon: 'chart-bar', color: C.teal, bg: C.tealLight, nav: 'SellingProfitLoss' },
           ].map((item) => (
             <TouchableOpacity key={item.label} style={st.quickItem} onPress={() => navigation.navigate(item.nav)}>
               <View style={[st.quickIcon, { backgroundColor: item.bg }]}>
@@ -1778,6 +1779,30 @@ export default function StorageDashboardScreen({ navigation }) {
             </TouchableOpacity>
           ))}
         </View>
+
+        {/* ── Selling Profit & Loss Banner ── */}
+        <TouchableOpacity
+          style={st.plBanner}
+          activeOpacity={0.85}
+          onPress={() => navigation.navigate('SellingProfitLoss')}
+        >
+          <LinearGradient
+            colors={['#0d9488', '#0f766e']}
+            style={st.plBannerGrad}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          >
+            <View style={st.plBannerIconBox}>
+              <MaterialCommunityIcons name="chart-bar" size={28} color="rgba(255,255,255,0.9)" />
+            </View>
+            <View style={{ flex: 1, marginLeft: 14 }}>
+              <Text style={st.plBannerLabel}>SELLING PROFIT & LOSS</Text>
+              <Text style={st.plBannerTitle}>View My Sales Report</Text>
+              <Text style={st.plBannerSub}>Track profit, loss & revenue from every sale</Text>
+            </View>
+            <MaterialCommunityIcons name="arrow-right" size={22} color="rgba(255,255,255,0.85)" />
+          </LinearGradient>
+        </TouchableOpacity>
 
         {/* Tool tabs */}
         <View style={st.tabBar}>
@@ -1878,10 +1903,54 @@ const st = StyleSheet.create({
   assetDiv: { width: 1, backgroundColor: 'rgba(255,255,255,0.2)' },
 
   // Quick actions
-  quickRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
-  quickItem: { alignItems: 'center', flex: 1 },
-  quickIcon: { width: 52, height: 52, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
-  quickLabel: { fontSize: 11, fontWeight: '700', color: C.grey7, textAlign: 'center' },
+  quickRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 4 },
+  quickItem: { alignItems: 'center', minWidth: (width - 48) / 5 },
+  quickIcon: { width: 48, height: 48, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
+  quickLabel: { fontSize: 10, fontWeight: '700', color: C.grey7, textAlign: 'center', maxWidth: 56 },
+
+  // P&L Banner
+  plBanner: {
+    borderRadius: 18,
+    marginBottom: 16,
+    overflow: 'hidden',
+    elevation: 4,
+    shadowColor: '#0d9488',
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { height: 4, width: 0 },
+  },
+  plBannerGrad: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+  },
+  plBannerIconBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  plBannerLabel: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: 'rgba(255,255,255,0.75)',
+    letterSpacing: 1.2,
+    marginBottom: 2,
+  },
+  plBannerTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#ffffff',
+    letterSpacing: -0.3,
+  },
+  plBannerSub: {
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
 
   // Tabs
   tabBar: { flexDirection: 'row', backgroundColor: C.white, borderRadius: 14, marginBottom: 12, padding: 4, borderWidth: 1, borderColor: C.grey2, elevation: 1 },
