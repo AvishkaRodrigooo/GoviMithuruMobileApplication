@@ -2149,7 +2149,7 @@ def chat():
         else:
             user_msg = f"Farmer: {question}"
 
-        # ── Call Ollama qwen2.5:7b (free-text, not JSON mode) ───────────────
+        # ── Call Ollama qwen2.5:7b ───────────────
         raw_answer = _call_ollama(
             system_msg,
             user_msg,
@@ -2170,7 +2170,7 @@ def chat():
                 'source':        'qwen2.5:7b',
             }), 200
 
-        # ── Return error when Ollama fails (no fallback answers) ────────────
+        # ── Return error when Ollama fails 
         return jsonify({
             'success': False,
             'error': 'AI service is currently unavailable. Please try again later.',
