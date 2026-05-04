@@ -132,6 +132,14 @@ SL_CONSTANTS = {
     'mc_grade_b':   16.0,
     'mc_critical':  18.0,
     'mc_overdry':   10.0,
+    'festivals': [
+        {'name': 'Thai Pongal',       'month': 1,  'day': 14, 'boost_pct': 15, 'emoji': '🌾', 'impact': 18},
+        {'name': 'Maha Shivaratri',   'month': 2,  'day': 18, 'boost_pct':  8, 'emoji': '🕉️', 'impact': 10},
+        {'name': 'Sinhala New Year',  'month': 4,  'day': 13, 'boost_pct': 25, 'emoji': '🌞', 'impact': 35},
+        {'name': 'Vesak',             'month': 5,  'day':  5, 'boost_pct': 15, 'emoji': '🏮', 'impact': 25},
+        {'name': 'Poson',             'month': 6,  'day': 15, 'boost_pct':  8, 'emoji': '🕯️', 'impact': 12},
+        {'name': 'Christmas',         'month': 12, 'day': 25, 'boost_pct': 12, 'emoji': '🎄', 'impact': 20},
+    ],
     'glut_months': [3, 4, 8, 9],
 }
 
@@ -357,37 +365,22 @@ def _normalize_location(raw):
 
 
 def _get_next_festival():
-    """Returns the next upcoming Sri Lankan festival from today using LLM."""
-    today_str = datetime.now().strftime('%Y-%m-%d')
-    system_prompt = """You are a Sri Lankan agricultural market expert. 
-Identify the NEXT single upcoming major Sri Lankan festival from today's date that impacts rice prices.
-Include the expected price boost percentage (typically 8-25%).
-Return ONLY a strictly valid JSON object with the following keys:
-{
-  "name": "Festival Name",
-  "name_si": "Sinhala Name",
-  "date": "YYYY-MM-DD",
-  "days_away": 45,
-  "boost_pct": 15,
-  "icon": "🌾",
-  "impact": 18,
-  "emoji": "🌾"
-}
-Do not include any other text or markdown.
-"""
-    user_content = f"Today's date is {today_str}. What is the next major Sri Lankan festival?"
-    
-    llm_raw = _call_ollama(system_prompt, user_content, format_json=True)
-    if llm_raw:
-        try:
-            festival = json.loads(_clean_json(llm_raw))
-            if 'name' in festival and 'days_away' in festival:
-                return festival
-        except Exception:
-            pass
-            
-    # Fallback if LLM fails
-    return {'name': 'Upcoming Festival', 'name_si': 'උත්සවය', 'date': 'Unknown', 'days_away': 30, 'boost_pct': 10, 'icon': '🎊', 'impact': 10, 'emoji': '🎊'}
+    """Returns the next upcoming Sri Lankan festival from today."""
+    today = datetime.now()
+    upcoming = []
+    for fest in SL_CONSTANTS['festivals']:
+        for yr_offset in [0, 1]:
+            try:
+                fdate = datetime(today.year + yr_offset, fest['month'], fest['day'])
+                if fdate > today:
+                    days_away = (fdate - today).days
+                    upcoming.append({**fest, 'date': fdate.strftime('%Y-%m-%d'),
+                                     'days_away': days_away})
+                    break
+            except ValueError:
+                continue
+    upcoming.sort(key=lambda x: x['days_away'])
+    return upcoming[0] if upcoming else None
 
 
 def _compute_storage_life(bag_type, moisture_pct, temp_c, has_pest_history=False, ventilation='natural'):
@@ -843,6 +836,14 @@ def _ml_predict_storage_conditions(weather_24h, storage_cfg, rice_moisture, lat,
 
 
 # ─── Festival Calendar ────────────────────────────────────────────────────────
+FESTIVAL_CALENDAR_DATA = [
+    {'name': 'Thai Pongal',      'name_si': 'තෛ පොංගල්',      'month': 1,  'day': 14, 'boost_pct': 15, 'icon': '🌾'},
+    {'name': 'Maha Shivaratri',  'name_si': 'මහ ශිවරාත්‍රී',  'month': 2,  'day': 18, 'boost_pct': 8,  'icon': '🕉️'},
+    {'name': 'Sinhala New Year', 'name_si': 'සිංහල අවුරුදු',   'month': 4,  'day': 13, 'boost_pct': 25, 'icon': '🎊'},
+    {'name': 'Vesak',            'name_si': 'වෙසක්',           'month': 5,  'day':  5, 'boost_pct': 15, 'icon': '🪔'},
+    {'name': 'Poson',            'name_si': 'පොසොන්',          'month': 6,  'day': 15, 'boost_pct': 8,  'icon': '🌕'},
+    {'name': 'Christmas',        'name_si': 'නත්තල',           'month': 12, 'day': 25, 'boost_pct': 12, 'icon': '🎄'},
+]
 GLUT_MONTHS = [3, 4, 8, 9]
 
 
@@ -915,41 +916,35 @@ def _get_best_sell_windows(harvest_date_str, storage_days, base_price_lkr):
 
     storage_end = harvest_date + pd.Timedelta(days=storage_days)
     today       = datetime.now()
-    
-    system_prompt = """You are a Sri Lankan agricultural market expert.
-Given a harvest date, maximum storage days, and current base price, identify the best upcoming selling windows (festivals or high-demand periods) within the storage period.
-Return a STRICT JSON array of objects with the following keys:
-[
-  {
-    "name": "Festival Name",
-    "name_si": "Sinhala Name",
-    "festival_date": "YYYY-MM-DD",
-    "window_start": "YYYY-MM-DD",
-    "window_end": "YYYY-MM-DD",
-    "days_away": 30,
-    "boost_pct": 15,
-    "boosted_price_lkr": 285.50,
-    "gain_lkr_per_kg": 35.50,
-    "icon": "🌾"
-  }
-]
-Only include windows that fall within the specified storage period. Sort by highest boost_pct first.
-"""
-    user_content = f"Today: {today.strftime('%Y-%m-%d')}. Harvest Date: {harvest_date.strftime('%Y-%m-%d')}. Storage Ends: {storage_end.strftime('%Y-%m-%d')}. Base Price: LKR {base_price_lkr}."
-    
-    llm_raw = _call_ollama(system_prompt, user_content, format_json=True)
-    windows = []
-    if llm_raw:
-        try:
-            windows = json.loads(_clean_json(llm_raw))
-            if not isinstance(windows, list):
-                windows = [windows]
-        except Exception:
-            pass
-            
-    if not windows:
-        windows = []
+    sell_start  = max(today, harvest_date)
+    windows     = []
 
+    for fest in FESTIVAL_CALENDAR_DATA:
+        for yr_offset in [0, 1]:
+            try:
+                fdate = datetime(harvest_date.year + yr_offset, fest['month'], fest['day'])
+            except ValueError:
+                continue
+            if fdate < sell_start or fdate > storage_end:
+                continue
+            win_start = max(sell_start, fdate - pd.Timedelta(days=7))
+            win_end   = min(storage_end, fdate + pd.Timedelta(days=2))
+            if win_start > storage_end:
+                continue
+            days_away     = (fdate - today).days
+            boosted_price = round(base_price_lkr * (1 + fest['boost_pct'] / 100), 2)
+            windows.append({
+                **fest,
+                'festival_date':    fdate.strftime('%Y-%m-%d'),
+                'window_start':     win_start.strftime('%Y-%m-%d'),
+                'window_end':       win_end.strftime('%Y-%m-%d'),
+                'days_away':        days_away,
+                'boosted_price_lkr':boosted_price,
+                'gain_lkr_per_kg':  round(boosted_price - base_price_lkr, 2),
+            })
+            break
+
+    windows.sort(key=lambda x: -x['boost_pct'])
     glut_in_window = [m for m in GLUT_MONTHS if any(
         (harvest_date + pd.Timedelta(days=d)).month == m
         for d in range(storage_days)
@@ -2154,7 +2149,7 @@ def chat():
         else:
             user_msg = f"Farmer: {question}"
 
-        # ── Call Ollama qwen2.5:7b (free-text, not JSON mode) ───────────────
+        # ── Call Ollama qwen2.5:7b ───────────────
         raw_answer = _call_ollama(
             system_msg,
             user_msg,
@@ -2175,7 +2170,7 @@ def chat():
                 'source':        'qwen2.5:7b',
             }), 200
 
-        # ── Return error when Ollama fails (no fallback answers) ────────────
+        # ── Return error when Ollama fails 
         return jsonify({
             'success': False,
             'error': 'AI service is currently unavailable. Please try again later.',
@@ -2668,33 +2663,10 @@ def knowledge():
 # ─── /festival_calendar ───────────────────────────────────────────────────────
 @postharvest_bp.route('/festival_calendar', methods=['GET'])
 def festival_calendar():
-    """GET /api/guardian/festival_calendar — Festival calendar data fetched from LLM."""
-    system_prompt = """You are a Sri Lankan agricultural market expert.
-Provide a list of all major Sri Lankan festivals that impact rice prices.
-Return a STRICT JSON array of objects with the following keys:
-[
-  {
-    "name": "Festival Name",
-    "name_si": "Sinhala Name",
-    "month": 4,
-    "day": 13,
-    "boost_pct": 25,
-    "icon": "🎊"
-  }
-]
-"""
-    user_content = "What are the major Sri Lankan festivals?"
-    llm_raw = _call_ollama(system_prompt, user_content, format_json=True)
-    festivals = []
-    if llm_raw:
-        try:
-            festivals = json.loads(_clean_json(llm_raw))
-        except Exception:
-            pass
-
+    """GET /api/guardian/festival_calendar — Festival calendar data for frontend rendering."""
     return jsonify({
         'success':     True,
-        'festivals':   festivals,
+        'festivals':   FESTIVAL_CALENDAR_DATA,
         'glut_months': GLUT_MONTHS,
         'notes': {
             'boost_explanation': 'Price increase historically observed before Sri Lankan festivals (DOA/HARTI 2019–2024)',
@@ -2723,6 +2695,7 @@ def best_time():
             'base_price':    base_price,
             'storage_days':  storage_days,
             **result,
+            'calendar_data': FESTIVAL_CALENDAR_DATA,
             'glut_months':   GLUT_MONTHS,
         }), 200
 
