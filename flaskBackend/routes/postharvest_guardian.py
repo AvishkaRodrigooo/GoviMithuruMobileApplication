@@ -1338,54 +1338,16 @@ STRICT JSON RESPONSE:
                 }), 200
             except Exception as exc:
                 print(f'[advice] parse error: {exc}')
-
-        fallback = _rule_based_advice(signal, storage_days, days_to_peak,
-                                      current_price, peak_price, quantity_kg,
-                                      net_profit, buf=storage_days - days_to_peak,
-                                      variety=variety)
-        return jsonify({
-            'success': True,
-            'advice':  fallback,
-            'lang':    lang,
-            'source':  'rule_based_fallback'
-        }), 200
+                return jsonify({'error': f'LLM parse error: {str(exc)}'}), 500
+        
+        return jsonify({'error': 'Ollama is offline or failed to respond. Pure LLM mode requires Ollama.'}), 503
 
     except Exception as exc:
         current_app.logger.error(f'[advice] {exc}')
         return jsonify({'error': str(exc)}), 500
 
 
-def _rule_based_advice(signal, storage_days, days_to_peak, current_price,
-                        peak_price, quantity_kg, net_profit, buf, variety):
-    """Fallback advice when Ollama is not available."""
-    sell_now_val = round(current_price * quantity_kg)
-    wait_val     = round(peak_price   * quantity_kg)
-    if signal == 'RED':
-        headline = f"Sell immediately — your {variety} will spoil before price peaks."
-        steps    = ["Sell as soon as possible", "Do not attempt long storage", "Contact nearest Economic Center"]
-    elif signal == 'GREEN':
-        headline = f"Safe to store — potential profit of Rs. {net_profit:,.0f} awaiting."
-        steps    = ["Dry paddy to 13% moisture", "Use hermetic or woven bags", "Monitor weekly for pests", "Wait for festival season"]
-    else:
-        headline = f"Dry paddy to 13% first — then reassess your storage decision."
-        steps    = ["Sun-dry paddy for 2–3 days", "Test moisture with salt bottle test", "Switch to hermetic bags", "Check price again after drying"]
 
-    return {
-        "signal":   "SELL NOW" if signal == "RED" else "STORE" if signal == "GREEN" else "DRY FIRST THEN STORE",
-        "headline": headline,
-        "sell_option": {
-            "value_lkr": sell_now_val,
-            "rationale": "Guaranteed income today with zero spoilage risk."
-        },
-        "store_option": {
-            "steps": steps,
-            "projected_value_lkr": wait_val,
-            "conditions": f"Moisture must be below 14%, use hermetic bags, monitor weekly."
-        },
-        "festival_advice": "Check upcoming Sinhala New Year (April) for best prices — typically +25% boost.",
-        "quick_wins": ["Test moisture today", "Check bags for holes", "Place neem leaves inside bags"],
-        "danger_warning": "Immediate drying required — do not store above 16% moisture." if signal == "RED" else None
-    }
 
 
 # ─── /advice/explain (lightweight multilingual endpoint) ─────────────────────
@@ -1461,12 +1423,9 @@ STRICT JSON RESPONSE:
                                 'source': 'qwen2.5:7b'}), 200
             except Exception as exc:
                 print(f"[explain_advice] parse error: {exc}")
+                return jsonify({'error': f'LLM parsing failed: {str(exc)}'}), 500
 
-        fallback = _rule_based_advice(signal, storage_days, days_to_peak,
-                                      current_price, peak_price, quantity_kg,
-                                      net_profit, storage_days - days_to_peak, variety)
-        return jsonify({'success': True, 'advice': fallback, 'lang': lang,
-                        'source': 'rule_based_fallback'}), 200
+        return jsonify({'error': 'Ollama is offline or failed to respond. Pure LLM mode active.'}), 503
 
     except Exception as exc:
         current_app.logger.error(f'[explain_advice] {exc}')
@@ -1519,35 +1478,14 @@ STRICT JSON RESPONSE:
         )
 
         llm_raw = _call_ollama(system_prompt, user_content, format_json=True)
-        ai_data = {}
-        if llm_raw:
-            try:
-                ai_data = json.loads(_clean_json(llm_raw))
-            except Exception:
-                pass
+        if not llm_raw:
+            return jsonify({'error': 'Ollama is offline or failed to respond. Pure LLM mode active.'}), 503
 
-        # Multilingual fallbacks
-        _fallbacks = {
-            'en': {
-                'verdict': f"Risk level is {risk_data['category']}. Check moisture immediately.",
-                'urgent': 'Verify moisture content and ensure bags are sealed tightly.',
-                'loss': f"Estimated {risk_data['loss_estimate']} weight loss if unaddressed.",
-                'tip': 'Place dried neem (kohomba) leaves inside bags to repel weevils naturally.',
-            },
-            'si': {
-                'verdict': f"අවදානම් මට්ටම {risk_data['category']} වේ. වහාම තෙතමනය පරීක්ෂා කරන්න.",
-                'urgent': 'තෙතමනය සහ මළු හොඳින් වසා ඇති බව සහතික කරන්න.',
-                'loss': f"ක්‍රියා නොකළොත් {risk_data['loss_estimate']} බර හානියක් ඇතිවිය හැක.",
-                'tip': 'රෙදිකෙවෙල් (ගොනාකෑල්ල) දිරිය කොළ මළු ඇතුළේ දමා ගෙදිය.',
-            },
-            'ta': {
-                'verdict': f"அபாய நிலை {risk_data['category']} ஆகும். உடனே ஈரப்பதத்தை சோதிக்கவும்.",
-                'urgent': 'ஈரப்பத அளவை சரிபார்த்து மூட்டைகளை இறுக்கமாக மூடவும்.',
-                'loss': f"கவனிக்காவிட்டால் {risk_data['loss_estimate']} எடை இழப்பு ஏற்படலாம்.",
-                'tip': 'வேப்பிலை உலர்த்தி மூட்டைக்குள் வையுங்கள் — இது பூச்சிகளை விரட்டும்.',
-            },
-        }
-        fb = _fallbacks.get(lang, _fallbacks['en'])
+        try:
+            ai_data = json.loads(_clean_json(llm_raw))
+        except Exception as exc:
+            print(f'[risk_score] parse error: {exc}')
+            return jsonify({'error': f'LLM parsing failed: {str(exc)}'}), 500
 
         return jsonify({
             'success':          True,
@@ -1558,10 +1496,10 @@ STRICT JSON RESPONSE:
             'risk_factors':     risk_data['risk_factors'],
             'storage_life':     risk_data['storage_life'],
             'lang':             lang,
-            'ai_verdict':       ai_data.get('verdict', fb['verdict']),
-            'ai_urgent':        ai_data.get('urgent_action', fb['urgent']),
-            'ai_loss_warning':  ai_data.get('loss_if_ignored', fb['loss']),
-            'ai_farmer_tip':    ai_data.get('farmer_tip', fb['tip']),
+            'ai_verdict':       ai_data.get('verdict', ''),
+            'ai_urgent':        ai_data.get('urgent_action', ''),
+            'ai_loss_warning':  ai_data.get('loss_if_ignored', ''),
+            'ai_farmer_tip':    ai_data.get('farmer_tip', ''),
         }), 200
 
     except Exception as exc:
@@ -2087,7 +2025,7 @@ def chat():
         "success":       true,
         "answer":        "<plain text in requested language>",
         "language_code": "si",
-        "source":        "qwen2.5:7b"  | "rule_based_fallback"
+        "source":        "qwen2.5:7b"
     }
     ─────────────────────────────────────────────────────────────────────────
     """
@@ -2175,23 +2113,23 @@ def chat():
             'ta-tanglish': (
                 "You are GoviMithuru AI for Sri Lankan paddy farmers.\n"
                 f"Farmer context: {ctx_str}\n\n"
-                "CRITICAL RULE: Reply ONLY in Tanglish — Tamil words written in English letters. "
-                "NO Tamil script at all. NO pure English paragraphs.\n"
-                "Example style: 'Unga paddy 13% moisture vachukonga. Hermetic bag use pannunga — 9 madam safe-a irukkum.'\n"
-                "  • Maximum 4 sentences.\n"
-                "  • Practical tips using LKR prices.\n"
-                "  • Mention Sri Lankan methods (kohomba ilai, uppu bottle test, hermetic bag)."
+                "CRITICAL RULE: You must write in spoken Tamil, but using English alphabet letters (Tanglish).\n"
+                "Do NOT use any Tamil letters (அ, ஆ, etc.). Do NOT use formal English.\n"
+                "Write naturally as a Sri Lankan farmer would text on WhatsApp.\n"
+                "Example: 'Intha time la nellu vilai kammi. Hermetic bag la potu vainga, poochi varathu.'\n"
+                "  • Keep it short (maximum 4 sentences).\n"
+                "  • Give practical advice."
             ),
 
             'si-singlish': (
                 "You are GoviMithuru AI for Sri Lankan paddy farmers.\n"
                 f"Farmer context: {ctx_str}\n\n"
-                "CRITICAL RULE: Reply ONLY in Singlish — Sinhala words written in English letters. "
-                "NO Sinhala script at all. NO pure English sentences.\n"
-                "Example style: 'Oya vee 13% moisture ekata adukaranna. Hermetic bags use karanna — masa 9 k safe.'\n"
-                "  • Maximum 4 sentences.\n"
-                "  • Practical tips using LKR prices.\n"
-                "  • Mention Sri Lankan methods (kohomba kola, lunu bottle test, pol katu)."
+                "CRITICAL RULE: You must write in spoken Sinhala, but using English alphabet letters (Singlish).\n"
+                "Do NOT use any Sinhala letters (අ, ආ, etc.). Do NOT use formal English.\n"
+                "Write naturally as a Sri Lankan farmer would text on WhatsApp.\n"
+                "Example: 'Me davas wala vee mila adui. Kohomba kola dala hermetic bag wala danna.'\n"
+                "  • Keep it short (maximum 4 sentences).\n"
+                "  • Give practical advice."
             ),
         }
 
@@ -2211,7 +2149,7 @@ def chat():
         else:
             user_msg = f"Farmer: {question}"
 
-        # ── Call Ollama qwen2.5:7b (free-text, not JSON mode) ───────────────
+        # ── Call Ollama qwen2.5:7b ───────────────
         raw_answer = _call_ollama(
             system_msg,
             user_msg,
@@ -2232,53 +2170,20 @@ def chat():
                 'source':        'qwen2.5:7b',
             }), 200
 
-        # ── Rule-based fallback when Ollama is offline ──────────────────────
-        fallback_answers = {
-            'en': (
-                "GoviMithuru AI is temporarily offline. "
-                "Key tip: Store paddy at 13% moisture or less (SLR 603 Grade A). "
-                "Use hermetic bags for storage over 2 months. "
-                "Place dried kohomba (neem) leaves inside bags to repel weevils."
-            ),
-            'si': (
-                "AI සේවාව තාවකාලිකව නොතිබේ. "
-                "ප්‍රධාන ඉඟිය: 13% ට අඩු ආර්ද්‍රතාවකින් වී ගබඩා කරන්න (SLR 603 Grade A). "
-                "මාස 2 ට වඩා ගබඩා කිරීමට hermetic bags භාවිත කරන්න. "
-                "කොහොඹ කොළ ඇට්ටිය තුළ දමා weevil මැදිරිය වළකින්න."
-            ),
-            'ta': (
-                "AI சேவை தற்காலிகமாக இல்லை. "
-                "முக்கிய குறிப்பு: 13% ஈரப்பதத்தில் நெல்லை சேமிக்கவும் (SLR 603 Grade A). "
-                "2 மாதத்திற்கும் அதிகமான சேமிப்புக்கு hermetic bags பயன்படுத்துங்கள். "
-                "பூச்சிகளை விரட்ட உலர்ந்த வேம்பு (kohomba) இலைகளை பைகளில் வையுங்கள்."
-            ),
-            'ta-tanglish': (
-                "AI thaaramaaga offline aagiduchi. "
-                "Key tip: 13% moisture-la paddy store pannunga (SLR 603 Grade A). "
-                "2 madam mela store pannanumna hermetic bags use pannunga. "
-                "Weevil varaamal irukka dry-aana kohomba ilai bag-la podu."
-            ),
-            'si-singlish': (
-                "AI service eka tikak nathi. "
-                "Muhunu tip eka: 13% moisture ekata vee godaka karanna (SLR 603 Grade A). "
-                "Masa 2 ta vada godaka karanava nam hermetic bags use karanna. "
-                "Weevil enna denna epa kiyala dry kohomba kola bag ekata danna."
-            ),
-        }
-
+        # ── Return error when Ollama fails 
         return jsonify({
-            'success':       True,
-            'answer':        fallback_answers.get(lang_code, fallback_answers['en']),
+            'success': False,
+            'error': 'AI service is currently unavailable. Please try again later.',
+            'answer': '',
             'language_code': lang_code,
-            'source':        'rule_based_fallback',
-        }), 200
+        }), 503
 
     except Exception as exc:
         current_app.logger.error(f'[chat] {exc}')
         return jsonify({
             'success': False,
             'error':   str(exc),
-            'answer':  'Advisor temporarily unavailable. Tip: Store paddy at 13% MC or below.',
+            'answer':  '',
         }), 500
 
 

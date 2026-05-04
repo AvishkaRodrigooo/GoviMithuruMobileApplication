@@ -108,7 +108,7 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
 
     const locationId = route.params?.locationId;
 
-    // Firestore: load location + harvests
+    // Firestore: load location data (one-shot is fine — location data doesn't change)
     useEffect(() => {
         (async () => {
             try {
@@ -122,12 +122,23 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                     setMonitoringMode(lData.monitoringMode || 'free');
                     setDeviceId(lData.deviceId || null);
                 }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                setLoading(false);
+            }
+        })();
+    }, [locationId]);
 
-                const snap = await db.collection('harvests')
-                    .where('userId', '==', uid)
-                    .where('locationId', '==', locationId)
-                    .get();
+    // Firestore: REAL-TIME listener for harvests (updates instantly when stock changes)
+    useEffect(() => {
+        const uid = auth.currentUser?.uid;
+        if (!uid || !locationId) return;
 
+        const unsub = db.collection('harvests')
+            .where('userId', '==', uid)
+            .where('locationId', '==', locationId)
+            .onSnapshot(snap => {
                 const items = [];
                 let kg = 0;
                 snap.forEach(d => {
@@ -137,13 +148,13 @@ export default function WarehouseAnalysisScreen({ navigation, route }) {
                 });
                 setTotalKg(kg);
                 setHarvests(items);
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading(false);
-            }
-        })();
+            }, e => {
+                console.error('[WarehouseAnalysis] harvests snapshot error:', e);
+            });
+
+        return () => unsub();
     }, [locationId]);
+
 
     // Firestore: listen to live IoT sensor data + hourly history subcollection
     useEffect(() => {

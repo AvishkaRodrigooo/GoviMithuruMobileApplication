@@ -1256,7 +1256,16 @@ export default function PostHarvestAdvisorScreen({ navigation, route }) {
           <Text style={styles.headerTitle}>Post-Harvest Advisor</Text>
           <Text style={styles.headerSub}>AI-Powered Storage & Market Intelligence</Text>
         </View>
-        <View style={styles.headerBadge}>
+        {/* ── Profit & Loss Button ── */}
+        <TouchableOpacity
+          style={styles.plBtn}
+          onPress={() => navigation.navigate('SellingProfitLoss', { variety })}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <MaterialCommunityIcons name="chart-bar" size={14} color={C.white} />
+          <Text style={styles.plBtnText}>P&L</Text>
+        </TouchableOpacity>
+        <View style={[styles.headerBadge, { marginLeft: 6 }]}>
           <MaterialCommunityIcons name="leaf" size={14} color={C.green} />
           <Text style={styles.headerBadgeText}>AgroMind</Text>
         </View>
@@ -1536,6 +1545,28 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: C.green,
+  },
+
+  // ── Profit & Loss header button
+  plBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: C.green,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    gap: 4,
+    shadowColor: C.green,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  plBtnText: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: C.white,
+    letterSpacing: 0.5,
   },
 
   // ── Tab Bar
