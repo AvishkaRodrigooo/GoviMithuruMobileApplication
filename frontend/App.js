@@ -54,6 +54,7 @@ import DealerDashboardScreen from './src/screens/DealerDashboard/DealerDashboard
 import StorageStepGuideScreen from './src/screens/PostHarvest/StorageStepGuideScreen';
 import StorageExpertGuideScreen from './src/screens/PostHarvest/StorageExpertGuideScreen';
 import BeginnerStorageGuideScreen from './src/screens/PostHarvest/BeginnerStorageGuideScreen';
+import SellingProfitLossScreen from './src/screens/PostHarvest/SellingProfitLossScreen';
 
 // Pricing Placeholder
 function PricingForecastScreen() {
@@ -151,6 +152,7 @@ export default function App() {
             <Stack.Screen name="StorageStepGuide" component={StorageStepGuideScreen} options={{ headerShown: false }} />
             <Stack.Screen name="StorageExpertGuide" component={StorageExpertGuideScreen} options={{ headerShown: false }} />
             <Stack.Screen name="BeginnerStorageGuide" component={BeginnerStorageGuideScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="SellingProfitLoss" component={SellingProfitLossScreen} options={{ headerShown: false }} />
 
             {/* weeds detection */}
             <Stack.Screen name="Stages" component={StageIdentificationScreen} options={{ title: 'Stage Identification' }} />
