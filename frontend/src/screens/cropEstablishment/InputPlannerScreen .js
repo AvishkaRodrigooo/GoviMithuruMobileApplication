@@ -31,6 +31,27 @@ const InputPlannerScreen = ({ navigation }) => {
     { id: '3', name: 'BG 367', description: 'Short duration (3 months)', ratePerHectare: 145 },
     { id: '4', name: 'At 362', description: 'Traditional, high quality', ratePerHectare: 155 },
     { id: '5', name: 'Ld 365', description: 'Suitable for low country', ratePerHectare: 135 },
+    // NEW VARIETIES ADDED
+    { id: '6', name: 'Bg 300', description: 'High yield, pest resistant, suitable for Yala season', ratePerHectare: 160 },
+    { id: '7', name: 'Bg 304', description: 'Drought resistant, good for dry zone', ratePerHectare: 145 },
+    { id: '8', name: 'Bg 357', description: 'Blast resistant, high grain quality', ratePerHectare: 155 },
+    { id: '9', name: 'Bg 360', description: 'Salt tolerant, suitable for coastal areas', ratePerHectare: 150 },
+    { id: '10', name: 'Bg 366', description: 'Lodging resistant, high tillering', ratePerHectare: 165 },
+    { id: '11', name: 'Bg 379-2', description: 'High yielding, bacterial leaf blight resistant', ratePerHectare: 170 },
+    { id: '12', name: 'At 354', description: 'Traditional variety, excellent grain quality', ratePerHectare: 160 },
+    { id: '13', name: 'At 402', description: 'Long duration (4.5 months), high yield', ratePerHectare: 175 },
+    { id: '14', name: 'Ld 408', description: 'Suitable for low country wet zone', ratePerHectare: 140 },
+    { id: '15', name: 'H 4', description: 'Hybrid variety, very high yield', ratePerHectare: 120 },
+    { id: '16', name: 'H 5', description: 'Super hybrid, early maturity', ratePerHectare: 125 },
+    { id: '17', name: 'Pokkali', description: 'Salt tolerant traditional variety', ratePerHectare: 130 },
+    { id: '18', name: 'Suwandel', description: 'Premium aromatic traditional rice', ratePerHectare: 145 },
+    { id: '19', name: 'Kalu Heenati', description: 'Traditional medicinal rice', ratePerHectare: 140 },
+    { id: '20', name: 'Rathu Heenati', description: 'Red rice variety, high nutritional value', ratePerHectare: 135 },
+    { id: '21', name: 'Pachchaperumal', description: 'Traditional variety, drought tolerant', ratePerHectare: 150 },
+    { id: '22', name: 'Masuran', description: 'Traditional variety, good for diabetes', ratePerHectare: 145 },
+    { id: '23', name: 'Kuruluthuda', description: 'Traditional variety, pest resistant', ratePerHectare: 155 },
+    { id: '24', name: 'Suduru Samba', description: 'Premium quality samba rice', ratePerHectare: 160 },
+    { id: '25', name: 'Bw 367', description: 'Blast resistant, high yield', ratePerHectare: 165 },
   ]);
   const [showVarietyModal, setShowVarietyModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -720,13 +741,13 @@ const savePlanAsPDF = () => {
             <MaterialCommunityIcons name="chevron-down" size={24} color="#16a34a" />
           </TouchableOpacity>
 
-          {/* Quick Variety Buttons */}
+          {/* Quick Variety Buttons - Showing first 8 varieties for better UX */}
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
             style={styles.varietyScroll}
           >
-            {seedVarieties.map((variety) => (
+            {seedVarieties.slice(0, 8).map((variety) => (
               <TouchableOpacity
                 key={variety.id}
                 style={[
@@ -747,6 +768,15 @@ const savePlanAsPDF = () => {
                 <Text style={styles.varietyRate}>{variety.ratePerHectare} kg/ha</Text>
               </TouchableOpacity>
             ))}
+            {/* Show count of additional varieties */}
+            {seedVarieties.length > 8 && (
+              <TouchableOpacity 
+                style={styles.varietyButton}
+                onPress={() => setShowVarietyModal(true)}
+              >
+                <Text style={styles.varietyButtonText}>+{seedVarieties.length - 8} more</Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
         </View>
 

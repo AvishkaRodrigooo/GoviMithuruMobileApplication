@@ -75,9 +75,56 @@ const CropRecommenderScreen = ({ navigation }) => {
     'Polonnaruwa', 'Puttalam', 'Ratnapura', 'Trincomalee', 'Vavuniya'
   ];
 
+  // UPDATED: Expanded Sri Lankan soil types with detailed categories
   const soilTypes = [
-    'Red Soil', 'Clay Loam', 'Sandy Soil', 'Alluvial Soil',
-    'Laterite Soil', 'Peaty Soil', 'Saline Soil', 'Black Soil'
+    // Major Agricultural Soils
+    'Red Yellow Podzolic Soils (RYP)',
+    'Reddish Brown Earths (RBE)',
+    'Low Humic Gley Soils (LHG)',
+    'Alluvial Soils',
+    'Regosols (Sandy Regosols)',
+    'Solodized Solonetz',
+    'Solonchaks (Saline Soils)',
+    
+    // Specific Regional Soils
+    'Cinnamon Sand (Coastal Sandy Soils)',
+    'Laterite Soils (Red Earth)',
+    'Peaty Soils (Marshy Lands)',
+    'Calcic Red Yellow Podzolic',
+    'Immature Brown Loams',
+    'Mixed Alluvial Soils',
+    'Grumusols (Black Cotton Soils)',
+    
+    // Soil texture classifications
+    'Clay Loam',
+    'Sandy Clay Loam',
+    'Silty Clay Loam',
+    'Sandy Soil',
+    'Clay Soil',
+    'Silt Loam',
+    'Loamy Sand',
+    'Sandy Loam',
+    
+    // Traditional/Common names
+    'Red Soil',
+    'Black Soil',
+    'Sandy Soil (Villa)',
+    'Chentu Soil (Saline)',
+    'Podi Athu (Fine Alluvial)',
+    'Mada Kalapu (Peaty Swamp)',
+    
+    // Tea and Highland soils
+    'Hill Country Brown Loams',
+    'Mountain Park Grasslands Soils',
+    'Wet Zone Red Yellow Podzolic',
+    'Dry Zone Reddish Brown Earths',
+    
+    // Other soil types
+    'Brown Soil',
+    'Grey Soil',
+    'Yellow Soil',
+    'Lateritic Gravelly Soil',
+    'Coral Sand Soils'
   ];
 
   const waterAvailabilityOptions = [
@@ -100,6 +147,98 @@ const CropRecommenderScreen = ({ navigation }) => {
     'North Central Province': ['Anuradhapura', 'Polonnaruwa'],
     'Uva Province': ['Badulla', 'Moneragala'],
     'Sabaragamuwa Province': ['Kegalle', 'Ratnapura']
+  };
+
+  // Soil characteristics database for Sri Lanka
+  const soilCharacteristics = {
+    'Red Yellow Podzolic Soils (RYP)': {
+      region: 'Wet and Intermediate zones',
+      suitable: ['BG 358', 'BG 360', 'Bg 300'],
+      fertility: 'Medium',
+      drainage: 'Well drained',
+      organicMatter: 'Low',
+      recommendation: 'Requires regular fertilizer application'
+    },
+    'Reddish Brown Earths (RBE)': {
+      region: 'Dry and Intermediate zones',
+      suitable: ['BG 358', 'BG 366', 'AT 362'],
+      fertility: 'Medium to High',
+      drainage: 'Good',
+      organicMatter: 'Medium',
+      recommendation: 'Ideal for paddy, good water retention'
+    },
+    'Low Humic Gley Soils (LHG)': {
+      region: 'Dry zone lowlands',
+      suitable: ['BG 352', 'AT 362', 'Ld 365'],
+      fertility: 'Low to Medium',
+      drainage: 'Poor to Moderate',
+      organicMatter: 'Low',
+      recommendation: 'Needs organic matter improvement'
+    },
+    'Alluvial Soils': {
+      region: 'River valleys and flood plains',
+      suitable: ['BG 358', 'Bg 300', 'Bg 94-1'],
+      fertility: 'High',
+      drainage: 'Moderate',
+      organicMatter: 'Medium to High',
+      recommendation: 'Excellent for paddy, minimal amendments needed'
+    },
+    'Regosols (Sandy Regosols)': {
+      region: 'Coastal areas, Jaffna, Mannar',
+      suitable: ['AT 362', 'Ld 365', 'Bg 360'],
+      fertility: 'Low',
+      drainage: 'Excessive',
+      organicMatter: 'Very Low',
+      recommendation: 'Requires organic manure and frequent irrigation'
+    },
+    'Solodized Solonetz': {
+      region: 'Dry zone, Anuradhapura, Polonnaruwa',
+      suitable: ['AT 362', 'Bg 360'],
+      fertility: 'Low',
+      drainage: 'Poor',
+      organicMatter: 'Low',
+      recommendation: 'Needs gypsum application'
+    },
+    'Solonchaks (Saline Soils)': {
+      region: 'Coastal areas, Jaffna, Puttalam',
+      suitable: ['AT 362', 'Pokkali'],
+      fertility: 'Low',
+      drainage: 'Poor',
+      organicMatter: 'Low',
+      recommendation: 'Salt-tolerant varieties recommended'
+    },
+    'Laterite Soils (Red Earth)': {
+      region: 'Upcountry, Ratnapura, Kegalle',
+      suitable: ['BG 358', 'Bg 300'],
+      fertility: 'Medium',
+      drainage: 'Good',
+      organicMatter: 'Low',
+      recommendation: 'Add organic matter, prone to erosion'
+    },
+    'Clay Loam': {
+      region: 'Widespread in wet zone',
+      suitable: ['BG 358', 'Bg 300', 'BG 352'],
+      fertility: 'High',
+      drainage: 'Moderate',
+      organicMatter: 'Medium',
+      recommendation: 'Good for paddy, careful water management'
+    },
+    'Sandy Clay Loam': {
+      region: 'Intermediate zone',
+      suitable: ['BG 360', 'AT 362'],
+      fertility: 'Medium',
+      drainage: 'Moderate',
+      organicMatter: 'Medium',
+      recommendation: 'Balanced texture for paddy'
+    },
+    'Clay Soil': {
+      region: 'Low country wet zone',
+      suitable: ['BG 358', 'Bg 94-1'],
+      fertility: 'High',
+      drainage: 'Poor',
+      organicMatter: 'High',
+      recommendation: 'Good water retention, need drainage'
+    }
   };
 
   const getCurrentLocation = async () => {
@@ -627,8 +766,14 @@ const CropRecommenderScreen = ({ navigation }) => {
     if (waterAvailability === "High") score += 10;
     if (waterAvailability === "Low") score -= 5;
 
-    // Soil bonus
-    if (soilType === "Clay") score += 10;
+    // Soil bonus (check if the soil type is good for paddy)
+    const goodPaddySoils = [
+      'Alluvial Soils', 'Clay Loam', 'Reddish Brown Earths (RBE)',
+      'Low Humic Gley Soils (LHG)', 'Red Yellow Podzolic Soils (RYP)'
+    ];
+    if (goodPaddySoils.some(soil => soilType.includes(soil))) {
+      score += 10;
+    }
 
     return Math.min(Math.max(score, 0), 100);
   };
@@ -687,12 +832,6 @@ const CropRecommenderScreen = ({ navigation }) => {
   };
 
 
-
-
-
-
-
-
   // Add this function to generate recommendations based on form data:
   const generateRecommendation = (formData, weatherData) => {
 
@@ -735,6 +874,8 @@ const CropRecommenderScreen = ({ navigation }) => {
       // Soil match
       if (variety.soilPreference.includes(soilType)) {
         score += 30;
+      } else if (variety.soilPreference.some(pref => soilType.includes(pref))) {
+        score += 20;
       }
 
       // Water match
@@ -801,14 +942,19 @@ const CropRecommenderScreen = ({ navigation }) => {
 
     // Generate fertilizer plan based on soil type
     const fertilizerPlans = {
-      'Red Soil': 'Urea: 100kg/ha, TSP: 75kg/ha, MOP: 50kg/ha',
-      'Clay Loam': 'Urea: 80kg/ha, TSP: 60kg/ha, MOP: 40kg/ha',
-      'Sandy Soil': 'Urea: 60kg/ha, TSP: 50kg/ha, MOP: 30kg/ha + Organic manure',
-      'Alluvial Soil': 'Urea: 90kg/ha, TSP: 70kg/ha, MOP: 45kg/ha',
-      'Laterite Soil': 'Urea: 70kg/ha, TSP: 55kg/ha, MOP: 35kg/ha + Lime',
-      'Peaty Soil': 'Urea: 50kg/ha, TSP: 40kg/ha, MOP: 25kg/ha',
-      'Saline Soil': 'Urea: 60kg/ha, TSP: 50kg/ha, MOP: 30kg/ha + Gypsum',
-      'Black Soil': 'Urea: 85kg/ha, TSP: 65kg/ha, MOP: 42kg/ha'
+      'Red Yellow Podzolic Soils (RYP)': 'Urea: 100kg/ha, TSP: 75kg/ha, MOP: 50kg/ha + Zinc Sulfate',
+      'Reddish Brown Earths (RBE)': 'Urea: 85kg/ha, TSP: 65kg/ha, MOP: 45kg/ha',
+      'Low Humic Gley Soils (LHG)': 'Urea: 70kg/ha, TSP: 50kg/ha, MOP: 35kg/ha + Organic matter',
+      'Alluvial Soils': 'Urea: 75kg/ha, TSP: 55kg/ha, MOP: 40kg/ha',
+      'Regosols (Sandy Regosols)': 'Urea: 60kg/ha, TSP: 45kg/ha, MOP: 30kg/ha + Compost',
+      'Solodized Solonetz': 'Urea: 65kg/ha, TSP: 50kg/ha, MOP: 35kg/ha + Gypsum',
+      'Solonchaks (Saline Soils)': 'Urea: 55kg/ha, TSP: 40kg/ha, MOP: 25kg/ha + Leaching',
+      'Laterite Soils (Red Earth)': 'Urea: 80kg/ha, TSP: 60kg/ha, MOP: 40kg/ha + Lime',
+      'Clay Loam': 'Urea: 85kg/ha, TSP: 65kg/ha, MOP: 45kg/ha',
+      'Sandy Clay Loam': 'Urea: 75kg/ha, TSP: 55kg/ha, MOP: 35kg/ha',
+      'Clay Soil': 'Urea: 70kg/ha, TSP: 50kg/ha, MOP: 35kg/ha',
+      'Red Soil': 'Urea: 80kg/ha, TSP: 60kg/ha, MOP: 40kg/ha',
+      'Black Soil': 'Urea: 75kg/ha, TSP: 55kg/ha, MOP: 38kg/ha',
     };
 
     const fertilizerPlan = fertilizerPlans[soilType] || 'Urea: 75kg/ha, TSP: 55kg/ha, MOP: 35kg/ha';
@@ -837,8 +983,25 @@ const CropRecommenderScreen = ({ navigation }) => {
       specialAdvice.push('• Use mulch to conserve soil moisture');
     }
 
-    if (soilType === 'Sandy Soil') {
+    // Add soil-specific advice
+    if (soilCharacteristics[soilType]) {
+      const soilInfo = soilCharacteristics[soilType];
+      specialAdvice.push(`• ${soilInfo.recommendation}`);
+    }
+
+    if (soilType.includes('Sandy')) {
       specialAdvice.push('• Add organic matter to improve water retention');
+      specialAdvice.push('• Use slow-release fertilizers to prevent leaching');
+    }
+
+    if (soilType.includes('Saline') || soilType.includes('Solonchaks')) {
+      specialAdvice.push('• Practice proper drainage to prevent salt accumulation');
+      specialAdvice.push('• Use salt-tolerant varieties only');
+    }
+
+    if (soilType.includes('Clay') && !soilType.includes('Loam')) {
+      specialAdvice.push('• Ensure proper drainage to prevent waterlogging');
+      specialAdvice.push('• Avoid working soil when too wet');
     }
 
     if (season === 'Yala') {
@@ -901,7 +1064,7 @@ const CropRecommenderScreen = ({ navigation }) => {
   const paddyVarieties = [
     {
       name: 'BG 358',
-      soilPreference: ['Clay Loam', 'Alluvial Soil', 'Black Soil'],
+      soilPreference: ['Clay Loam', 'Alluvial Soils', 'Black Soil', 'Reddish Brown Earths (RBE)'],
       waterNeed: 'High',
       season: 'Both',
       duration: '3.5-4 months',
@@ -913,7 +1076,7 @@ const CropRecommenderScreen = ({ navigation }) => {
     },
     {
       name: 'BG 360',
-      soilPreference: ['Red Soil', 'Clay Loam', 'Laterite Soil'],
+      soilPreference: ['Red Soil', 'Clay Loam', 'Laterite Soils (Red Earth)', 'Reddish Brown Earths (RBE)'],
       waterNeed: 'Medium',
       season: 'Maha',
       duration: '4-4.5 months',
@@ -925,7 +1088,7 @@ const CropRecommenderScreen = ({ navigation }) => {
     },
     {
       name: 'AT 362',
-      soilPreference: ['Sandy Soil', 'Red Soil', 'Laterite Soil'],
+      soilPreference: ['Sandy Soil', 'Red Soil', 'Laterite Soils (Red Earth)', 'Regosols (Sandy Regosols)', 'Solonchaks (Saline Soils)'],
       waterNeed: 'Low',
       season: 'Both',
       duration: '3-3.5 months',
@@ -933,11 +1096,11 @@ const CropRecommenderScreen = ({ navigation }) => {
       price: 'LKR 70-80/kg',
       resistance: ['Drought', 'Salinity'],
       riskLevel: 'Medium',
-      description: 'Short duration, suitable for rain-fed areas'
+      description: 'Short duration, suitable for rain-fed and saline areas'
     },
     {
       name: 'Bg 300',
-      soilPreference: ['Clay Loam', 'Alluvial Soil'],
+      soilPreference: ['Clay Loam', 'Alluvial Soils', 'Red Yellow Podzolic Soils (RYP)'],
       waterNeed: 'High',
       season: 'Yala',
       duration: '4 months',
@@ -949,7 +1112,7 @@ const CropRecommenderScreen = ({ navigation }) => {
     },
     {
       name: 'Ld 365',
-      soilPreference: ['Sandy Soil', 'Red Soil'],
+      soilPreference: ['Sandy Soil', 'Red Soil', 'Regosols (Sandy Regosols)'],
       waterNeed: 'Low',
       season: 'Maha',
       duration: '3.5-4 months',
@@ -961,7 +1124,7 @@ const CropRecommenderScreen = ({ navigation }) => {
     },
     {
       name: 'Bg 94-1',
-      soilPreference: ['Alluvial Soil', 'Clay Loam'],
+      soilPreference: ['Alluvial Soils', 'Clay Loam', 'Low Humic Gley Soils (LHG)'],
       waterNeed: 'Medium',
       season: 'Both',
       duration: '4.5 months',
@@ -969,6 +1132,43 @@ const CropRecommenderScreen = ({ navigation }) => {
       price: 'LKR 70-80/kg',
       resistance: ['Diseases'],
       riskLevel: 'Low',
+      description: 'Well adapted to lowland conditions'
+    },
+    {
+      name: 'BG 352',
+      soilPreference: ['Low Humic Gley Soils (LHG)', 'Alluvial Soils', 'Clay Soil'],
+      waterNeed: 'Medium',
+      season: 'Maha',
+      duration: '4 months',
+      yield: '4.8-5.8 t/ha',
+      price: 'LKR 78-88/kg',
+      resistance: ['Blast', 'Drought'],
+      riskLevel: 'Low',
+      description: 'Good for dry zone, blast resistant'
+    },
+    {
+      name: 'BG 366',
+      soilPreference: ['Reddish Brown Earths (RBE)', 'Clay Loam', 'Brown Soil'],
+      waterNeed: 'Medium',
+      season: 'Both',
+      duration: '4 months',
+      yield: '5.2-6.2 t/ha',
+      price: 'LKR 82-92/kg',
+      resistance: ['Lodging', 'Blast'],
+      riskLevel: 'Low',
+      description: 'High quality grain, lodging resistant'
+    },
+    {
+      name: 'Pokkali',
+      soilPreference: ['Solonchaks (Saline Soils)', 'Coral Sand Soils', 'Regosols (Sandy Regosols)'],
+      waterNeed: 'Medium',
+      season: 'Maha',
+      duration: '5-6 months',
+      yield: '2.5-3.5 t/ha',
+      price: 'LKR 90-120/kg',
+      resistance: ['Salinity', 'Submergence'],
+      riskLevel: 'High',
+      description: 'Traditional salt-tolerant variety from coastal areas'
     }
   ];
 
