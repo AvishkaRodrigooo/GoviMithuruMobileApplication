@@ -403,6 +403,20 @@ Generated on: ${new Date().toDateString()}
 
       const data = await response.json();
 
+
+      const response = await fetch("http://10.11.204.131:5000/predict-stage", {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "Accept": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      
+      const responseText = await response.text();
+      console.log("Raw response:", responseText);
+      
+
       if (!response.ok) {
         throw new Error(data.error || "Server error");
       }

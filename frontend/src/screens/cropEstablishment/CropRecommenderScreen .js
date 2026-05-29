@@ -14,8 +14,11 @@ import * as Location from 'expo-location';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
 
+const API_BASE_URL = 'http://10.113.79.131:5000';
+
 import { BASE_URL } from '../../utils/apiConfig';
 const API_BASE_URL = BASE_URL;
+
 
 
 const CropRecommenderScreen = ({ navigation }) => {

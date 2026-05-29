@@ -102,7 +102,11 @@ export default function WeedsClassificationScreen() {
         type: "image/jpeg",
       });
 
+
+      const response = await fetch("http://10.11.204.131:5000/weed_predict", {
+
       const response = await fetch(`${BASE_URL}/weed_predict`, {
+
         method: "POST",
         headers: {
           "Content-Type": "multipart/form-data",

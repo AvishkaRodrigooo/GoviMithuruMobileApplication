@@ -56,11 +56,30 @@ export default function WeedIdentifyScreen() {
     setIsAnalyzing(true);
     setShowResults(false);
 
+
+  const formData = new FormData();
+  formData.append('image', {
+    uri,
+    name: 'weed.jpg',
+    type: 'image/jpeg',
+  });
+
+  try {
+    // Use your PC's IP address here
+    const SERVER_URL = 'http://10.11.204.131:5000'; // Change this!
+    
+    console.log('Sending to:', `${SERVER_URL}/predict`);
+    
+    const response = await fetch(`${SERVER_URL}/predict`, {
+      method: 'POST',
+      body: formData,
+
     const formData = new FormData();
     formData.append('image', {
       uri,
       name: 'weed.jpg',
       type: 'image/jpeg',
+
     });
 
     try {
